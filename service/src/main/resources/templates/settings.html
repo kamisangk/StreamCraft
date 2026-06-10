@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html th:lang="${currentLocaleTag}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/app-shell :: commonHead(${pageTitle})}">
+    <title>StreamCraft</title>
+</head>
+<body class="sc-shell-page h-screen w-screen flex overflow-hidden">
+<aside th:replace="~{fragments/sidebar :: sidebar(${activeNav})}"></aside>
+
+<main class="sc-page-frame flex-1 flex flex-col min-w-0 relative overflow-hidden">
+    <header th:replace="~{fragments/topbar :: topbar(${pageTitle}, ${pageSubtitle})}"></header>
+
+    <div class="sc-page-content flex-1 overflow-y-auto space-y-6">
+        <section data-page-hero="settings" class="sc-page-hero">
+            <div class="min-w-0 max-w-3xl">
+                <p class="sc-subtle-label" th:text="#{settings.hero.label}">Admin</p>
+                <h2 class="sc-page-heading mt-3" th:text="${pageTitle}">Settings</h2>
+                <p class="sc-page-lead" th:text="${pageSubtitle}">Manage global account settings.</p>
+            </div>
+        </section>
+
+        <section class="sc-card-strong settings-password-card max-w-2xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-[var(--sc-border)]">
+                <h3 class="sc-section-head" th:text="#{settings.password.title}">Password settings</h3>
+            </div>
+
+            <form data-settings-password-form class="p-5 space-y-5">
+                <div id="settings-password-message"
+                     class="hidden rounded-lg border px-4 py-3 text-sm"
+                     role="status"
+                     aria-live="polite"></div>
+
+                <div>
+                    <label for="currentPassword" class="sc-form-label" th:text="#{settings.password.current}">Current password</label>
+                    <input id="currentPassword"
+                           name="currentPassword"
+                           type="password"
+                           autocomplete="current-password"
+                           class="sc-input"
+                           required>
+                </div>
+
+                <div>
+                    <label for="newPassword" class="sc-form-label" th:text="#{settings.password.new}">New password</label>
+                    <input id="newPassword"
+                           name="newPassword"
+                           type="password"
+                           autocomplete="new-password"
+                           class="sc-input"
+                           required>
+                </div>
+
+                <div>
+                    <label for="confirmPassword" class="sc-form-label" th:text="#{settings.password.confirm}">Confirm new password</label>
+                    <input id="confirmPassword"
+                           name="confirmPassword"
+                           type="password"
+                           autocomplete="new-password"
+                           class="sc-input"
+                           required>
+                </div>
+
+                <div class="flex justify-end">
+                    <button id="settings-password-submit"
+                            type="submit"
+                            class="sc-btn-primary"
+                            th:text="#{settings.password.save}">
+                        Save password
+                    </button>
+                </div>
+            </form>
+        </section>
+    </div>
+</main>
+
+<script th:inline="javascript">
+    const settingsPasswordForm = document.querySelector('[data-settings-password-form]');
+    const settingsPasswordMessage = document.getElementById('settings-password-message');
+    const settingsPasswordSubmit = document.getElementById('settings-password-submit');
+    const settingsPasswordUrl = '/api/settings/password';
+    const settingsCsrfHeader = /*[[${_csrf.headerName}]]*/ 'X-CSRF-TOKEN';
+    const settingsCsrfToken = /*[[${_csrf.token}]]*/ '';
+    const settingsSuccessFallback = /*[[#{settings.password.success}]]*/ 'Password updated.';
+    const settingsErrorFallback = /*[[#{settings.password.error}]]*/ 'Unable to update password.';
+    const settingsCurrentPasswordFallback = /*[[#{settings.password.currentIncorrect}]]*/ 'Current password is incorrect.';
+    const settingsMismatchFallback = /*[[#{settings.password.confirmMismatch}]]*/ 'New password confirmation does not match.';
+    const settingsBlankPasswordFallback = /*[[#{settings.password.blank}]]*/ 'Password fields must not be blank.';
+
+    function showSettingsPasswordMessage(message, tone) {
+        settingsPasswordMessage.textContent = message;
+        settingsPasswordMessage.classList.remove(
+            'hidden',
+            'border-emerald-200',
+            'bg-emerald-50',
+            'text-emerald-700',
+            'border-red-200',
+            'bg-red-50',
+            'text-red-700'
+        );
+
+        if (tone === 'success') {
+            settingsPasswordMessage.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
+            return;
+        }
+
+        settingsPasswordMessage.classList.add('border-red-200', 'bg-red-50', 'text-red-700');
+    }
+
+    function localizeSettingsPasswordError(message) {
+        if (message === 'Current password is incorrect.') {
+            return settingsCurrentPasswordFallback;
+        }
+        if (message === 'New password confirmation does not match.') {
+            return settingsMismatchFallback;
+        }
+        if (message === 'Password fields must not be blank.') {
+            return settingsBlankPasswordFallback;
+        }
+        return message || settingsErrorFallback;
+    }
+
+    settingsPasswordForm?.addEventListener('submit', async event => {
+        event.preventDefault();
+        settingsPasswordSubmit.disabled = true;
+        settingsPasswordSubmit.classList.add('opacity-70', 'cursor-not-allowed');
+
+        const formData = new FormData(settingsPasswordForm);
+        const payload = {
+            currentPassword: formData.get('currentPassword') || '',
+            newPassword: formData.get('newPassword') || '',
+            confirmPassword: formData.get('confirmPassword') || ''
+        };
+
+        try {
+            const response = await fetch(settingsPasswordUrl, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    [settingsCsrfHeader]: settingsCsrfToken
+                },
+                body: JSON.stringify(payload)
+            });
+            const responseContentType = response.headers.get('Content-Type') || '';
+            if (response.redirected || !responseContentType.includes('application/json')) {
+                throw new Error(settingsErrorFallback);
+            }
+
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(localizeSettingsPasswordError(result.message));
+            }
+
+            settingsPasswordForm.reset();
+            showSettingsPasswordMessage(settingsSuccessFallback, 'success');
+        } catch (error) {
+            showSettingsPasswordMessage(error.message || settingsErrorFallback, 'error');
+        } finally {
+            settingsPasswordSubmit.disabled = false;
+            settingsPasswordSubmit.classList.remove('opacity-70', 'cursor-not-allowed');
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html th:lang="${currentLocaleTag}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/app-shell :: commonHead(${pageTitle})}">
+    <title>StreamCraft</title>
+</head>
+<body class="sc-shell-page h-screen w-screen flex overflow-hidden">
+<aside th:replace="~{fragments/sidebar :: sidebar(${activeNav})}"></aside>
+
+<main class="sc-page-frame flex-1 flex flex-col min-w-0 relative overflow-hidden">
+    <header th:replace="~{fragments/topbar :: topbar(${pageTitle}, ${pageSubtitle})}"></header>
+
+    <div class="sc-page-content flex-1 overflow-y-auto space-y-8">
+        <div id="message-box" class="hidden sc-card-strong px-4 py-3 text-sm"></div>
+
+        <section data-page-hero="pipelines" class="sc-page-hero">
+            <div>
+                <p class="sc-subtle-label" th:text="#{pipelines.hero.label}">Workspace</p>
+                <h2 class="sc-page-heading mt-3" th:text="#{pipelines.hero.title}">Manage saved realtime pipelines</h2>
+                <p class="sc-page-lead"></p>
+            </div>
+            <a data-create-pipeline-link th:href="@{/studio}" class="sc-btn-primary px-4 py-2 text-sm inline-flex items-center">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                <span th:text="#{pipelines.action.create}">New pipeline</span>
+            </a>
+        </section>
+
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="sc-summary-card">
+                <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2" th:text="#{pipelines.summary.total}">Total pipelines</p>
+                <div class="text-3xl font-semibold text-slate-900 dark:text-slate-100" id="summary-total">0</div>
+
+            </div>
+            <div class="sc-summary-card">
+                <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2" th:text="#{pipelines.summary.running}">Running</p>
+                <div class="text-3xl font-semibold text-emerald-600" id="summary-running">0</div>
+
+            </div>
+            <div class="sc-summary-card">
+                <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2" th:text="#{pipelines.summary.stopped}">Stopped</p>
+                <div class="text-3xl font-semibold text-amber-600" id="summary-stopped">0</div>
+
+            </div>
+        </section>
+
+        <section class="sc-filter-bar">
+            <div class="flex flex-col lg:flex-row lg:items-center gap-4">
+                <div class="flex-1">
+                    <label for="pipeline-search" class="sc-form-label" th:text="#{pipelines.search.label}">Search pipelines</label>
+                    <input id="pipeline-search" type="text" class="sc-input" th:placeholder="#{pipelines.search.placeholder}" placeholder="Search pipelines">
+                </div>
+                <div class="w-full lg:w-56">
+                    <label for="pipeline-status-filter" class="sc-form-label" th:text="#{pipelines.filter.status}">Run status</label>
+                    <select id="pipeline-status-filter" class="sc-input">
+                        <option value="ALL" th:text="#{pipelines.filter.all}">All statuses</option>
+                        <option value="RUNNING" th:text="#{pipelines.status.running}">Running</option>
+                        <option value="STOPPED" th:text="#{pipelines.status.stopped}">Stopped</option>
+                        <option value="FAILED" th:text="#{pipelines.status.failed}">Failed</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <section data-collection-panel="pipeline-list" class="sc-table-wrap">
+            <div class="sc-panel-muted px-6 py-4 border-b-0 rounded-none flex items-center justify-between">
+                <div>
+                    <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100" th:text="#{pipelines.list.title}">Pipelines</h2>
+
+                </div>
+            </div>
+            <div id="pipeline-table" class="overflow-x-auto"></div>
+        </section>
+    </div>
+</main>
+
+<script th:inline="javascript">
+    const t = window.StreamCraftI18n?.t || ((key, fallback, params) => {
+        if (!params || typeof fallback !== "string") {
+            return fallback ?? key;
+        }
+        return fallback.replace(/\{(\d+)}/g, (_, index) => String(params[Number(index)] ?? ""));
+    });
+    const currentLocale = window.StreamCraftI18n?.locale || "zh-CN";
+    const csrfHeader = /*[[${_csrf.headerName}]]*/ "X-CSRF-TOKEN";
+    const csrfToken = /*[[${_csrf.token}]]*/ "";
+    const runtimeStatusLabels = {
+        RUNNING: t("pipelines.status.running", "Running"),
+        STOPPED: t("pipelines.status.stopped", "Stopped"),
+        FAILED: t("pipelines.status.failed", "Failed"),
+        UNKNOWN: t("pipelines.status.unknown", "Not run")
+    };
+    const runtimeStatusClasses = {
+        RUNNING: "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-500/30",
+        STOPPED: "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-200 border border-amber-200 dark:border-amber-500/30",
+        FAILED: "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-200 border border-red-200 dark:border-red-500/30",
+        UNKNOWN: "bg-slate-200 dark:bg-neutral-800/70 text-slate-700 dark:text-neutral-300 border border-slate-300 dark:border-neutral-600"
+    };
+
+    let allPipelines = [];
+    const busyPipelineIds = new Set();
+
+    function showMessage(kind, text) {
+        const box = document.getElementById("message-box");
+        box.classList.remove(
+            "hidden",
+            "border-emerald-200",
+            "bg-emerald-50",
+            "dark:bg-emerald-500/10",
+            "text-emerald-700",
+            "dark:text-emerald-200",
+            "border-red-500/30",
+            "bg-red-50",
+            "dark:bg-red-500/10",
+            "text-red-700",
+            "dark:text-red-200",
+            "border-slate-200",
+            "bg-slate-50",
+            "dark:bg-neutral-800/70",
+            "text-slate-700",
+            "dark:text-neutral-300"
+        );
+        if (kind === "success") {
+            box.classList.add("border-emerald-200", "bg-emerald-50", "dark:bg-emerald-500/10", "text-emerald-700", "dark:text-emerald-200");
+        } else if (kind === "info") {
+            box.classList.add("border-slate-200", "bg-slate-50", "dark:bg-neutral-800/70", "text-slate-700", "dark:text-neutral-300");
+        } else {
+            box.classList.add("border-red-500/30", "bg-red-50", "dark:bg-red-500/10", "text-red-700", "dark:text-red-200");
+        }
+        box.textContent = text;
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll("\"", "&quot;");
+    }
+
+    function formatTime(value) {
+        if (!value) {
+            return t("pipelines.updated.never", "Not updated");
+        }
+        return new Date(value).toLocaleString(currentLocale, { hour12: false });
+    }
+
+    function normalizeRunStatus(item) {
+        const runStatus = String(item?.lastRunStatus || "STOPPED").toUpperCase();
+        return runtimeStatusLabels[runStatus] ? runStatus : "UNKNOWN";
+    }
+
+    function updateSummary(pipelines) {
+        document.getElementById("summary-total").textContent = String(pipelines.length);
+        document.getElementById("summary-running").textContent = String(
+            pipelines.filter(item => normalizeRunStatus(item) === "RUNNING").length
+        );
+        document.getElementById("summary-stopped").textContent = String(
+            pipelines.filter(item => normalizeRunStatus(item) !== "RUNNING").length
+        );
+    }
+
+    function filteredPipelines() {
+        const keyword = document.getElementById("pipeline-search").value.trim().toLowerCase();
+        const status = document.getElementById("pipeline-status-filter").value;
+        return allPipelines.filter(item => {
+            const matchesKeyword = !keyword || (item.name || "").toLowerCase().includes(keyword);
+            const matchesStatus = status === "ALL" || normalizeRunStatus(item) === status;
+            return matchesKeyword && matchesStatus;
+        });
+    }
+
+    function actionButtonClasses(isBusy, tone, isDisabled = false) {
+        if (isBusy) {
+            return "opacity-60 cursor-wait";
+        }
+        if (isDisabled) {
+            return "text-slate-500 dark:text-slate-400 cursor-not-allowed";
+        }
+        if (tone === "stop") {
+            return "text-amber-600 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200";
+        }
+        if (tone === "delete") {
+            return "text-red-600 hover:text-red-700 dark:text-red-300 dark:hover:text-red-200";
+        }
+        return "text-slate-900 hover:text-slate-600 dark:text-slate-100 dark:hover:text-slate-300";
+    }
+
+    function isRunningPipeline(item) {
+        return normalizeRunStatus(item) === "RUNNING";
+    }
+
+    function buildActionButtons(item) {
+        const isBusy = busyPipelineIds.has(item.id);
+        const isRunning = isRunningPipeline(item);
+        const deleteDisabled = isBusy || isRunning;
+        const runButton = `<button type="button" class="${isRunning ? "stop-button" : "run-button"} ${actionButtonClasses(isBusy, isRunning ? "stop" : "run")}" data-pipeline-id="${item.id}" ${isBusy ? "disabled" : ""}>${isRunning ? t("pipelines.action.stop", "Stop") : t("pipelines.action.run", "Run")}</button>`;
+        const deleteButton = `<button type="button" class="delete-button ${actionButtonClasses(isBusy, "delete", deleteDisabled)}" data-pipeline-id="${item.id}" ${deleteDisabled ? "disabled" : ""} ${isRunning ? `title="${escapeHtml(t("pipelines.delete.disabledRunning", "Stop the pipeline before deleting"))}"` : ""}>${t("pipelines.action.delete", "Delete")}</button>`;
+        const monitorLink = isRunning
+                ? `<a href="/pipelines/${item.id}/monitor" class="text-slate-900 hover:text-slate-600 dark:text-slate-100 dark:hover:text-slate-300">${t("pipelines.action.monitor", "Monitor")}</a>`
+                : "";
+        return `${runButton}${deleteButton}${monitorLink}`;
+    }
+
+    function renderTable() {
+        const pipelines = filteredPipelines();
+        updateSummary(allPipelines);
+
+        const container = document.getElementById("pipeline-table");
+        if (pipelines.length === 0) {
+            container.innerHTML = `
+                <div class="sc-empty-state px-6 py-16 text-center">
+                    <div class="mx-auto w-14 h-14 rounded-lg bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300 flex items-center justify-center mb-4">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">${t("pipelines.empty.title", "No pipelines yet")}</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-6">${t("pipelines.empty.description", "Create a Kafka Source to Kafka Sink draft first.")}</p>
+                    <a href="/studio" class="sc-btn-primary inline-flex items-center px-4 py-2 text-sm">
+                        ${t("pipelines.action.create", "New pipeline")}
+                    </a>
+                </div>
+            `;
+            return;
+        }
+
+        const rows = pipelines.map(item => {
+            const runStatusKey = normalizeRunStatus(item);
+            const runStatusLabel = runtimeStatusLabels[runStatusKey] || runStatusKey;
+            const runStatusClass = runtimeStatusClasses[runStatusKey] || runtimeStatusClasses.UNKNOWN;
+
+            return `
+                <tr class="hover:bg-slate-100 dark:hover:bg-neutral-800/80 dark:bg-neutral-900/40 transition-colors">
+                    <td class="px-6 py-4 text-center">
+                        <div class="font-semibold text-slate-900 dark:text-slate-100 text-center">${escapeHtml(item.name)}</div>
+                        <div class="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-1 text-center">${escapeHtml(item.description || t("pipelines.description.empty", "No description"))}</div>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-neutral-800/70 text-slate-700 dark:text-neutral-300 border border-slate-200 dark:border-neutral-600">
+                            ${t("pipelines.saved", "Saved")}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${runStatusClass}">
+                            ${escapeHtml(runStatusLabel)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 text-center">${escapeHtml(formatTime(item.updatedAt))}</td>
+                    <td class="px-6 py-4 text-center">
+                        <div class="inline-flex items-center justify-center gap-3 text-sm">
+                            <a href="/studio/${item.id}" class="text-slate-900 hover:text-slate-600 dark:text-slate-100 dark:hover:text-slate-300">${t("pipelines.action.edit", "Edit")}</a>
+                            ${buildActionButtons(item)}
+                            <a href="/api/pipelines/${item.id}/definition" target="_blank" class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100">${t("pipelines.action.viewDsl", "View DSL")}</a>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join("");
+
+        container.innerHTML = `
+            <table class="w-full text-left border-collapse whitespace-nowrap">
+                <thead>
+                    <tr class="sc-panel-muted text-xs font-medium text-slate-500 dark:text-slate-400">
+                        <th class="px-6 py-4 border-b border-slate-300 dark:border-slate-700 text-center">${t("pipelines.table.pipeline", "Pipeline")}</th>
+                        <th class="px-6 py-4 border-b border-slate-300 dark:border-slate-700 text-center">${t("pipelines.table.status", "Status")}</th>
+                        <th class="px-6 py-4 border-b border-slate-300 dark:border-slate-700 text-center">${t("pipelines.table.runStatus", "Run status")}</th>
+                        <th class="px-6 py-4 border-b border-slate-300 dark:border-slate-700 text-center">${t("pipelines.table.updated", "Last updated")}</th>
+                        <th class="px-6 py-4 border-b border-slate-300 dark:border-slate-700 text-center">${t("pipelines.table.actions", "Actions")}</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-neutral-800/70 text-sm">${rows}</tbody>
+            </table>
+        `;
+    }
+
+    async function parseError(response, fallbackMessage) {
+        try {
+            const payload = await response.json();
+            return payload.message || fallbackMessage;
+        } catch (error) {
+            return fallbackMessage;
+        }
+    }
+
+    async function requestPipelineAction(url, method, busyId, successMessage, fallbackErrorMessage, body) {
+        busyPipelineIds.add(busyId);
+        renderTable();
+        try {
+            const response = await fetch(url, {
+                method,
+                headers: {
+                    [csrfHeader]: csrfToken,
+                    ...(body ? { "Content-Type": "application/json" } : {})
+                },
+                body: body ? JSON.stringify(body) : undefined
+            });
+            if (!response.ok) {
+                throw new Error(await parseError(response, fallbackErrorMessage));
+            }
+            showMessage("success", successMessage);
+            await loadPipelines();
+        } catch (error) {
+            showMessage("error", error instanceof Error ? error.message : fallbackErrorMessage);
+        } finally {
+            busyPipelineIds.delete(busyId);
+            renderTable();
+        }
+    }
+
+    async function postPipelineAction(url, busyId, successMessage, fallbackErrorMessage, body) {
+        await requestPipelineAction(url, "POST", busyId, successMessage, fallbackErrorMessage, body);
+    }
+
+    async function runPipeline(id) {
+        await postPipelineAction(
+                `/api/pipelines/${id}/run`,
+                id,
+                t("pipelines.run.success", "Pipeline submitted to the Flink runtime target."),
+                t("pipelines.run.error", "Running the pipeline failed. Please try again later."),
+                {}
+        );
+    }
+
+    async function stopPipeline(id) {
+        await postPipelineAction(
+                `/api/pipelines/${id}/stop`,
+                id,
+                t("pipelines.stop.success", "Pipeline stopped. It can now be deleted."),
+                t("pipelines.stop.error", "Stopping the pipeline failed. Please try again later.")
+        );
+    }
+
+    async function deletePipeline(id) {
+        if (!window.confirm(t("pipelines.delete.confirm", "This cannot be undone. Delete this pipeline?"))) {
+            return;
+        }
+        await requestPipelineAction(
+                `/api/pipelines/${id}`,
+                "DELETE",
+                id,
+                t("pipelines.delete.success", "Pipeline deleted."),
+                t("pipelines.delete.error", "Deleting the pipeline failed. Please try again later.")
+        );
+    }
+
+    async function loadPipelines() {
+        const response = await fetch("/api/pipelines");
+        if (!response.ok) {
+            showMessage("error", t("pipelines.load.error", "Loading the pipeline list failed. Please refresh later."));
+            return;
+        }
+        allPipelines = await response.json();
+        renderTable();
+    }
+
+    document.getElementById("pipeline-search").addEventListener("input", renderTable);
+    document.getElementById("pipeline-status-filter").addEventListener("change", renderTable);
+    document.addEventListener("click", event => {
+        if (!(event.target instanceof HTMLElement)) {
+            return;
+        }
+        if (event.target.classList.contains("run-button")) {
+            const pipelineId = Number(event.target.dataset.pipelineId);
+            if (pipelineId > 0) {
+                runPipeline(pipelineId);
+            }
+            return;
+        }
+        if (event.target.classList.contains("stop-button")) {
+            const pipelineId = Number(event.target.dataset.pipelineId);
+            if (pipelineId > 0) {
+                stopPipeline(pipelineId);
+            }
+            return;
+        }
+        if (event.target.classList.contains("delete-button")) {
+            const pipelineId = Number(event.target.dataset.pipelineId);
+            if (pipelineId > 0 && !event.target.hasAttribute("disabled")) {
+                deletePipeline(pipelineId);
+            }
+        }
+    });
+
+    loadPipelines();
+</script>
+</body>
+</html>

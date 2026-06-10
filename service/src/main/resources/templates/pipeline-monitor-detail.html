@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html th:lang="${currentLocaleTag}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/app-shell :: commonHead(#{monitorDetail.title})}">
+    <title>Pipeline monitor - StreamCraft</title>
+</head>
+<body class="sc-shell-page h-screen w-screen flex flex-col overflow-hidden">
+<div id="studio-bootstrap"
+     class="hidden"
+     data-page-mode="monitor"
+     th:attr="data-pipeline-id=${pipelineId}">
+</div>
+
+<header data-monitor-shell="readonly" class="sc-card-strong rounded-none border-x-0 border-t-0 h-16 px-4 lg:px-6 flex items-center justify-between gap-4 shrink-0">
+    <div class="flex items-center gap-4 min-w-0">
+        <a th:href="@{/main}" class="sc-btn-icon shrink-0" th:aria-label="#{monitorDetail.back}" aria-label="Back to main dashboard">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+        </a>
+        <div class="min-w-0">
+            <div class="flex items-center gap-3 min-w-0">
+                <h1 id="studio-title" class="sc-section-head text-base truncate" th:text="#{monitorDetail.title}">Pipeline monitor</h1>
+                <span id="studio-status" class="sc-pill" th:text="#{monitorDetail.status.loading}">Loading</span>
+            </div>
+            <p class="sc-topbar-subtitle mt-1 truncate" th:text="#{monitorDetail.subtitle}">Readonly DAG canvas with live task state.</p>
+        </div>
+    </div>
+    <div data-monitor-toolbar="actions" class="flex items-center gap-3 shrink-0">
+        <div class="sc-surface px-3 py-2 text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
+            <span class="sc-subtle-label text-[10px] tracking-[0.18em]" th:text="#{monitorDetail.refresh.label}">Refresh</span>
+            <div id="monitor-last-refresh" class="mt-1 font-mono text-xs text-slate-700 dark:text-slate-300" th:text="#{monitorDetail.lastRefresh.placeholder}">Last refresh: --</div>
+        </div>
+        <button id="refresh-button" type="button" class="sc-btn-secondary px-4 py-2 text-xs" th:text="#{monitorDetail.refresh}">Refresh</button>
+    </div>
+</header>
+
+<main id="canvas-container" class="flex-1 canvas-bg relative overflow-hidden">
+    <div id="studio-message" class="hidden absolute top-4 left-4 right-4 md:right-auto md:w-[420px] sc-card-strong border px-4 py-3 text-sm z-40"></div>
+    <div id="canvas-drop-zone" class="absolute inset-0">
+        <svg id="edges-layer" class="absolute inset-0 w-full h-full pointer-events-none z-0">
+            <path id="temp-connection-path" fill="none" stroke="#60a5fa" stroke-width="2.5" class="opacity-0"></path>
+        </svg>
+        <div id="nodes-layer" class="absolute inset-0 z-10"></div>
+    </div>
+</main>
+
+<style>
+    .canvas-bg { background: #0b1120; background-image: radial-gradient(rgba(51,65,85,.8) 1px, transparent 1px); background-size: 22px 22px; }
+    .node-port { position: absolute; top: 50%; transform: translateY(-50%); width: 12px; height: 12px; border-radius: 999px; background: #94a3b8; border: 2px solid #0f172a; }
+    .port-left { left: -6px; }
+    .port-right { right: -6px; }
+    .drag-handle { cursor: grab; }
+    .drag-handle:active { cursor: grabbing; }
+    .draggable-node { position: absolute; width: 236px; transition: box-shadow .2s ease, border-color .2s ease; }
+    .draggable-node.node-active { border-color: rgba(59,130,246,.9); box-shadow: 0 0 24px rgba(59,130,246,.24); z-index: 30; }
+</style>
+
+<script th:src="@{/js/studio-editor.js}" src="/js/studio-editor.js"></script>
+</body>
+</html>

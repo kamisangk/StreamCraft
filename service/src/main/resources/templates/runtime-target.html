@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html th:lang="${currentLocaleTag}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/app-shell :: commonHead(${pageTitle})}"></head>
+<body class="sc-shell-page h-screen w-screen flex overflow-hidden">
+<th:block th:replace="~{fragments/sidebar :: sidebar(${activeNav})}"></th:block>
+<main class="sc-page-frame flex-1 flex flex-col min-w-0 relative overflow-hidden">
+    <th:block th:replace="~{fragments/topbar :: topbar(${pageTitle}, ${pageSubtitle})}"></th:block>
+    <div class="sc-page-content flex-1 overflow-y-auto space-y-8">
+        <div id="message-box" class="hidden sc-card-strong px-4 py-3 text-sm"></div>
+
+        <section data-page-hero="runtime-target" class="sc-page-hero">
+            <div class="min-w-0 max-w-3xl">
+                <p class="sc-subtle-label" th:text="#{runtimeTarget.hero.label}">Infrastructure</p>
+                <h2 class="sc-page-heading mt-3" th:text="#{runtimeTarget.hero.title}">Flink</h2>
+                <p class="sc-page-lead" th:text="#{runtimeTarget.hero.description}">Choose the only Flink runtime mode this StreamCraft service connects to.</p>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="sc-summary-card">
+                <p class="text-slate-500 dark:text-slate-400 text-xs font-medium mb-1" th:text="#{runtimeTarget.summary.mode}">Runtime mode</p>
+                <h3 id="summary-runtime-mode" class="text-2xl font-semibold text-slate-900 dark:text-slate-100">-</h3>
+            </div>
+            <div class="sc-summary-card">
+                <p class="text-slate-500 dark:text-slate-400 text-xs font-medium mb-1" th:text="#{runtimeTarget.summary.status}">Status</p>
+                <h3 id="summary-runtime-status" class="text-2xl font-semibold text-amber-600" th:text="#{runtimeTarget.status.unknown}">Pending validation</h3>
+            </div>
+            <div class="sc-summary-card">
+                <p class="text-slate-500 dark:text-slate-400 text-xs font-medium mb-1" th:text="#{runtimeTarget.summary.totalSlots}">Total slots</p>
+                <h3 id="summary-total-slots" class="text-2xl font-semibold text-slate-900 dark:text-slate-100">0 <span class="text-sm font-normal text-slate-500 dark:text-slate-400" th:text="#{runtimeTarget.summary.available}">available</span></h3>
+            </div>
+        </section>
+
+        <section class="sc-card-strong p-6">
+            <div class="flex flex-col gap-2 border-b border-slate-200 dark:border-neutral-800 pb-5">
+                <p class="sc-subtle-label" th:text="#{runtimeTarget.add.title}">Runtime target</p>
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100" th:text="#{runtimeTarget.target.title}">Configure runtime target</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400" th:text="#{runtimeTarget.target.description}">Switching modes replaces the existing target configuration.</p>
+            </div>
+
+            <form id="runtime-target-form" class="mt-6 space-y-6">
+                <div id="standalone-target-panel" class="space-y-4">
+                    <label for="target-job-manager-url" class="sc-form-label mb-1.5 ml-1" th:text="#{runtimeTarget.form.jobManagerUrl}">JobManager address</label>
+                    <input id="target-job-manager-url" type="text" class="sc-input font-mono" placeholder="http://127.0.0.1:8081">
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button id="reload-runtime-target" type="button" class="sc-btn-secondary px-4 py-2 rounded-lg text-sm" th:text="#{runtimeTarget.target.reload}">Reload</button>
+                    <button id="save-runtime-target" type="submit" class="sc-btn-primary px-4 py-2 rounded-lg text-sm font-medium" th:text="#{runtimeTarget.target.save}">Save runtime target</button>
+                </div>
+            </form>
+        </section>
+    </div>
+</main>
+
+<script th:inline="javascript">
+    const t = window.StreamCraftI18n?.t || ((key, fallback, params) => {
+        if (!params || typeof fallback !== 'string') {
+            return fallback ?? key;
+        }
+        return fallback.replace(/\{(\d+)}/g, (_, index) => String(params[Number(index)] ?? ''));
+    });
+    const csrfHeader = /*[[${_csrf.headerName}]]*/ "X-CSRF-TOKEN";
+    const csrfToken = /*[[${_csrf.token}]]*/ "";
+    const runtimeTargetState = {
+        mode: 'FLINK_STANDALONE',
+        configured: false,
+        isSaving: false
+    };
+    const modeLabels = {
+        FLINK_STANDALONE: 'Flink Standalone'
+    };
+    const statusLabels = {
+        CONNECTED: t('runtimeTarget.status.connected', 'Connected'),
+        UNREACHABLE: t('runtimeTarget.status.unreachable', 'Unreachable'),
+        UNKNOWN: t('runtimeTarget.status.unknown', 'Pending validation')
+    };
+    const statusClasses = {
+        CONNECTED: 'text-emerald-600',
+        UNREACHABLE: 'text-red-600',
+        UNKNOWN: 'text-amber-600'
+    };
+
+    function byId(id) {
+        return document.getElementById(id);
+    }
+
+    function showMessage(kind, text) {
+        const box = byId('message-box');
+        box.classList.remove(
+            'hidden',
+            'border-emerald-200',
+            'bg-emerald-50',
+            'text-emerald-700',
+            'dark:text-emerald-200',
+            'border-red-500/30',
+            'bg-red-50',
+            'text-red-700',
+            'dark:text-red-200',
+            'dark:bg-red-500/10'
+        );
+        if (kind === 'success') {
+            box.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-700', 'dark:text-emerald-200');
+        } else {
+            box.classList.add('border-red-500/30', 'bg-red-50', 'text-red-700', 'dark:text-red-200', 'dark:bg-red-500/10');
+        }
+        box.textContent = text;
+    }
+
+    function fieldValue(id) {
+        return byId(id)?.value?.trim?.() || '';
+    }
+
+    function setFieldValue(id, value) {
+        const input = byId(id);
+        if (input) {
+            input.value = value || '';
+        }
+    }
+
+    function slotCountText(value) {
+        if (value === null || value === undefined || value === '') {
+            return '--';
+        }
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? String(parsed) : '--';
+    }
+
+    function renderRuntimeTargetSummary(target = {}) {
+        const mode = target.configured ? target.type : runtimeTargetState.mode;
+        const status = target.status || 'UNKNOWN';
+        const totalSlotsText = slotCountText(target.totalSlots);
+        const availableSlotsText = slotCountText(target.availableSlots);
+        const statusElement = byId('summary-runtime-status');
+
+        byId('summary-runtime-mode').textContent = modeLabels[mode] || '-';
+        statusElement.textContent = target.configured ? (statusLabels[status] || status) : t('runtimeTarget.target.unconfigured', 'Not configured');
+        statusElement.className = `text-2xl font-semibold ${target.configured ? (statusClasses[status] || statusClasses.UNKNOWN) : 'text-slate-500 dark:text-slate-400'}`;
+        byId('summary-total-slots').innerHTML = `${totalSlotsText} <span class="text-sm font-normal text-slate-500 dark:text-slate-400">${t('runtimeTarget.summary.available', 'available')} / ${availableSlotsText}</span>`;
+    }
+
+    function renderRuntimeTargetForm() {
+        byId('save-runtime-target').disabled = runtimeTargetState.isSaving;
+    }
+
+    function fillRuntimeTargetForm(target) {
+        runtimeTargetState.configured = Boolean(target?.configured);
+        runtimeTargetState.mode = 'FLINK_STANDALONE';
+
+        setFieldValue('target-job-manager-url', target?.jobManagerUrl);
+
+        renderRuntimeTargetSummary(target || {});
+        renderRuntimeTargetForm();
+    }
+
+    async function loadRuntimeTarget() {
+        const response = await fetch('/api/runtime-target');
+        if (!response.ok) {
+            showMessage('error', t('runtimeTarget.load.error', 'Loading the runtime target failed. Please refresh later.'));
+            return;
+        }
+        fillRuntimeTargetForm(await response.json());
+    }
+
+    function standalonePayload() {
+        return {
+            jobManagerUrl: fieldValue('target-job-manager-url')
+        };
+    }
+
+    async function saveRuntimeTarget() {
+        runtimeTargetState.isSaving = true;
+        renderRuntimeTargetForm();
+        try {
+            const response = await fetch('/api/runtime-target/standalone', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    [csrfHeader]: csrfToken
+                },
+                body: JSON.stringify(standalonePayload())
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                showMessage('error', payload.message || t('runtimeTarget.validation.error', 'Validation failed; the runtime target cannot be saved.'));
+                return;
+            }
+            fillRuntimeTargetForm(payload);
+            showMessage('success', t('runtimeTarget.save.success', 'Runtime target saved.'));
+        } catch (error) {
+            showMessage('error', error?.message || t('common.requestFailed', 'Request failed. Please try again later.'));
+        } finally {
+            runtimeTargetState.isSaving = false;
+            renderRuntimeTargetForm();
+        }
+    }
+
+    byId('runtime-target-form')?.addEventListener('submit', event => {
+        event.preventDefault();
+        saveRuntimeTarget();
+    });
+    byId('reload-runtime-target')?.addEventListener('click', loadRuntimeTarget);
+
+    renderRuntimeTargetSummary();
+    renderRuntimeTargetForm();
+    loadRuntimeTarget();
+</script>
+</body>
+</html>

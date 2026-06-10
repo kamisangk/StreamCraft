@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html th:lang="${currentLocaleTag}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/app-shell :: commonHead(#{login.documentTitle})}">
+    <title th:text="#{login.documentTitle} + ' - StreamCraft'">Login - StreamCraft</title>
+</head>
+<body class="sc-shell-page h-screen w-screen flex items-center justify-center overflow-hidden relative px-4">
+    <div data-login-language-switcher class="absolute top-5 right-5 z-20">
+        <label for="login-language-select" class="sr-only" th:text="#{language.switcher.label}">Language</label>
+        <select id="login-language-select"
+                data-language-select
+                class="sc-language-select"
+                th:aria-label="#{language.switcher.label}"
+                aria-label="Language">
+            <option value="zh-CN" th:selected="${currentLocaleTag == 'zh-CN'}" th:text="#{language.zhCN}">简体中文</option>
+            <option value="en-US" th:selected="${currentLocaleTag == 'en-US'}" th:text="#{language.enUS}">English</option>
+        </select>
+    </div>
+    <div class="relative w-full max-w-6xl flex sc-card-strong overflow-hidden min-h-[560px]">
+        <div class="hidden md:flex md:w-5/12 bg-[var(--sc-surface)] p-12 flex-col relative border-r border-[var(--sc-border)]">
+            <div class="absolute inset-0 opacity-30" style="background-image: radial-gradient(rgba(17,17,17,.10) 1px, transparent 1px); background-size: 24px 24px;"></div>
+
+            <div class="relative z-10 mt-10">
+                <div class="flex items-center mb-12">
+                    <img th:src="@{/brand-logo.png}" src="/brand-logo.png" alt="StreamCraft"
+                         class="h-11 w-11 rounded-xl object-cover ring-1 ring-black/5 mr-3">
+                    <span class="text-2xl font-bold tracking-tight text-[var(--sc-text)]">StreamCraft</span>
+                </div>
+
+                <h1 class="text-4xl font-bold tracking-tight text-[var(--sc-text)] leading-tight mb-6">
+                    <span th:text="#{login.hero.title.line1}">Build the next</span><br>
+                    <span th:text="#{login.hero.title.line2}">real-time data pipeline</span>
+                </h1>
+                <p class="text-sm leading-7 text-[var(--sc-muted)]" th:text="#{login.hero.description}">
+                    A fast, modern, visual enterprise console for Flink stream-processing scheduling and orchestration.
+                </p>
+            </div>
+        </div>
+
+        <div class="w-full md:w-7/12 px-8 py-10 sm:px-12 md:px-16 flex flex-col justify-center bg-[var(--sc-card-strong)]">
+            <div class="mb-10">
+                <h2 class="text-3xl font-bold tracking-tight text-[var(--sc-text)] mb-2" th:text="#{login.title}">Welcome back</h2>
+                <p class="text-sm text-[var(--sc-muted)]" th:text="#{login.subtitle}">Sign in to your StreamCraft workspace</p>
+            </div>
+
+            <div class="mb-6 space-y-3">
+                <div th:if="${param.error != null}" class="rounded-xl border border-red-200 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200" th:text="#{login.error.invalidCredentials}">
+                    Invalid username or password
+                </div>
+                <div th:if="${param.logout != null}" class="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-200" th:text="#{login.logout.success}">
+                    You have signed out
+                </div>
+            </div>
+
+            <form class="space-y-6" th:action="@{/login}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <div>
+                    <label for="username" class="block text-sm font-medium text-[var(--sc-text-body)] mb-1.5" th:text="#{login.username.label}">Account / Email</label>
+                    <input type="text" id="username" name="username" th:value="${param.username != null ? param.username[0] : ''}" class="sc-input px-4 py-3 text-sm" th:placeholder="#{login.username.placeholder}" placeholder="admin@example.com">
+                </div>
+
+                <div>
+                    <label for="password" class="block text-sm font-medium text-[var(--sc-text-body)] mb-1.5" th:text="#{login.password.label}">Password</label>
+                    <input type="password" id="password" name="password" class="sc-input px-4 py-3 text-sm" th:placeholder="#{login.password.placeholder}" placeholder="Enter your password">
+                </div>
+
+                <div class="flex items-center">
+                    <input type="checkbox" id="remember" name="remember-me" class="w-4 h-4 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-[var(--sc-accent)] focus:ring-blue-500/50 cursor-pointer">
+                    <label for="remember" class="ml-2 text-sm text-[var(--sc-muted)] cursor-pointer" th:text="#{login.rememberMe}">Keep me signed in</label>
+                </div>
+
+                <button type="submit" class="sc-btn-primary w-full py-3 px-4 text-sm mt-4" th:text="#{login.submit}">
+                    Sign in
+                </button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

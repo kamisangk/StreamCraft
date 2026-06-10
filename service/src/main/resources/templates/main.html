@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html th:lang="${currentLocaleTag}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/app-shell :: commonHead(${pageTitle})}">
+    <title>StreamCraft</title>
+</head>
+<body class="sc-shell-page h-screen w-screen flex overflow-hidden">
+<aside th:replace="~{fragments/sidebar :: sidebar(${activeNav})}"></aside>
+
+<main class="sc-page-frame flex-1 flex flex-col min-w-0 relative overflow-hidden">
+    <header th:replace="~{fragments/topbar :: topbar(${pageTitle}, ${pageSubtitle})}"></header>
+
+    <div class="sc-page-content flex-1 overflow-y-auto space-y-6">
+        <section data-page-hero="monitor-overview" class="sc-page-hero">
+            <div class="min-w-0 max-w-3xl">
+                <p class="sc-subtle-label" th:text="#{main.hero.label}">Operations</p>
+                <h2 class="sc-page-heading mt-3" th:text="${pageTitle}">Task Monitor</h2>
+                <p class="sc-page-lead" th:text="${pageSubtitle}"></p>
+            </div>
+            <div class="sc-surface px-4 py-4 min-w-[280px] max-w-xl flex-1 lg:flex-none lg:min-w-[360px]">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <p id="pipeline-monitor-last-refresh" class="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 font-mono" th:text="#{main.lastUpdated.placeholder}">Last updated: --</p>
+                    <button id="pipeline-monitor-refresh" type="button"
+                            class="sc-btn-secondary inline-flex items-center gap-1.5 px-3 py-1.5 text-xs"
+                            th:text="#{main.refresh}">
+                        Refresh
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="pipeline-monitor-loading" class="min-h-80 flex items-center justify-center">
+            <div class="text-center">
+                <div class="inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <p class="mt-4 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500" th:text="#{main.loading}">Loading...</p>
+            </div>
+        </section>
+
+        <section id="pipeline-monitor-error" class="hidden">
+            <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+                <h3 class="text-lg font-semibold text-red-600" th:text="#{main.error.title}">Loading failed</h3>
+                <p id="pipeline-monitor-error-message" class="mt-2 text-sm text-slate-700 dark:text-slate-300" th:text="#{main.error.retry}">Please try again later.</p>
+            </div>
+        </section>
+
+        <section id="pipeline-monitor-content" class="hidden space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
+                <article class="sc-summary-card xl:col-span-1 flex items-center overflow-hidden">
+                    <div class="relative w-20 h-20 mr-6 flex-shrink-0">
+                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                            <path class="text-slate-700 dark:text-slate-300" stroke-width="3" stroke="currentColor" fill="none"
+                                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                            <path id="pipeline-monitor-health-ring" class="text-emerald-500" stroke-width="3" stroke-dasharray="0, 100"
+                                  stroke-linecap="round" stroke="currentColor" fill="none"
+                                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <span id="pipeline-monitor-health-score" class="text-xl font-bold text-slate-900 dark:text-slate-100">--</span>
+                        </div>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm font-medium mb-1" th:text="#{main.health.title}">System health</h3>
+                        <p id="pipeline-monitor-health-label" class="text-xs text-emerald-600 mb-2" th:text="#{main.health.waiting}">Waiting for data</p>
+                        <div class="flex space-x-3 text-[10px] text-slate-500 dark:text-slate-400 dark:text-slate-500">
+                            <span th:text="#{main.connectedRuntimeTargets.label}">Runtime target:</span>
+                            <span id="pipeline-monitor-runtime-targets" class="text-emerald-600" th:text="#{main.notProvided}">Not provided</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="sc-summary-card md:col-span-2 xl:col-span-1 flex items-center gap-6 overflow-hidden">
+                    <div class="relative w-24 h-24 flex-shrink-0">
+                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36" aria-hidden="true">
+                            <path class="text-slate-200 dark:text-slate-800" stroke-width="3" stroke="currentColor" fill="none"
+                                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                            <g id="pipeline-monitor-status-ring"></g>
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span id="pipeline-monitor-status-total" class="text-xl font-bold text-slate-900 dark:text-slate-100">--</span>
+                            <span id="pipeline-monitor-status-label" class="mt-1 text-[10px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Tasks</span>
+                        </div>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <h3 class="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm font-medium mb-1" th:text="#{main.status.title}">Global status distribution</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-3" th:text="#{main.status.description}">Summarize all tasks by status.</p>
+                        <div id="pipeline-monitor-status-legend" class="flex flex-wrap gap-3 text-xs font-medium"></div>
+                    </div>
+                </article>
+
+                <article class="sc-summary-card xl:col-span-1 flex items-center gap-5 overflow-hidden">
+                    <div class="relative w-20 h-20 flex-shrink-0">
+                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36" aria-hidden="true">
+                            <path class="text-slate-200 dark:text-slate-800" stroke-width="3" stroke="currentColor" fill="none"
+                                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                            <path id="pipeline-monitor-slot-ring" class="text-slate-300 dark:text-slate-700" stroke-width="3" stroke-dasharray="0, 100"
+                                  stroke-linecap="round" stroke="currentColor" fill="none"
+                                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <span id="pipeline-monitor-slot-rate" class="text-lg font-bold text-slate-900 dark:text-slate-100">--</span>
+                        </div>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <h3 class="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm font-medium mb-1" th:text="#{main.slots.title}">Flink slot allocation</h3>
+                        <p id="pipeline-monitor-slot-label" class="text-xs text-slate-500 dark:text-slate-400 mb-2" th:text="#{main.notProvided}">Waiting for data</p>
+                        <div class="flex items-end gap-1">
+                            <span id="pipeline-monitor-used-slots" class="text-2xl font-bold text-slate-900 dark:text-slate-100">--</span>
+                            <span class="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-0.5"><span th:text="#{main.totalSuffix}">/</span> <span id="pipeline-monitor-total-slots">--</span> <span th:text="#{main.totalLabel}">total</span></span>
+                        </div>
+                        <p class="mt-2 text-[10px] text-slate-500 dark:text-slate-400 dark:text-slate-500" th:text="#{main.availableLabel}">Available:</p>
+                        <span id="pipeline-monitor-available-slots">--</span>
+                    </div>
+                </article>
+
+                <article id="pipeline-monitor-realtime-card" class="sc-summary-card xl:col-span-2 flex flex-col justify-between">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h3 class="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm font-medium mr-2" th:text="#{main.realtime.title}">Realtime trend</h3>
+                        <div id="pipeline-monitor-realtime-legend" class="flex flex-shrink-0 items-center justify-end gap-3 text-[10px] font-medium">
+                            <span id="pipeline-monitor-realtime-legend-input" class="inline-flex items-center gap-1 text-blue-600">
+                                <span class="h-1.5 w-1.5 rounded-full bg-blue-400"></span>
+                                <span>IN: <span id="pipeline-monitor-total-input" class="font-semibold text-slate-800 dark:text-slate-200">0</span></span>
+                            </span>
+                            <span id="pipeline-monitor-realtime-legend-output" class="inline-flex items-center gap-1 text-cyan-600">
+                                <span class="h-1.5 w-1.5 rounded-full bg-cyan-400"></span>
+                                <span>OUT: <span id="pipeline-monitor-total-output" class="font-semibold text-slate-800 dark:text-slate-200">0</span></span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div id="pipeline-monitor-realtime-plot" class="sc-panel-muted relative mt-4 flex-1 overflow-hidden px-2 py-3 min-h-[120px]">
+                        <div id="pipeline-monitor-realtime-y-axis" class="pointer-events-none absolute left-2 top-4 bottom-10 w-8 text-[9px] uppercase text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                            <span th:text="#{main.recordsLabel}">Records</span>
+                        </div>
+                        <div class="ml-10 mr-1 h-24">
+                            <svg id="pipeline-monitor-realtime-svg" class="h-full w-full" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"></svg>
+                        </div>
+                        <div id="pipeline-monitor-realtime-crosshair" class="pointer-events-none absolute inset-y-4 hidden w-px bg-cyan-400/60"></div>
+                        <div id="pipeline-monitor-realtime-tooltip" class="pointer-events-none absolute right-2 top-4 hidden sc-card-strong px-2 py-1.5 text-[10px] text-slate-800 dark:text-slate-200 shadow-sm z-10 w-max"></div>
+                        <div id="pipeline-monitor-realtime-empty" class="absolute inset-x-2 top-1/2 -translate-y-1/2 text-center text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 z-0" th:text="#{main.realtime.empty}">
+                            No realtime data yet
+                        </div>
+                        <div id="pipeline-monitor-realtime-x-axis" class="ml-10 mr-1 mt-1 border-t border-slate-200 dark:border-slate-800 pt-1 text-[9px] uppercase text-slate-400 dark:text-slate-500" th:text="#{main.timeLabel}">
+                            Time
+                        </div>
+                    </div>
+                    <p id="pipeline-monitor-realtime-status" class="hidden mt-2 text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1"></p>
+                </article>
+            </div>
+
+            <section data-collection-panel="monitor-cards" class="sc-card-strong overflow-hidden flex flex-col">
+                <header class="sc-surface px-5 py-4 border-b-0 rounded-none">
+                    <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200" th:text="#{main.cards.title}">Task cards</h3>
+                </header>
+                <div class="flex-1 overflow-y-auto">
+                    <div id="pipeline-monitor-cards" class="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+                </div>
+            </section>
+        </section>
+    </div>
+</main>
+
+
+<script>
+    const t = window.StreamCraftI18n?.t || ((key, fallback) => fallback ?? key);
+    const monitorApiUrl = '/api/pipelines/monitor';
+    const monitorRefreshButton = document.getElementById('pipeline-monitor-refresh');
+    const monitorLastRefresh = document.getElementById('pipeline-monitor-last-refresh');
+    const monitorLoading = document.getElementById('pipeline-monitor-loading');
+    const monitorError = document.getElementById('pipeline-monitor-error');
+    const monitorErrorMessage = document.getElementById('pipeline-monitor-error-message');
+    const monitorContent = document.getElementById('pipeline-monitor-content');
+    const monitorCards = document.getElementById('pipeline-monitor-cards');
+    const monitorStatusRing = document.getElementById('pipeline-monitor-status-ring');
+    const monitorStatusTotal = document.getElementById('pipeline-monitor-status-total');
+    const monitorStatusLabel = document.getElementById('pipeline-monitor-status-label');
+    const monitorStatusLegend = document.getElementById('pipeline-monitor-status-legend');
+    const monitorHealthScore = document.getElementById('pipeline-monitor-health-score');
+    const monitorHealthRing = document.getElementById('pipeline-monitor-health-ring');
+    const monitorHealthLabel = document.getElementById('pipeline-monitor-health-label');
+    const monitorRuntimeTargets = document.getElementById('pipeline-monitor-runtime-targets');
+    const monitorSlotRing = document.getElementById('pipeline-monitor-slot-ring');
+    const monitorSlotRate = document.getElementById('pipeline-monitor-slot-rate');
+    const monitorSlotLabel = document.getElementById('pipeline-monitor-slot-label');
+    const monitorUsedSlots = document.getElementById('pipeline-monitor-used-slots');
+    const monitorTotalSlots = document.getElementById('pipeline-monitor-total-slots');
+    const monitorAvailableSlots = document.getElementById('pipeline-monitor-available-slots');
+    const PIPELINE_MONITOR_POLL_INTERVAL_MS = 5000;
+    const PIPELINE_MONITOR_CHART_WINDOW_MS = 5 * 60 * 1000;
+    const PIPELINE_MONITOR_CHART_VIEWBOX = { width: 800, height: 288, left: 18, right: 18, top: 12, bottom: 28 };
+    const monitorRealtimeTotalInput = document.getElementById('pipeline-monitor-total-input');
+    const monitorRealtimeTotalOutput = document.getElementById('pipeline-monitor-total-output');
+    let monitorRealtimeSamples = [];
+    let monitorRealtimeActiveIndex = -1;
+    let monitorRealtimeActiveSampleTimestamp = null;
+
+    let monitorRequestInFlight = false;
+    let monitorRefreshIntervalId = null;
+
+    const monitorStatusMeta = {
+        FAILED: { label: 'Failed', ringColor: '#dc2626', barClass: 'bg-red-600', textClass: 'text-red-600', dotClass: 'bg-red-600', cardClass: 'border-red-200', badgeClass: 'bg-red-50 text-red-600 border-red-200' },
+        DEGRADED: { label: 'Degraded', ringColor: '#f59e0b', barClass: 'bg-amber-500', textClass: 'text-amber-600', dotClass: 'bg-amber-500', cardClass: 'border-amber-200', badgeClass: 'bg-amber-50 text-amber-600 border-amber-200' },
+        RUNNING: { label: 'Running', ringColor: '#10b981', barClass: 'bg-emerald-500', textClass: 'text-emerald-600', dotClass: 'bg-emerald-500', cardClass: 'border-emerald-200', badgeClass: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
+        STOPPED: { label: 'Stopped', ringColor: '#64748b', barClass: 'bg-slate-600', textClass: 'text-slate-700 dark:text-slate-300', dotClass: 'bg-slate-500', cardClass: 'border-slate-300 dark:border-slate-700', badgeClass: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-500/20' }
+    };
+
+    function showMonitorState(state) {
+        monitorLoading.classList.toggle('hidden', state !== 'loading');
+        monitorError.classList.toggle('hidden', state !== 'error');
+        monitorContent.classList.toggle('hidden', state !== 'content');
+    }
+
+    function formatMonitorTimestamp(timestamp) {
+        if (!timestamp) {
+            return '--';
+        }
+        const date = new Date(timestamp);
+        if (Number.isNaN(date.getTime())) {
+            return '--';
+        }
+        return date.toLocaleString('zh-CN', { hour12: false });
+    }
+
+    function formatCompactCount(value) {
+        if (value === null || value === undefined) {
+            return t('main.notProvided', 'Not provided');
+        }
+        const numericValue = Number(value);
+        if (!Number.isFinite(numericValue)) {
+            return t('main.notProvided', 'Not provided');
+        }
+        if (Math.abs(numericValue) >= 1000000000) {
+            return `${(numericValue / 1000000000).toFixed(1)}B`;
+        }
+        if (Math.abs(numericValue) >= 1000000) {
+            return `${(numericValue / 1000000).toFixed(1)}M`;
+        }
+        if (Math.abs(numericValue) >= 1000) {
+            return `${(numericValue / 1000).toFixed(1)}K`;
+        }
+        return `${numericValue}`;
+    }
+
+    function formatDuration(durationMillis) {
+        if (durationMillis === null || durationMillis === undefined) {
+            return t('main.notProvided', 'Not provided');
+        }
+        const totalSeconds = Math.max(0, Math.floor(durationMillis / 1000));
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        if (hours > 0) {
+            return `${hours}h ${minutes}m`;
+        }
+        if (minutes > 0) {
+            return `${minutes}m ${seconds}s`;
+        }
+        return `${seconds}s`;
+    }
+
+    function escapeHtml(value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderSummary(summary = {}, metadata = {}) {
+        const safeSummary = summary && typeof summary === 'object' ? summary : {};
+        const safeMetadata = metadata && typeof metadata === 'object' ? metadata : {};
+
+        const hasHealthScore = Number.isFinite(safeSummary.healthScore);
+        const clampedHealthScore = hasHealthScore ? Math.max(0, Math.min(100, safeSummary.healthScore)) : 0;
+        monitorHealthScore.textContent = hasHealthScore ? `${clampedHealthScore}` : '--';
+        monitorHealthRing.setAttribute('stroke-dasharray', `${clampedHealthScore}, 100`);
+        monitorHealthLabel.textContent = hasHealthScore
+            ? (clampedHealthScore >= 80 ? t('main.health.good', 'Overall healthy') : clampedHealthScore >= 50 ? t('main.health.warn', 'Keep watching') : t('main.health.critical', 'Check immediately'))
+            : t('main.notProvided', 'Not provided');
+
+        const hasConnectedRuntimeTargets = Number.isFinite(safeSummary.connectedRuntimeTargets);
+        const hasTotalRuntimeTargets = Number.isFinite(safeSummary.totalRuntimeTargets);
+        monitorRuntimeTargets.textContent = (hasConnectedRuntimeTargets && hasTotalRuntimeTargets)
+            ? `${safeSummary.connectedRuntimeTargets}/${safeSummary.totalRuntimeTargets}`
+            : t('main.notProvided', 'Not provided');
+
+        const hasTotalSlots = Number.isFinite(safeSummary.totalSlots);
+        const hasUsedSlots = Number.isFinite(safeSummary.usedSlots);
+        const hasAvailableSlots = Number.isFinite(safeSummary.availableSlots);
+        const slotUsagePercent = (hasTotalSlots && hasUsedSlots && safeSummary.totalSlots > 0)
+            ? Math.max(0, Math.min(100, (safeSummary.usedSlots / safeSummary.totalSlots) * 100))
+            : 0;
+        const hasSlotCapacity = hasTotalSlots && hasUsedSlots && safeSummary.totalSlots > 0;
+        const slotTone = resolveMonitorSlotTone(slotUsagePercent, hasSlotCapacity);
+
+        monitorUsedSlots.textContent = hasUsedSlots ? `${safeSummary.usedSlots}` : '--';
+        monitorTotalSlots.textContent = hasTotalSlots ? `${safeSummary.totalSlots}` : '--';
+        monitorAvailableSlots.textContent = hasAvailableSlots ? `${safeSummary.availableSlots}` : '--';
+        monitorSlotRate.textContent = hasSlotCapacity ? `${Math.round(slotUsagePercent)}%` : '--';
+        monitorSlotRing.setAttribute('stroke-dasharray', `${slotUsagePercent}, 100`);
+        monitorSlotRing.setAttribute('class', slotTone.ringClass);
+        monitorSlotLabel.textContent = slotTone.label;
+        monitorSlotLabel.className = `text-xs mb-2 ${slotTone.labelClass}`;
+
+        const refreshText = safeMetadata.lastRefreshAt
+            ? formatMonitorTimestamp(safeMetadata.lastRefreshAt)
+            : '--';
+        monitorLastRefresh.textContent = t('main.lastUpdated.value', 'Last updated: {0}', [refreshText]);
+    }
+
+    function resolveMonitorSlotTone(slotUsagePercent, hasSlotCapacity) {
+        if (!hasSlotCapacity) {
+            return {
+                ringClass: 'text-slate-300 dark:text-slate-700',
+                labelClass: 'text-slate-500 dark:text-slate-400',
+                label: t('main.notProvided', 'Not provided')
+            };
+        }
+
+        if (slotUsagePercent >= 90) {
+            return {
+                ringClass: 'text-red-500',
+                labelClass: 'text-red-600 dark:text-red-200',
+                label: t('main.slot.nearCapacity', 'Close to capacity limit')
+            };
+        }
+
+        if (slotUsagePercent >= 70) {
+            return {
+                ringClass: 'text-amber-500',
+                labelClass: 'text-amber-600 dark:text-amber-200',
+                label: t('main.slot.warn', 'Capacity level needs attention')
+            };
+        }
+
+        return {
+            ringClass: 'text-emerald-500',
+            labelClass: 'text-emerald-600 dark:text-emerald-200',
+            label: t('main.slot.good', 'Capacity remains sufficient')
+        };
+    }
+
+    function buildMonitorStatusRingSegments(statusDistribution, totalTasks) {
+        if (totalTasks <= 0) {
+            return '';
+        }
+
+        let offset = 0;
+        return statusDistribution.map((bucket) => {
+            const safeBucket = bucket && typeof bucket === 'object' ? bucket : {};
+            const meta = monitorStatusMeta[safeBucket.monitorStatus] ?? monitorStatusMeta.STOPPED;
+            const count = Number.isFinite(safeBucket.count) ? safeBucket.count : 0;
+            if (count <= 0) {
+                return '';
+            }
+
+            const share = Math.max(0, (count / totalTasks) * 100);
+            const segment = `<path stroke="${meta.ringColor}" stroke-width="3.25" stroke-dasharray="${share} ${100 - share}" stroke-dashoffset="${-offset}" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>`;
+            offset += share;
+            return segment;
+        }).join('');
+    }
+
+    function renderStatusDistribution(statusDistribution = [], summary = {}) {
+        const safeSummary = summary && typeof summary === 'object' ? summary : {};
+        const safeStatusDistribution = Array.isArray(statusDistribution) ? statusDistribution : [];
+        monitorStatusRing.innerHTML = '';
+        monitorStatusLegend.innerHTML = '';
+
+        const totalTasks = Number.isFinite(safeSummary.totalTasks)
+            ? safeSummary.totalTasks
+            : safeStatusDistribution.reduce((sum, bucket) => sum + ((bucket && Number.isFinite(bucket.count)) ? bucket.count : 0), 0);
+
+        monitorStatusTotal.textContent = totalTasks > 0 ? `${totalTasks}` : '--';
+        monitorStatusLabel.textContent = totalTasks > 0 ? t('main.status.tasks', 'Tasks') : t('main.status.empty', 'Empty');
+
+        if (totalTasks === 0) {
+            const emptyLegend = document.createElement('span');
+            emptyLegend.className = 'text-slate-500 dark:text-slate-400 dark:text-slate-500';
+            emptyLegend.textContent = t('main.status.noTasks', 'No tasks yet');
+            monitorStatusLegend.appendChild(emptyLegend);
+            return;
+        }
+
+        monitorStatusRing.innerHTML = buildMonitorStatusRingSegments(safeStatusDistribution, totalTasks);
+
+        safeStatusDistribution.forEach((bucket) => {
+            const safeBucket = bucket && typeof bucket === 'object' ? bucket : {};
+            const meta = monitorStatusMeta[safeBucket.monitorStatus] ?? monitorStatusMeta.STOPPED;
+            const count = Number.isFinite(safeBucket.count) ? safeBucket.count : 0;
+            const ratio = Math.round((count / totalTasks) * 100);
+
+            const legend = document.createElement('span');
+            legend.className = `${meta.textClass} flex items-center`;
+            legend.innerHTML = `<span class="w-2 h-2 rounded-full ${meta.dotClass} mr-1.5"></span>${meta.label} (${count} ${t('main.status.shareSeparator', '/')} ${ratio}%)`;
+            monitorStatusLegend.appendChild(legend);
+        });
+    }
+
+    function buildUnavailableCopy(card) {
+        const safeCard = card && typeof card === 'object' ? card : {};
+        if (safeCard.metricsUnavailableReason) {
+            return safeCard.metricsUnavailableReason;
+        }
+        if (safeCard.metricsAvailable) {
+            return t('main.metrics.available', 'Available');
+        }
+        return t('main.metrics.unavailable', 'Metrics temporarily unavailable');
+    }
+
+    function renderCards(cards = []) {
+        const safeCards = Array.isArray(cards) ? cards : [];
+        if (safeCards.length === 0) {
+            monitorCards.innerHTML = `
+                <article class="col-span-full sc-empty-state p-8 text-center text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
+                    ${t('main.cards.empty', 'No task cards to display right now.')}
+                </article>
+            `;
+            return;
+        }
+
+        monitorCards.innerHTML = safeCards.map((card) => {
+            const safeCard = card && typeof card === 'object' ? card : {};
+            const statusKey = (safeCard.monitorStatus || 'STOPPED').toUpperCase();
+            const meta = monitorStatusMeta[statusKey] ?? monitorStatusMeta.STOPPED;
+            const metricsAvailable = !!safeCard.metricsAvailable;
+            const inputRecords = metricsAvailable ? formatCompactCount(safeCard.totalInputRecords) : t('main.notProvided', 'Not provided');
+            const outputRecords = metricsAvailable ? formatCompactCount(safeCard.totalOutputRecords) : t('main.notProvided', 'Not provided');
+            const duration = metricsAvailable ? formatDuration(safeCard.durationMillis) : t('main.notProvided', 'Not provided');
+            const unavailableCopy = buildUnavailableCopy(safeCard);
+            const updatedAt = formatMonitorTimestamp(safeCard.updatedAt);
+            const safePipelineId = Number.isFinite(safeCard.pipelineId) ? safeCard.pipelineId : null;
+            const safeNameRaw = safeCard.pipelineName || (safePipelineId !== null ? `Pipeline-${safePipelineId}` : t('main.notProvided', 'Not provided'));
+            const safeRuntimeTargetRaw = safeCard.runtimeTargetLabel || t('main.notProvided', 'Not provided');
+            const safeJobIdRaw = safeCard.jobId || t('main.notProvided', 'Not provided');
+            const runStatusRaw = safeCard.runStatus || t('main.notProvided', 'Not provided');
+            const safeName = escapeHtml(safeNameRaw);
+            const safeRuntimeTarget = escapeHtml(safeRuntimeTargetRaw);
+            const safeJobId = escapeHtml(safeJobIdRaw);
+            const safeRunStatus = escapeHtml(runStatusRaw);
+            const linkHref = safePipelineId !== null ? `/pipelines/${safePipelineId}/monitor` : '#';
+
+            return `
+                <article class="sc-card-interactive sc-card-strong overflow-hidden flex flex-col border ${meta.cardClass}">
+                    <header class="px-4 py-3 flex items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800">
+                        <div class="min-w-0">
+                            <h4 class="font-semibold text-slate-900 dark:text-slate-100 truncate">${safeName}</h4>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase tracking-[0.18em]">${meta.label}</p>
+                        </div>
+                        <a href="${linkHref}" class="text-xs text-blue-600 dark:text-blue-300">${t('main.cards.view', 'View')}</a>
+                    </header>
+                    <div class="p-4 space-y-3 text-sm">
+                        <div class="flex justify-between"><span>${t('main.records.input', 'Input')}</span><span class="text-slate-700 dark:text-slate-300">${inputRecords}</span></div>
+                        <div class="flex justify-between"><span>${t('main.records.output', 'Output')}</span><span class="text-slate-700 dark:text-slate-300">${outputRecords}</span></div>
+                        <div class="flex justify-between"><span>${t('main.records.runtime', 'Runtime')}</span><span class="text-slate-700 dark:text-slate-300">${duration}</span></div>
+                        <div class="flex justify-between"><span>${t('main.records.nodes', 'Nodes')}</span><span class="text-slate-700 dark:text-slate-300">${Number.isFinite(safeCard.nodeCount) ? safeCard.nodeCount : '--'}</span></div>
+                        <div class="flex justify-between"><span>${t('main.records.status', 'Metrics status')}</span><span class="${metricsAvailable ? 'text-emerald-600 dark:text-emerald-200' : 'text-amber-700 dark:text-amber-200'}">${metricsAvailable ? t('main.metrics.available', 'Available') : safeUnavailableCopy}</span></div>
+                        <div class="flex justify-between"><span>${t('main.records.updatedAt', 'Updated at')}</span><span class="text-slate-700 dark:text-slate-300">${updatedAt}</span></div>
+                        <div class="flex justify-between"><span>${t('main.records.runtimeTarget', 'Runtime target')}</span><span class="text-slate-700 dark:text-slate-300">${safeRuntimeTarget}</span></div>
+                        <div class="flex justify-between"><span>${t('main.records.jobId', 'Job ID')}</span><span class="text-slate-700 dark:text-slate-300">${safeJobId}</span></div>
+                        <div class="flex justify-between"><span>${t('main.records.runStatus', 'Run status')}</span><span class="text-slate-700 dark:text-slate-300">${safeRunStatus}</span></div>
+                    </div>
+                </article>
+            `;
+        }).join('');
+    }
+
+    function appendMonitorRealtimeSample(snapshot, sampledAt = Date.now()) {
+        const sampledInput = Number(snapshot?.totalInputRecords);
+        const sampledOutput = Number(snapshot?.totalOutputRecords);
+        if (!Number.isFinite(sampledInput) || !Number.isFinite(sampledOutput)) {
+            return false;
+        }
+
+        const includedPipelineCount = Number(snapshot?.includedPipelineCount);
+        const missingPipelineCount = Number(snapshot?.missingPipelineCount);
+        monitorRealtimeSamples.push({
+            timestamp: sampledAt,
+            totalInputRecords: sampledInput,
+            totalOutputRecords: sampledOutput,
+            includedPipelineCount: Number.isFinite(includedPipelineCount) ? includedPipelineCount : 0,
+            missingPipelineCount: Number.isFinite(missingPipelineCount) ? missingPipelineCount : 0
+        });
+        trimMonitorRealtimeSamples(sampledAt);
+        return true;
+    }
+
+    function trimMonitorRealtimeSamples(now = Date.now()) {
+        const threshold = now - PIPELINE_MONITOR_CHART_WINDOW_MS;
+        monitorRealtimeSamples = monitorRealtimeSamples.filter(sample => sample.timestamp >= threshold);
+
+        if (monitorRealtimeActiveSampleTimestamp === null) {
+            if (monitorRealtimeActiveIndex >= monitorRealtimeSamples.length) {
+                monitorRealtimeActiveIndex = monitorRealtimeSamples.length - 1;
+            }
+            return;
+        }
+
+        const activeIndex = monitorRealtimeSamples.findIndex(sample => sample.timestamp === monitorRealtimeActiveSampleTimestamp);
+        if (activeIndex >= 0) {
+            monitorRealtimeActiveIndex = activeIndex;
+            return;
+        }
+
+        monitorRealtimeActiveIndex = -1;
+        monitorRealtimeActiveSampleTimestamp = null;
+    }
+
+    function setMonitorRealtimeStatus(message, tone = 'default') {
+        const status = document.getElementById('pipeline-monitor-realtime-status');
+        if (!status) {
+            return;
+        }
+
+        const hasMessage = Boolean(message);
+        status.textContent = message || '';
+        status.classList.toggle('hidden', !hasMessage);
+        status.classList.remove(
+            'text-slate-500',
+            'dark:text-slate-400',
+            'text-amber-700',
+            'dark:text-amber-200',
+            'text-red-700',
+            'dark:text-red-200',
+            'text-emerald-600',
+            'dark:text-emerald-200'
+        );
+        if (!hasMessage) {
+            return;
+        }
+        if (tone === 'warning') {
+            status.classList.add('text-amber-700', 'dark:text-amber-200');
+            return;
+        }
+        if (tone === 'error') {
+            status.classList.add('text-red-700', 'dark:text-red-200');
+            return;
+        }
+        if (tone === 'success') {
+            status.classList.add('text-emerald-600', 'dark:text-emerald-200');
+            return;
+        }
+        status.classList.add('text-slate-500', 'dark:text-slate-400');
+    }
+
+    function getMonitorRealtimeGeometry(plot, svg) {
+        const plotRect = plot?.getBoundingClientRect?.();
+        const svgRect = svg?.getBoundingClientRect?.();
+        if (!plotRect || !svgRect || plotRect.width <= 0 || svgRect.width <= 0) {
+            return null;
+        }
+
+        const drawableLeftRatio = PIPELINE_MONITOR_CHART_VIEWBOX.left / PIPELINE_MONITOR_CHART_VIEWBOX.width;
+        const drawableRightRatio = PIPELINE_MONITOR_CHART_VIEWBOX.right / PIPELINE_MONITOR_CHART_VIEWBOX.width;
+        const drawableOffsetLeftInSvg = svgRect.width * drawableLeftRatio;
+        const drawableOffsetRightInSvg = svgRect.width * drawableRightRatio;
+        const drawableWidthPx = svgRect.width - drawableOffsetLeftInSvg - drawableOffsetRightInSvg;
+        if (drawableWidthPx <= 0) {
+            return null;
+        }
+
+        const drawableLeftClientX = svgRect.left + drawableOffsetLeftInSvg;
+        const drawableOffsetLeftPx = drawableLeftClientX - plotRect.left;
+        return {
+            drawableLeftClientX,
+            drawableRightClientX: drawableLeftClientX + drawableWidthPx,
+            drawableOffsetLeftPx,
+            drawableWidthPx
+        };
+    }
+
+    function mapMonitorRealtimeClientXToNormalizedX(clientX) {
+        const plot = document.getElementById('pipeline-monitor-realtime-plot');
+        const svg = document.getElementById('pipeline-monitor-realtime-svg');
+        const geometry = getMonitorRealtimeGeometry(plot, svg);
+        if (!geometry) {
+            return 1;
+        }
+
+        const clampedX = Math.max(geometry.drawableLeftClientX, Math.min(geometry.drawableRightClientX, clientX));
+        return (clampedX - geometry.drawableLeftClientX) / geometry.drawableWidthPx;
+    }
+
+    function buildMonitorRealtimePath(samples, valueKey, maxValue) {
+        if (!Array.isArray(samples) || samples.length < 2 || maxValue <= 0) {
+            return '';
+        }
+
+        const latestTimestamp = samples[samples.length - 1].timestamp;
+        const windowStart = latestTimestamp - PIPELINE_MONITOR_CHART_WINDOW_MS;
+        const drawableWidth = PIPELINE_MONITOR_CHART_VIEWBOX.width - PIPELINE_MONITOR_CHART_VIEWBOX.left - PIPELINE_MONITOR_CHART_VIEWBOX.right;
+        const drawableHeight = PIPELINE_MONITOR_CHART_VIEWBOX.height - PIPELINE_MONITOR_CHART_VIEWBOX.top - PIPELINE_MONITOR_CHART_VIEWBOX.bottom;
+        const points = samples.map(sample => {
+            const normalizedX = Math.max(0, Math.min(1, (sample.timestamp - windowStart) / PIPELINE_MONITOR_CHART_WINDOW_MS));
+            const normalizedY = Math.max(0, Math.min(1, Number(sample[valueKey] ?? 0) / maxValue));
+            const x = PIPELINE_MONITOR_CHART_VIEWBOX.left + (normalizedX * drawableWidth);
+            const y = PIPELINE_MONITOR_CHART_VIEWBOX.top + ((1 - normalizedY) * drawableHeight);
+            return `${x.toFixed(2)},${y.toFixed(2)}`;
+        });
+
+        return `M ${points.join(' L ')}`;
+    }
+
+    function renderMonitorRealtimeChart() {
+        trimMonitorRealtimeSamples();
+
+        const svg = document.getElementById('pipeline-monitor-realtime-svg');
+        const empty = document.getElementById('pipeline-monitor-realtime-empty');
+        const yAxis = document.getElementById('pipeline-monitor-realtime-y-axis');
+        const xAxis = document.getElementById('pipeline-monitor-realtime-x-axis');
+        if (!svg || !empty || !yAxis || !xAxis) {
+            return;
+        }
+
+        svg.setAttribute('viewBox', `0 0 ${PIPELINE_MONITOR_CHART_VIEWBOX.width} ${PIPELINE_MONITOR_CHART_VIEWBOX.height}`);
+
+        const fixedXAxisLabels = ['-5m', '-4m', '-3m', '-2m', '-1m', '0m'];
+        xAxis.innerHTML = `
+            <div class="flex items-center justify-between text-[9px] text-slate-400 dark:text-slate-500">
+                ${fixedXAxisLabels.map(label => `<span>${label}</span>`).join('')}
+            </div>
+        `;
+
+        if (monitorRealtimeSamples.length < 2) {
+            svg.innerHTML = '';
+            empty.classList.remove('hidden');
+            yAxis.innerHTML = `
+                <div class="flex h-full flex-col justify-between text-[9px] text-slate-400 dark:text-slate-500">
+                    <span>0</span>
+                    <span>0</span>
+                    <span>0</span>
+                    <span>0</span>
+                    <span>0</span>
+                </div>
+            `;
+            hideMonitorRealtimePoint();
+            return;
+        }
+
+        empty.classList.add('hidden');
+        const maxValue = Math.max(
+            1,
+            ...monitorRealtimeSamples.map(sample => Math.max(sample.totalInputRecords, sample.totalOutputRecords))
+        );
+        const yAxisTickValues = Array.from({ length: 5 }, (_, index) => {
+            const ratio = (4 - index) / 4;
+            return Math.round(maxValue * ratio);
+        });
+        yAxis.innerHTML = `
+            <div class="flex h-full flex-col justify-between text-[9px] text-slate-500 dark:text-slate-400 dark:text-slate-500">
+                ${yAxisTickValues.map((value) => `<span>${formatCompactCount(value)}</span>`).join('')}
+            </div>
+        `;
+
+        const inputPath = buildMonitorRealtimePath(monitorRealtimeSamples, 'totalInputRecords', maxValue);
+        const outputPath = buildMonitorRealtimePath(monitorRealtimeSamples, 'totalOutputRecords', maxValue);
+        svg.innerHTML = `
+            <path d="${inputPath}" fill="none" stroke="#60a5fa" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="${outputPath}" fill="none" stroke="#22d3ee" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+        `;
+
+        const activeIndex = monitorRealtimeActiveSampleTimestamp === null
+            ? monitorRealtimeActiveIndex
+            : monitorRealtimeSamples.findIndex(sample => sample.timestamp === monitorRealtimeActiveSampleTimestamp);
+
+        if (activeIndex >= 0 && activeIndex < monitorRealtimeSamples.length) {
+            monitorRealtimeActiveIndex = activeIndex;
+            showMonitorRealtimePoint(monitorRealtimeActiveIndex);
+        } else {
+            hideMonitorRealtimePoint();
+        }
+    }
+
+    function showMonitorRealtimePoint(index, clientX = null) {
+        const sample = monitorRealtimeSamples[index];
+        const plot = document.getElementById('pipeline-monitor-realtime-plot');
+        const svg = document.getElementById('pipeline-monitor-realtime-svg');
+        const crosshair = document.getElementById('pipeline-monitor-realtime-crosshair');
+        const tooltip = document.getElementById('pipeline-monitor-realtime-tooltip');
+        if (!sample || !plot || !svg || !crosshair || !tooltip) {
+            hideMonitorRealtimePoint();
+            return;
+        }
+
+        const geometry = getMonitorRealtimeGeometry(plot, svg);
+        if (!geometry) {
+            hideMonitorRealtimePoint();
+            return;
+        }
+
+        const latestTimestamp = monitorRealtimeSamples[monitorRealtimeSamples.length - 1]?.timestamp ?? sample.timestamp;
+        const windowStart = latestTimestamp - PIPELINE_MONITOR_CHART_WINDOW_MS;
+        const normalizedX = Math.max(0, Math.min(1, (sample.timestamp - windowStart) / PIPELINE_MONITOR_CHART_WINDOW_MS));
+        const xPosition = geometry.drawableOffsetLeftPx + (normalizedX * geometry.drawableWidthPx);
+
+        crosshair.style.left = `${xPosition}px`;
+        crosshair.classList.remove('hidden');
+        tooltip.innerHTML = `
+            <div class="font-semibold text-slate-900 dark:text-slate-100">${new Date(sample.timestamp).toLocaleTimeString('zh-CN', { hour12: false })}</div>
+            <div class="mt-1 text-blue-600">${t('main.records.input', 'Input')}: ${Number(sample.totalInputRecords ?? 0).toLocaleString('zh-CN')}</div>
+            <div class="text-cyan-600">${t('main.records.output', 'Output')}: ${Number(sample.totalOutputRecords ?? 0).toLocaleString('zh-CN')}</div>
+        `;
+        tooltip.classList.remove('hidden');
+
+        const tooltipWidthPx = tooltip.getBoundingClientRect().width || tooltip.offsetWidth || 0;
+        const tooltipMarginPx = 12;
+        const tooltipCenterX = Math.max(
+            geometry.drawableOffsetLeftPx + tooltipMarginPx + (tooltipWidthPx / 2),
+            Math.min(
+                geometry.drawableOffsetLeftPx + geometry.drawableWidthPx - tooltipMarginPx - (tooltipWidthPx / 2),
+                xPosition
+            )
+        );
+        tooltip.style.left = `${tooltipCenterX}px`;
+        tooltip.style.right = 'auto';
+        tooltip.style.transform = 'translateX(-50%)';
+
+        monitorRealtimeActiveIndex = index;
+        monitorRealtimeActiveSampleTimestamp = sample.timestamp;
+    }
+
+    function hideMonitorRealtimePoint() {
+        const crosshair = document.getElementById('pipeline-monitor-realtime-crosshair');
+        const tooltip = document.getElementById('pipeline-monitor-realtime-tooltip');
+        if (crosshair) {
+            crosshair.classList.add('hidden');
+        }
+        if (tooltip) {
+            tooltip.classList.add('hidden');
+        }
+        monitorRealtimeActiveIndex = -1;
+        monitorRealtimeActiveSampleTimestamp = null;
+    }
+
+    function bindMonitorRealtimeInteractions() {
+        const plot = document.getElementById('pipeline-monitor-realtime-plot');
+        const svg = document.getElementById('pipeline-monitor-realtime-svg');
+        if (!plot || !svg || plot.dataset.interactionsBound === 'true') {
+            return;
+        }
+
+        const resolveNearestIndex = clientX => {
+            if (monitorRealtimeSamples.length === 0) {
+                return -1;
+            }
+            const geometry = getMonitorRealtimeGeometry(plot, svg);
+            if (!geometry || geometry.drawableWidthPx <= 0) {
+                return monitorRealtimeSamples.length - 1;
+            }
+            const normalizedX = mapMonitorRealtimeClientXToNormalizedX(clientX);
+            const latestTimestamp = monitorRealtimeSamples[monitorRealtimeSamples.length - 1].timestamp;
+            const targetTimestamp = latestTimestamp - PIPELINE_MONITOR_CHART_WINDOW_MS + (normalizedX * PIPELINE_MONITOR_CHART_WINDOW_MS);
+
+            let nearestIndex = 0;
+            let nearestDistance = Number.POSITIVE_INFINITY;
+            monitorRealtimeSamples.forEach((sample, index) => {
+                const distance = Math.abs(sample.timestamp - targetTimestamp);
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearestIndex = index;
+                }
+            });
+            return nearestIndex;
+        };
+
+        plot.addEventListener('pointermove', event => {
+            if (monitorRealtimeSamples.length < 2) {
+                hideMonitorRealtimePoint();
+                return;
+            }
+            const nearestIndex = resolveNearestIndex(event.clientX);
+            showMonitorRealtimePoint(nearestIndex, event.clientX);
+        });
+
+        plot.addEventListener('pointerleave', () => {
+            hideMonitorRealtimePoint();
+        });
+
+        plot.addEventListener('click', event => {
+            if (monitorRealtimeSamples.length < 2) {
+                hideMonitorRealtimePoint();
+                return;
+            }
+            const nearestIndex = resolveNearestIndex(event.clientX);
+            showMonitorRealtimePoint(nearestIndex, event.clientX);
+        });
+
+        plot.dataset.interactionsBound = 'true';
+    }
+
+    async function loadPipelineMonitor() {
+        if (monitorRequestInFlight) {
+            return;
+        }
+        monitorRequestInFlight = true;
+        monitorRefreshButton.disabled = true;
+        monitorRefreshButton.classList.add('opacity-70', 'cursor-not-allowed');
+
+        if (monitorContent.classList.contains('hidden')) {
+            showMonitorState('loading');
+        }
+
+        try {
+            const response = await fetch(monitorApiUrl, { headers: { 'Accept': 'application/json' } });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            const payload = await response.json();
+            const safePayload = payload && typeof payload === 'object' ? payload : {};
+            const sampledAt = Date.now();
+            const snapshot = safePayload.runtimeSnapshot || {};
+            appendMonitorRealtimeSample(snapshot, sampledAt);
+            if (monitorRealtimeTotalInput) {
+                const totalInputRecords = Number(snapshot?.totalInputRecords);
+                monitorRealtimeTotalInput.textContent = Number.isFinite(totalInputRecords)
+                    ? formatCompactCount(totalInputRecords)
+                    : '0';
+            }
+            if (monitorRealtimeTotalOutput) {
+                const totalOutputRecords = Number(snapshot?.totalOutputRecords);
+                monitorRealtimeTotalOutput.textContent = Number.isFinite(totalOutputRecords)
+                    ? formatCompactCount(totalOutputRecords)
+                    : '0';
+            }
+            renderMonitorRealtimeChart();
+            bindMonitorRealtimeInteractions();
+            const latestSample = monitorRealtimeSamples[monitorRealtimeSamples.length - 1];
+            const missingPipelineCount = Number(snapshot?.missingPipelineCount);
+            const effectiveMissingPipelineCount = Number.isFinite(missingPipelineCount)
+                ? missingPipelineCount
+                : (latestSample?.missingPipelineCount ?? 0);
+            if (effectiveMissingPipelineCount > 0) {
+                setMonitorRealtimeStatus(t('main.realtime.warning', 'Some tasks have no realtime metrics yet; trend includes only available tasks.'), 'warning');
+            } else {
+                setMonitorRealtimeStatus('');
+            }
+            renderSummary(safePayload.summary, safePayload.metadata);
+            renderStatusDistribution(safePayload.statusDistribution, safePayload.summary);
+            renderCards(safePayload.cards);
+            showMonitorState('content');
+        } catch (error) {
+            monitorErrorMessage.textContent = t('main.realtime.error', 'Request {0} failed: {1}', [monitorApiUrl, error.message]);
+            showMonitorState('error');
+        } finally {
+            monitorRequestInFlight = false;
+            monitorRefreshButton.disabled = false;
+            monitorRefreshButton.classList.remove('opacity-70', 'cursor-not-allowed');
+        }
+    }
+
+    monitorRefreshButton.addEventListener('click', () => {
+        loadPipelineMonitor();
+    });
+
+    loadPipelineMonitor();
+    monitorRefreshIntervalId = setInterval(loadPipelineMonitor, PIPELINE_MONITOR_POLL_INTERVAL_MS);
+    window.addEventListener('beforeunload', () => {
+        if (monitorRefreshIntervalId !== null) {
+            clearInterval(monitorRefreshIntervalId);
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+# Build outputs
+cluster/target/
+controller/target/
+core/target/
+service/target/
+streamcraft-dist/target/
+target/
+
+# Runtime data
+service/logs/
+service/run/
+service/streamcraft-service.db
+
+# Logs and debug captures
+cluster/*.log
+service/*.log
+service/page-red.txt
+service/security-red.txt
+
+# Local worktrees and temporary files
+.worktrees/
+temp/
+docs/
+.docs/
