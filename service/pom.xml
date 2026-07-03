@@ -12,7 +12,7 @@
 
     <groupId>com.streamcraft</groupId>
     <artifactId>streamcraft-service</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0</version>
     <name>streamcraft-service</name>
     <description>StreamCraft service login module</description>
 
