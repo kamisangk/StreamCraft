@@ -1,0 +1,42 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Build distribution package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn -B -ntp clean package
+
+      - name: Upload distribution package
+        uses: actions/upload-artifact@v4
+        with:
+          name: streamcraft-dist
+          path: |
+            streamcraft-dist/target/*-bin.tar.gz
+            streamcraft-dist/target/*-bin.zip
+          if-no-files-found: error
+          retention-days: 30
