@@ -15,6 +15,15 @@ StreamCraft/
 
 The root `pom.xml` builds `core`, `service`, and `streamcraft-dist`. The distribution module uses `streamcraft-dist/src/main/assembly/bin.xml` to assemble the deployable package. Shared validation and connector parser code lives under `core/src/shared/java` and is compiled into both runtime and service modules.
 
+
+## Screenshots
+
+<img width="2285" height="681" alt="monitor" src="https://github.com/user-attachments/assets/7b2c32e1-0651-4a64-9482-0beb0d603733" />
+<img width="2540" height="1333" alt="DAG" src="https://github.com/user-attachments/assets/15a58e74-e5eb-45d1-ba1d-695daf436078" />
+<img width="2281" height="1037" alt="monitor" src="https://github.com/user-attachments/assets/974dea64-68c1-4a6f-b6bb-7fc11b9cf811" />
+<img width="2267" height="1333" alt="DAG" src="https://github.com/user-attachments/assets/10f8a9cb-8a7f-442b-9527-8a526636f4c2" />
+
+
 ## Supported Operators
 
 ### Sources
