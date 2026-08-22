@@ -22,3 +22,10 @@ service/security-red.txt
 temp/
 docs/
 .docs/
+
+# Local agent configuration
+/.agents/
+/.codex/
+/.trellis/
+/.gitattributes
+/AGENTS.md
