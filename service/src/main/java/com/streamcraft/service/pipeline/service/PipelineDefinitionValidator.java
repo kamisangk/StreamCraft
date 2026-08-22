@@ -4,29 +4,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.streamcraft.service.config.UiMessageService;
-import com.streamcraft.shared.aggregation.AggregateConfigParser;
-import com.streamcraft.shared.casewhen.CaseWhenConfigParser;
-import com.streamcraft.shared.dataquality.DataQualityConfigParser;
-import com.streamcraft.shared.deduplication.DeduplicateConfigParser;
-import com.streamcraft.shared.eval.EvalConfigParser;
-import com.streamcraft.shared.explode.ExplodeConfigParser;
 import com.streamcraft.shared.elasticsearch.ElasticsearchSinkConfigParser;
 import com.streamcraft.shared.elasticsearch.ElasticsearchSourceConfigParser;
-import com.streamcraft.shared.expression.SafeExpressionSupport;
 import com.streamcraft.shared.file.HdfsFileSinkConfigParser;
 import com.streamcraft.shared.file.HdfsFileSourceConfigParser;
-import com.streamcraft.shared.flatten.FlattenConfigParser;
 import com.streamcraft.shared.influxdb.InfluxDbSinkConfigParser;
 import com.streamcraft.shared.influxdb.InfluxDbSourceConfigParser;
 import com.streamcraft.shared.jdbc.JdbcSinkConfigParser;
 import com.streamcraft.shared.jdbc.JdbcSourceConfigParser;
-import com.streamcraft.shared.lookup.LookupEnrichConfigParser;
-import com.streamcraft.shared.lookupjoin.LookupJoinConfigParser;
-import com.streamcraft.shared.maskhash.MaskHashConfigParser;
-import com.streamcraft.shared.pattern.GrokPatternSupport;
-import com.streamcraft.shared.route.RouteConfigParser;
-import com.streamcraft.shared.streamjoin.StreamJoinConfigParser;
-import com.streamcraft.shared.timederive.TimeDeriveConfigParser;
+import com.streamcraft.shared.validation.PipelineNodeConfigValidationSupport;
 import com.streamcraft.shared.validation.RuntimePipelineValidationSupport;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -56,7 +42,6 @@ public class PipelineDefinitionValidator {
     private static final String HDFS_FILE_SINK = RuntimePipelineValidationSupport.HDFS_FILE_SINK_OPERATOR;
     private static final Set<String> SUPPORTED_CONSUME_MODES = Set.of("earliest", "latest", "committed");
     private static final Set<String> SUPPORTED_FORMATS = Set.of("JSON", "TEXT");
-    private static final Set<String> SUPPORTED_TRANSFORM_SERDE_FORMATS = Set.of("JSON", "KV", "CSV", "XML");
     private static final Set<String> SUPPORTED_AUTH_TYPES = Set.of("NONE", "SASL_PLAIN", "SASL_SCRAM");
     private static final Set<String> SUPPORTED_SCRAM_MECHANISMS = Set.of("SCRAM-SHA-256", "SCRAM-SHA-512");
     private static final Set<String> SUPPORTED_TRANSFORM_OPERATORS = Set.of(
@@ -250,70 +235,13 @@ public class PipelineDefinitionValidator {
     }
 
     private void validateRuntimeTransformConfig(String operator, JsonNode config) {
-        if (config == null || config.isMissingNode() || config.isNull()) {
-            config = objectMapper.createObjectNode();
+        if ("RENAME".equals(operator)) {
+            return;
         }
-        switch (operator) {
-            case "DESERIALIZE" -> {
-                requireNonBlank(config, "field");
-                requireNonBlank(config, "targetField");
-                String format = validateTransformSerdeFormat(config);
-                if ("CSV".equals(format)) {
-                    requireNonEmptyArray(config, "fieldNames");
-                }
-            }
-            case "SERIALIZE" -> {
-                requireNonEmptyArray(config, "sourceFields");
-                requireNonBlank(config, "targetField");
-                validateTransformSerdeFormat(config);
-            }
-            case "FILTER" -> SafeExpressionSupport.validate(config.path("condition").asText(null), "Filter condition");
-            case "GROK" -> {
-                requireNonBlank(config, "inputField");
-                requireNonBlank(config, "outputField");
-                GrokPatternSupport.validate(config.path("pattern").asText(null), "Grok pattern");
-            }
-            case "CAST" -> {
-                requireNonBlank(config, "inputField");
-                requireNonBlank(config, "outputField");
-                validateCastTargetType(config.path("targetType").asText(null));
-            }
-            case "EVAL" -> EvalConfigParser.parseValidated(
-                    config, error -> fail(error.messageKey(), error.args()));
-            case "AGGREGATE" -> AggregateConfigParser.parseValidated(
-                    config, error -> fail(error.messageKey(), error.args()));
-            case "DEDUPLICATE" -> DeduplicateConfigParser.parseValidated(
-                    config, error -> fail(error.messageKey(), error.args()));
-            case "LOOKUP_ENRICH" -> LookupEnrichConfigParser.parseValidated(
-                    config, error -> fail(error.messageKey(), error.args()));
-            case "LOOKUP_JOIN" -> LookupJoinConfigParser.parseValidated(
-                    config, error -> fail(error.messageKey(), error.args()));
-            case "STREAM_JOIN" -> StreamJoinConfigParser.parseValidated(
-                    config, error -> fail(error.messageKey(), error.args()));
-            case "FLATTEN" -> FlattenConfigParser.parseValidated(
-                    config, error -> fail(error.messageKey(), error.args()));
-            case "EXPLODE" -> ExplodeConfigParser.parseValidated(
-                    config, error -> fail(error.messageKey(), error.args()));
-            case "DATA_QUALITY" -> DataQualityConfigParser.parseValidated(
-                    config, error -> fail(error.messageKey(), error.args()));
-            case "TIME_DERIVE" -> TimeDeriveConfigParser.parseValidated(
-                    config, error -> fail(error.messageKey(), error.args()));
-            case "MASK_HASH" -> MaskHashConfigParser.parseValidated(
-                    config, error -> fail(error.messageKey(), error.args()));
-            case "CASE_WHEN" -> CaseWhenConfigParser.parseValidated(
-                    config, error -> fail(error.messageKey(), error.args()));
-            case "ROUTE" -> RouteConfigParser.parseValidated(
-                    config, error -> fail(error.messageKey(), error.args()));
-            case "CUSTOM_CODE" -> {
-                validateCustomCodeLanguage(config.path("language").asText("JAVA"));
-                validateCustomCodeCompilePattern(config.path("compilePattern").asText("SOURCE_CODE"));
-                requireNonBlank(config, "className");
-                requireNonBlank(config, "sourceCode");
-                validateCustomCodeErrorStrategy(config.path("errorStrategy").asText("KEEP_ORIGINAL"));
-            }
-            default -> {
-            }
-        }
+        PipelineNodeConfigValidationSupport.validateTransformConfig(
+                operator,
+                config,
+                error -> fail(error.messageKey(), error.args()));
     }
 
     private void validateSaveTransformConfigs(Map<String, JsonNode> nodeById) {
@@ -523,13 +451,6 @@ public class PipelineDefinitionValidator {
         return value;
     }
 
-    private void requireNonEmptyArray(JsonNode config, String fieldName) {
-        JsonNode value = config.path(fieldName);
-        if (!value.isArray() || value.isEmpty()) {
-            throw fail("pipeline.validation.config.missingField", fieldName);
-        }
-    }
-
     private void validateKafkaAuth(JsonNode config, String nodeLabel) {
         String authType = config.path("authType").asText(null);
         if (authType == null || authType.isBlank()) {
@@ -577,43 +498,6 @@ public class PipelineDefinitionValidator {
             throw fail("pipeline.validation.format.oneOf", "JSON, TEXT");
         }
         return format;
-    }
-
-    private String validateTransformSerdeFormat(JsonNode config) {
-        String format = requireNonBlank(config, "format");
-        if (!SUPPORTED_TRANSFORM_SERDE_FORMATS.contains(format)) {
-            throw fail("pipeline.validation.format.oneOf", joinValues(SUPPORTED_TRANSFORM_SERDE_FORMATS));
-        }
-        return format;
-    }
-
-    private void validateCastTargetType(String targetType) {
-        String normalized = targetType == null ? "" : targetType.trim().toUpperCase();
-        if (!Set.of("STRING", "INT", "INTEGER", "LONG", "DOUBLE", "FLOAT", "BOOLEAN").contains(normalized)) {
-            throw fail("pipeline.validation.targetType.oneOf");
-        }
-    }
-
-    private void validateCustomCodeLanguage(String language) {
-        if (!"JAVA".equals(normalize(language))) {
-            throw fail("pipeline.validation.language.javaOnly");
-        }
-    }
-
-    private void validateCustomCodeCompilePattern(String compilePattern) {
-        if (!"SOURCE_CODE".equals(normalize(compilePattern))) {
-            throw fail("pipeline.validation.compilePattern.sourceCodeOnly");
-        }
-    }
-
-    private void validateCustomCodeErrorStrategy(String errorStrategy) {
-        if (!Set.of("KEEP_ORIGINAL", "SKIP", "FAIL").contains(normalize(errorStrategy))) {
-            throw fail("pipeline.validation.errorStrategy.oneOf");
-        }
-    }
-
-    private String normalize(String value) {
-        return value == null ? "" : value.trim().toUpperCase();
     }
 
     private String joinValues(Set<String> values) {
