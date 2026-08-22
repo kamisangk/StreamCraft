@@ -9,14 +9,6 @@ import com.streamcraft.core.model.PipelineNodeType;
 import com.streamcraft.core.model.PipelineOperator;
 import com.streamcraft.core.runtime.ExecutionMode;
 import com.streamcraft.core.runtime.transform.TransformOperatorFactory;
-import com.streamcraft.shared.aggregation.AggregateConfigParser;
-import com.streamcraft.shared.casewhen.CaseWhenConfigParser;
-import com.streamcraft.shared.dataquality.DataQualityConfigParser;
-import com.streamcraft.shared.deduplication.DeduplicateConfigParser;
-import com.streamcraft.shared.eval.EvalConfigParser;
-import com.streamcraft.shared.explode.ExplodeConfigParser;
-import com.streamcraft.shared.flatten.FlattenConfigParser;
-import com.streamcraft.shared.expression.SafeExpressionSupport;
 import com.streamcraft.shared.elasticsearch.ElasticsearchSinkConfigParser;
 import com.streamcraft.shared.elasticsearch.ElasticsearchSourceConfigParser;
 import com.streamcraft.shared.file.HdfsFileSinkConfigParser;
@@ -25,13 +17,7 @@ import com.streamcraft.shared.influxdb.InfluxDbSinkConfigParser;
 import com.streamcraft.shared.influxdb.InfluxDbSourceConfigParser;
 import com.streamcraft.shared.jdbc.JdbcSinkConfigParser;
 import com.streamcraft.shared.jdbc.JdbcSourceConfigParser;
-import com.streamcraft.shared.lookup.LookupEnrichConfigParser;
-import com.streamcraft.shared.lookupjoin.LookupJoinConfigParser;
-import com.streamcraft.shared.maskhash.MaskHashConfigParser;
-import com.streamcraft.shared.pattern.GrokPatternSupport;
-import com.streamcraft.shared.route.RouteConfigParser;
-import com.streamcraft.shared.streamjoin.StreamJoinConfigParser;
-import com.streamcraft.shared.timederive.TimeDeriveConfigParser;
+import com.streamcraft.shared.validation.PipelineNodeConfigValidationSupport;
 import com.streamcraft.shared.validation.RuntimePipelineValidationSupport;
 import java.io.IOException;
 import java.util.HashMap;
@@ -48,7 +34,6 @@ public class PipelineRuntimeValidator {
     private static final Set<String> SUPPORTED_TRANSFORM_OPERATOR_NAMES = supportedTransformOperatorNames();
     private static final Set<String> SUPPORTED_CONSUME_MODES = Set.of("earliest", "latest", "committed");
     private static final Set<String> SUPPORTED_FORMATS = Set.of("JSON", "TEXT");
-    private static final Set<String> SUPPORTED_TRANSFORM_SERDE_FORMATS = Set.of("JSON", "KV", "CSV", "XML");
     private static final Set<String> SUPPORTED_AUTH_TYPES = Set.of("NONE", "SASL_PLAIN", "SASL_SCRAM");
     private static final Set<String> SUPPORTED_SCRAM_MECHANISMS = Set.of("SCRAM-SHA-256", "SCRAM-SHA-512");
 
@@ -258,65 +243,10 @@ public class PipelineRuntimeValidator {
     }
 
     private void validateTransformNode(PipelineNode node) {
-        JsonNode config = node.config();
-        switch (node.operator()) {
-            case DESERIALIZE -> {
-                requireJsonText(config, "field");
-                requireJsonText(config, "targetField");
-                String format = validateTransformSerdeFormat(config);
-                if ("CSV".equals(format)) {
-                    requireNonEmptyArray(config, "fieldNames");
-                }
-            }
-            case SERIALIZE -> {
-                requireNonEmptyArray(config, "sourceFields");
-                requireJsonText(config, "targetField");
-                validateTransformSerdeFormat(config);
-            }
-            case FILTER -> SafeExpressionSupport.validate(config.path("condition").asText(null), "Filter condition");
-            case GROK -> {
-                requireJsonText(config, "inputField");
-                requireJsonText(config, "outputField");
-                GrokPatternSupport.validate(config.path("pattern").asText(null), "Grok pattern");
-            }
-            case CAST -> {
-                requireJsonText(config, "inputField");
-                requireJsonText(config, "outputField");
-                validateCastTargetType(config.path("targetType").asText(null));
-            }
-            case RENAME -> validateRenameMapping(config);
-            case EVAL -> EvalConfigParser.parseValidated(
-                    config, error -> new IllegalArgumentException(error.defaultMessage()));
-            case CUSTOM_CODE -> {
-                validateCustomCodeLanguage(config.path("language").asText("JAVA"));
-                validateCustomCodeCompilePattern(config.path("compilePattern").asText("SOURCE_CODE"));
-                requireJsonText(config, "className");
-                requireJsonText(config, "sourceCode");
-                validateCustomCodeErrorStrategy(config.path("errorStrategy").asText("KEEP_ORIGINAL"));
-            }
-            case AGGREGATE -> AggregateConfigParser.parse(config, IllegalArgumentException::new);
-            case DEDUPLICATE -> DeduplicateConfigParser.parse(config, IllegalArgumentException::new);
-            case LOOKUP_ENRICH -> LookupEnrichConfigParser.parseValidated(
-                    config, error -> new IllegalArgumentException(error.defaultMessage()));
-            case LOOKUP_JOIN -> LookupJoinConfigParser.parseValidated(
-                    config, error -> new IllegalArgumentException(error.defaultMessage()));
-            case STREAM_JOIN -> StreamJoinConfigParser.parseValidated(
-                    config, error -> new IllegalArgumentException(error.defaultMessage()));
-            case FLATTEN -> FlattenConfigParser.parseValidated(config, error -> new IllegalArgumentException(error.defaultMessage()));
-            case EXPLODE -> ExplodeConfigParser.parseValidated(config, error -> new IllegalArgumentException(error.defaultMessage()));
-            case DATA_QUALITY -> DataQualityConfigParser.parseValidated(
-                    config, error -> new IllegalArgumentException(error.defaultMessage()));
-            case TIME_DERIVE -> TimeDeriveConfigParser.parseValidated(
-                    config, error -> new IllegalArgumentException(error.defaultMessage()));
-            case MASK_HASH -> MaskHashConfigParser.parseValidated(
-                    config, error -> new IllegalArgumentException(error.defaultMessage()));
-            case CASE_WHEN -> CaseWhenConfigParser.parseValidated(
-                    config, error -> new IllegalArgumentException(error.defaultMessage()));
-            case ROUTE -> RouteConfigParser.parseValidated(
-                    config, error -> new IllegalArgumentException(error.defaultMessage()));
-            default -> {
-            }
-        }
+        PipelineNodeConfigValidationSupport.validateTransformConfig(
+                node.operator().name(),
+                node.config(),
+                error -> new IllegalArgumentException(error.defaultMessage()));
     }
 
     private void validateEdges(
@@ -343,28 +273,6 @@ public class PipelineRuntimeValidator {
             throw new IllegalArgumentException("Node config field is required: " + fieldName);
         }
         return node.path(fieldName).asText();
-    }
-
-    private void requireNonEmptyArray(JsonNode node, String fieldName) {
-        JsonNode value = node == null ? null : node.path(fieldName);
-        if (value == null || !value.isArray() || value.isEmpty()) {
-            throw new IllegalArgumentException("Node config field is required: " + fieldName);
-        }
-    }
-
-    private void validateRenameMapping(JsonNode config) {
-        JsonNode mapping = config == null ? null : config.path("mapping");
-        if (mapping == null || !mapping.isObject() || !mapping.fields().hasNext()) {
-            throw new IllegalArgumentException("Node config mapping must contain at least one field mapping.");
-        }
-        mapping.fields().forEachRemaining(entry -> {
-            if (entry.getKey() == null || entry.getKey().isBlank()) {
-                throw new IllegalArgumentException("Node config mapping source field is required.");
-            }
-            if (entry.getValue() == null || entry.getValue().asText().isBlank()) {
-                throw new IllegalArgumentException("Node config mapping target field is required.");
-            }
-        });
     }
 
     private void validateConsumeMode(String consumeMode) {
@@ -443,45 +351,6 @@ public class PipelineRuntimeValidator {
             throw new IllegalArgumentException("Node config format must be one of: JSON, TEXT");
         }
         return format;
-    }
-
-    private String validateTransformSerdeFormat(JsonNode config) {
-        String format = requireJsonText(config, "format");
-        if (!SUPPORTED_TRANSFORM_SERDE_FORMATS.contains(format)) {
-            throw new IllegalArgumentException("Node config format must be one of: "
-                    + String.join(", ", SUPPORTED_TRANSFORM_SERDE_FORMATS));
-        }
-        return format;
-    }
-
-    private void validateCastTargetType(String targetType) {
-        String normalized = targetType == null ? "" : targetType.trim().toUpperCase();
-        if (!Set.of("STRING", "INT", "INTEGER", "LONG", "DOUBLE", "FLOAT", "BOOLEAN").contains(normalized)) {
-            throw new IllegalArgumentException(
-                    "Node config targetType must be one of: STRING, INT, INTEGER, LONG, DOUBLE, FLOAT, BOOLEAN");
-        }
-    }
-
-    private void validateCustomCodeLanguage(String language) {
-        if (!"JAVA".equals(normalize(language))) {
-            throw new IllegalArgumentException("Node config language must be JAVA");
-        }
-    }
-
-    private void validateCustomCodeCompilePattern(String compilePattern) {
-        if (!"SOURCE_CODE".equals(normalize(compilePattern))) {
-            throw new IllegalArgumentException("Node config compilePattern must be SOURCE_CODE");
-        }
-    }
-
-    private void validateCustomCodeErrorStrategy(String errorStrategy) {
-        if (!Set.of("KEEP_ORIGINAL", "SKIP", "FAIL").contains(normalize(errorStrategy))) {
-            throw new IllegalArgumentException("Node config errorStrategy must be one of: KEEP_ORIGINAL, SKIP, FAIL");
-        }
-    }
-
-    private String normalize(String value) {
-        return value == null ? "" : value.trim().toUpperCase();
     }
 
     private RuntimePipelineValidationSupport.RuntimeEdgeDescriptor toRuntimeEdge(PipelineEdge edge) {
