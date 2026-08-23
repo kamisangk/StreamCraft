@@ -1,6 +1,5 @@
 package com.streamcraft.core.validation;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streamcraft.core.model.PipelineDefinition;
 import com.streamcraft.core.model.PipelineEdge;
@@ -9,17 +8,8 @@ import com.streamcraft.core.model.PipelineNodeType;
 import com.streamcraft.core.model.PipelineOperator;
 import com.streamcraft.core.runtime.ExecutionMode;
 import com.streamcraft.core.runtime.transform.TransformOperatorFactory;
-import com.streamcraft.shared.elasticsearch.ElasticsearchSinkConfigParser;
-import com.streamcraft.shared.elasticsearch.ElasticsearchSourceConfigParser;
-import com.streamcraft.shared.file.HdfsFileSinkConfigParser;
-import com.streamcraft.shared.file.HdfsFileSourceConfigParser;
-import com.streamcraft.shared.influxdb.InfluxDbSinkConfigParser;
-import com.streamcraft.shared.influxdb.InfluxDbSourceConfigParser;
-import com.streamcraft.shared.jdbc.JdbcSinkConfigParser;
-import com.streamcraft.shared.jdbc.JdbcSourceConfigParser;
 import com.streamcraft.shared.validation.PipelineNodeConfigValidationSupport;
 import com.streamcraft.shared.validation.RuntimePipelineValidationSupport;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -32,12 +22,7 @@ public class PipelineRuntimeValidator {
     private static final Set<PipelineOperator> SUPPORTED_TRANSFORM_OPERATORS =
             TransformOperatorFactory.supportedOperators();
     private static final Set<String> SUPPORTED_TRANSFORM_OPERATOR_NAMES = supportedTransformOperatorNames();
-    private static final Set<String> SUPPORTED_CONSUME_MODES = Set.of("earliest", "latest", "committed");
-    private static final Set<String> SUPPORTED_FORMATS = Set.of("JSON", "TEXT");
-    private static final Set<String> SUPPORTED_AUTH_TYPES = Set.of("NONE", "SASL_PLAIN", "SASL_SCRAM");
-    private static final Set<String> SUPPORTED_SCRAM_MECHANISMS = Set.of("SCRAM-SHA-256", "SCRAM-SHA-512");
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private static Set<String> supportedTransformOperatorNames() {
         Set<String> names = SUPPORTED_TRANSFORM_OPERATORS.stream()
@@ -128,125 +113,31 @@ public class PipelineRuntimeValidator {
 
     private void validateSource(PipelineNode node, ExecutionMode executionMode) {
         if (executionMode.forceMockSources()) {
-            validatePreviewSource(node.config());
+            PipelineNodeConfigValidationSupport.validatePreviewSource(
+                    node.config(), OBJECT_MAPPER, this::toValidationException);
             return;
         }
-        switch (node.operator()) {
-            case KAFKA_SOURCE -> validateKafkaSource(node);
-            case JDBC_SOURCE -> validateJdbcSource(node);
-            case ELASTICSEARCH_SOURCE -> validateElasticsearchSource(node);
-            case INFLUXDB_SOURCE -> validateInfluxDbSource(node);
-            case HDFS_FILE_SOURCE -> validateHdfsFileSource(node);
-            default -> throw new IllegalArgumentException("Unsupported source operator: " + node.operator());
-        }
-    }
-
-    private void validateKafkaSource(PipelineNode node) {
-        JsonNode config = node.config();
-        requireJsonText(config, "bootstrapServers");
-        JsonNode topics = config.path("topics");
-        if (!topics.isArray() || topics.isEmpty()) {
-            throw new IllegalArgumentException("Kafka Source must contain at least one topic.");
-        }
-        requireJsonText(config, "groupId");
-        validateConsumeMode(requireJsonText(config, "consumeMode"));
-        validateKafkaAuth(config, "Kafka Source");
-        validateFormat(requireJsonText(config, "format"));
-    }
-
-    private void validateJdbcSource(PipelineNode node) {
-        JdbcSourceConfigParser.parseValidated(
-                node.config(),
-                error -> new IllegalArgumentException(error.defaultMessage()));
-    }
-
-    private void validateElasticsearchSource(PipelineNode node) {
-        ElasticsearchSourceConfigParser.parseValidated(
-                node.config(),
-                error -> new IllegalArgumentException(error.defaultMessage()));
-    }
-
-    private void validateInfluxDbSource(PipelineNode node) {
-        InfluxDbSourceConfigParser.parseValidated(
-                node.config(),
-                error -> new IllegalArgumentException(error.defaultMessage()));
-    }
-
-    private void validateHdfsFileSource(PipelineNode node) {
-        HdfsFileSourceConfigParser.parseValidated(
-                node.config(),
-                error -> new IllegalArgumentException(error.defaultMessage()));
+        PipelineNodeConfigValidationSupport.validateSourceConfig(
+                node.operator().name(), node.config(), this::toValidationException);
     }
 
     private void validateSink(PipelineNode node, ExecutionMode executionMode) {
         if (executionMode.interceptSinks()) {
-            validatePreviewSink(node);
+            PipelineNodeConfigValidationSupport.validatePreviewSink(
+                    node.operator().name(),
+                    node.config(),
+                    this::toValidationException);
             return;
         }
-        switch (node.operator()) {
-            case KAFKA_SINK -> validateKafkaSink(node);
-            case JDBC_SINK -> validateJdbcSink(node);
-            case ELASTICSEARCH_SINK -> validateElasticsearchSink(node);
-            case INFLUXDB_SINK -> validateInfluxDbSink(node);
-            case HDFS_FILE_SINK -> validateHdfsFileSink(node);
-            default -> throw new IllegalArgumentException("Unsupported sink operator: " + node.operator());
-        }
-    }
-
-    private void validatePreviewSink(PipelineNode node) {
-        if (node.operator() != PipelineOperator.KAFKA_SINK) {
-            return;
-        }
-        JsonNode config = node.config();
-        if (config != null && config.hasNonNull("format")) {
-            String format = validateFormat(config.path("format").asText());
-            if ("TEXT".equals(format)) {
-                requireJsonText(config, "messageField");
-            }
-        }
-    }
-
-    private void validateKafkaSink(PipelineNode node) {
-        JsonNode config = node.config();
-        requireJsonText(config, "bootstrapServers");
-        requireJsonText(config, "topic");
-        requireJsonText(config, "deliveryGuarantee");
-        validateKafkaAuth(config, "Kafka Sink");
-        String format = validateFormat(requireJsonText(config, "format"));
-        if ("TEXT".equals(format)) {
-            requireJsonText(config, "messageField");
-        }
-    }
-
-    private void validateJdbcSink(PipelineNode node) {
-        JdbcSinkConfigParser.parseValidated(
-                node.config(),
-                error -> new IllegalArgumentException(error.defaultMessage()));
-    }
-
-    private void validateElasticsearchSink(PipelineNode node) {
-        ElasticsearchSinkConfigParser.parseValidated(
-                node.config(),
-                error -> new IllegalArgumentException(error.defaultMessage()));
-    }
-
-    private void validateInfluxDbSink(PipelineNode node) {
-        InfluxDbSinkConfigParser.parseValidated(
-                node.config(),
-                error -> new IllegalArgumentException(error.defaultMessage()));
-    }
-
-    private void validateHdfsFileSink(PipelineNode node) {
-        HdfsFileSinkConfigParser.parseValidated(
-                node.config(),
-                error -> new IllegalArgumentException(error.defaultMessage()));
+        PipelineNodeConfigValidationSupport.validateSinkConfig(
+                node.operator().name(), node.config(), this::toValidationException);
     }
 
     private void validateTransformNode(PipelineNode node) {
         PipelineNodeConfigValidationSupport.validateTransformConfig(
                 node.operator().name(),
                 node.config(),
-                error -> new IllegalArgumentException(error.defaultMessage()));
+                this::toValidationException);
     }
 
     private void validateEdges(
@@ -268,89 +159,12 @@ public class PipelineRuntimeValidator {
         }
     }
 
-    private String requireJsonText(JsonNode node, String fieldName) {
-        if (node == null || node.path(fieldName).asText().isBlank()) {
-            throw new IllegalArgumentException("Node config field is required: " + fieldName);
+    private IllegalArgumentException toValidationException(
+            PipelineNodeConfigValidationSupport.ValidationError error) {
+        if (error.cause() == null) {
+            return new IllegalArgumentException(error.defaultMessage());
         }
-        return node.path(fieldName).asText();
-    }
-
-    private void validateConsumeMode(String consumeMode) {
-        if (!SUPPORTED_CONSUME_MODES.contains(consumeMode)) {
-            throw new IllegalArgumentException(
-                    "Node config consumeMode must be one of: " + String.join(", ", SUPPORTED_CONSUME_MODES));
-        }
-    }
-
-    private void validatePreviewSource(JsonNode config) {
-        String format = validateFormat(config.path("format").asText("JSON"));
-        JsonNode sampleData = config.path("sampleData");
-        if (!sampleData.isArray()) {
-            throw new IllegalArgumentException("Preview requires Kafka Source sampleData to be a string array.");
-        }
-        for (JsonNode item : sampleData) {
-            if (!item.isTextual()) {
-                throw new IllegalArgumentException("Preview requires Kafka Source sampleData to be a string array.");
-            }
-            if ("JSON".equals(format)) {
-                validatePreviewJsonSample(item.asText());
-            }
-        }
-    }
-
-    private void validateKafkaAuth(JsonNode config, String nodeLabel) {
-        String authType = requireJsonText(config, "authType");
-        if (!SUPPORTED_AUTH_TYPES.contains(authType)) {
-            throw new IllegalArgumentException(
-                    nodeLabel + " authType must be one of: " + String.join(", ", SUPPORTED_AUTH_TYPES) + ".");
-        }
-        switch (authType) {
-            case "NONE" -> {
-                return;
-            }
-            case "SASL_PLAIN" -> {
-                requireAuthField(config, nodeLabel, "username", authType);
-                requireAuthField(config, nodeLabel, "password", authType);
-            }
-            case "SASL_SCRAM" -> {
-                requireAuthField(config, nodeLabel, "username", authType);
-                requireAuthField(config, nodeLabel, "password", authType);
-                String scramMechanism = requireAuthField(config, nodeLabel, "scramMechanism", authType);
-                if (!SUPPORTED_SCRAM_MECHANISMS.contains(scramMechanism)) {
-                    throw new IllegalArgumentException(nodeLabel + " scramMechanism must be one of: "
-                            + String.join(", ", SUPPORTED_SCRAM_MECHANISMS) + ".");
-                }
-            }
-            default -> throw new IllegalArgumentException(
-                    nodeLabel + " authType must be one of: " + String.join(", ", SUPPORTED_AUTH_TYPES) + ".");
-        }
-    }
-
-    private void validatePreviewJsonSample(String sample) {
-        try {
-            JsonNode json = objectMapper.readTree(sample);
-            if (!json.isObject()) {
-                throw new IllegalArgumentException("Preview JSON sample must be a JSON object.");
-            }
-        } catch (IOException exception) {
-            throw new IllegalArgumentException("Preview JSON sample must be a JSON object.", exception);
-        }
-    }
-
-    private String requireAuthField(JsonNode config, String nodeLabel, String fieldName, String authType) {
-        String value = config.path(fieldName).asText(null);
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException(
-                    nodeLabel + " " + fieldName + " is required when authType is " + authType + ".");
-        }
-        return value;
-    }
-
-    private String validateFormat(String format) {
-        if (!SUPPORTED_FORMATS.contains(format)) {
-            throw new IllegalArgumentException("Node config format must be one of: JSON, TEXT");
-        }
-        return format;
+        return new IllegalArgumentException(error.defaultMessage(), error.cause());
     }
 
     private RuntimePipelineValidationSupport.RuntimeEdgeDescriptor toRuntimeEdge(PipelineEdge edge) {

@@ -4,14 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.streamcraft.service.config.UiMessageService;
-import com.streamcraft.shared.elasticsearch.ElasticsearchSinkConfigParser;
-import com.streamcraft.shared.elasticsearch.ElasticsearchSourceConfigParser;
-import com.streamcraft.shared.file.HdfsFileSinkConfigParser;
-import com.streamcraft.shared.file.HdfsFileSourceConfigParser;
-import com.streamcraft.shared.influxdb.InfluxDbSinkConfigParser;
-import com.streamcraft.shared.influxdb.InfluxDbSourceConfigParser;
-import com.streamcraft.shared.jdbc.JdbcSinkConfigParser;
-import com.streamcraft.shared.jdbc.JdbcSourceConfigParser;
 import com.streamcraft.shared.validation.PipelineNodeConfigValidationSupport;
 import com.streamcraft.shared.validation.RuntimePipelineValidationSupport;
 import java.io.IOException;
@@ -30,20 +22,6 @@ public class PipelineDefinitionValidator {
     private static final String SOURCE_TYPE = RuntimePipelineValidationSupport.SOURCE_TYPE;
     private static final String TRANSFORM_TYPE = RuntimePipelineValidationSupport.TRANSFORM_TYPE;
     private static final String SINK_TYPE = RuntimePipelineValidationSupport.SINK_TYPE;
-    private static final String KAFKA_SOURCE = RuntimePipelineValidationSupport.KAFKA_SOURCE_OPERATOR;
-    private static final String JDBC_SOURCE = RuntimePipelineValidationSupport.JDBC_SOURCE_OPERATOR;
-    private static final String ELASTICSEARCH_SOURCE = RuntimePipelineValidationSupport.ELASTICSEARCH_SOURCE_OPERATOR;
-    private static final String INFLUXDB_SOURCE = RuntimePipelineValidationSupport.INFLUXDB_SOURCE_OPERATOR;
-    private static final String HDFS_FILE_SOURCE = RuntimePipelineValidationSupport.HDFS_FILE_SOURCE_OPERATOR;
-    private static final String KAFKA_SINK = RuntimePipelineValidationSupport.KAFKA_SINK_OPERATOR;
-    private static final String JDBC_SINK = RuntimePipelineValidationSupport.JDBC_SINK_OPERATOR;
-    private static final String ELASTICSEARCH_SINK = RuntimePipelineValidationSupport.ELASTICSEARCH_SINK_OPERATOR;
-    private static final String INFLUXDB_SINK = RuntimePipelineValidationSupport.INFLUXDB_SINK_OPERATOR;
-    private static final String HDFS_FILE_SINK = RuntimePipelineValidationSupport.HDFS_FILE_SINK_OPERATOR;
-    private static final Set<String> SUPPORTED_CONSUME_MODES = Set.of("earliest", "latest", "committed");
-    private static final Set<String> SUPPORTED_FORMATS = Set.of("JSON", "TEXT");
-    private static final Set<String> SUPPORTED_AUTH_TYPES = Set.of("NONE", "SASL_PLAIN", "SASL_SCRAM");
-    private static final Set<String> SUPPORTED_SCRAM_MECHANISMS = Set.of("SCRAM-SHA-256", "SCRAM-SHA-512");
     private static final Set<String> SUPPORTED_TRANSFORM_OPERATORS = Set.of(
             "PUT",
             "PRUNE",
@@ -155,7 +133,7 @@ public class PipelineDefinitionValidator {
             String nodeType = node.type();
             if (SOURCE_TYPE.equals(nodeType)) {
                 sourceNodeIds.add(node.id());
-                validatePreviewSource(nodeById.get(node.id()));
+                validateSource(node, nodeById.get(node.id()), true);
             }
             if (SINK_TYPE.equals(nodeType)) {
                 sinkNodeIds.add(node.id());
@@ -271,68 +249,12 @@ public class PipelineDefinitionValidator {
             JsonNode node,
             boolean preview) {
         if (preview) {
-            validatePreviewSource(node);
+            PipelineNodeConfigValidationSupport.validatePreviewSource(
+                    node.path("config"), objectMapper, this::toValidationException);
             return;
         }
-        if (KAFKA_SOURCE.equals(runtimeNode.operator())) {
-            validateKafkaSource(node);
-            return;
-        }
-        if (JDBC_SOURCE.equals(runtimeNode.operator())) {
-            validateJdbcSource(node);
-            return;
-        }
-        if (ELASTICSEARCH_SOURCE.equals(runtimeNode.operator())) {
-            validateElasticsearchSource(node);
-            return;
-        }
-        if (INFLUXDB_SOURCE.equals(runtimeNode.operator())) {
-            validateInfluxDbSource(node);
-            return;
-        }
-        if (HDFS_FILE_SOURCE.equals(runtimeNode.operator())) {
-            validateHdfsFileSource(node);
-            return;
-        }
-        throw fail("pipeline.validation.source.unsupported", runtimeNode.operator());
-    }
-
-    private void validateKafkaSource(JsonNode node) {
-        JsonNode config = node.path("config");
-        requireNonBlank(config, "bootstrapServers");
-        JsonNode topics = config.path("topics");
-        if (!topics.isArray() || topics.isEmpty()) {
-            throw fail("pipeline.validation.kafkaSource.topicRequired");
-        }
-        requireNonBlank(config, "groupId");
-        String consumeMode = requireNonBlank(config, "consumeMode");
-        validateConsumeMode(consumeMode);
-        validateKafkaAuth(config, "Kafka Source");
-        validateFormat(requireNonBlank(config, "format"));
-    }
-
-    private void validateJdbcSource(JsonNode node) {
-        JdbcSourceConfigParser.parseValidated(
-                node.path("config"),
-                error -> fail(error.messageKey(), error.args()));
-    }
-
-    private void validateElasticsearchSource(JsonNode node) {
-        ElasticsearchSourceConfigParser.parseValidated(
-                node.path("config"),
-                error -> fail(error.messageKey(), error.args()));
-    }
-
-    private void validateInfluxDbSource(JsonNode node) {
-        InfluxDbSourceConfigParser.parseValidated(
-                node.path("config"),
-                error -> fail(error.messageKey(), error.args()));
-    }
-
-    private void validateHdfsFileSource(JsonNode node) {
-        HdfsFileSourceConfigParser.parseValidated(
-                node.path("config"),
-                error -> fail(error.messageKey(), error.args()));
+        PipelineNodeConfigValidationSupport.validateSourceConfig(
+                runtimeNode.operator(), node.path("config"), this::toValidationException);
     }
 
     private void validateSink(
@@ -340,168 +262,20 @@ public class PipelineDefinitionValidator {
             JsonNode node,
             boolean preview) {
         if (preview) {
-            validatePreviewSink(runtimeNode, node);
+            PipelineNodeConfigValidationSupport.validatePreviewSink(
+                    runtimeNode.operator(), node.path("config"), this::toValidationException);
             return;
         }
-        if (KAFKA_SINK.equals(runtimeNode.operator())) {
-            validateKafkaSink(node);
-            return;
-        }
-        if (JDBC_SINK.equals(runtimeNode.operator())) {
-            validateJdbcSink(node);
-            return;
-        }
-        if (ELASTICSEARCH_SINK.equals(runtimeNode.operator())) {
-            validateElasticsearchSink(node);
-            return;
-        }
-        if (INFLUXDB_SINK.equals(runtimeNode.operator())) {
-            validateInfluxDbSink(node);
-            return;
-        }
-        if (HDFS_FILE_SINK.equals(runtimeNode.operator())) {
-            validateHdfsFileSink(node);
-            return;
-        }
-        throw fail("pipeline.validation.sink.unsupported", runtimeNode.operator());
+        PipelineNodeConfigValidationSupport.validateSinkConfig(
+                runtimeNode.operator(), node.path("config"), this::toValidationException);
     }
 
-    private void validateKafkaSink(JsonNode node) {
-        JsonNode config = node.path("config");
-        requireNonBlank(config, "bootstrapServers");
-        requireNonBlank(config, "topic");
-        requireNonBlank(config, "deliveryGuarantee");
-        validateKafkaAuth(config, "Kafka Sink");
-        String format = validateFormat(requireNonBlank(config, "format"));
-        if ("TEXT".equals(format)) {
-            requireNonBlank(config, "messageField");
+    private IllegalArgumentException toValidationException(
+            PipelineNodeConfigValidationSupport.ValidationError error) {
+        if (error.cause() == null) {
+            return fail(error.messageKey(), error.args());
         }
-    }
-
-    private void validateJdbcSink(JsonNode node) {
-        JdbcSinkConfigParser.parseValidated(
-                node.path("config"),
-                error -> fail(error.messageKey(), error.args()));
-    }
-
-    private void validateElasticsearchSink(JsonNode node) {
-        ElasticsearchSinkConfigParser.parseValidated(
-                node.path("config"),
-                error -> fail(error.messageKey(), error.args()));
-    }
-
-    private void validateInfluxDbSink(JsonNode node) {
-        InfluxDbSinkConfigParser.parseValidated(
-                node.path("config"),
-                error -> fail(error.messageKey(), error.args()));
-    }
-
-    private void validateHdfsFileSink(JsonNode node) {
-        HdfsFileSinkConfigParser.parseValidated(
-                node.path("config"),
-                error -> fail(error.messageKey(), error.args()));
-    }
-
-    private void validatePreviewSource(JsonNode node) {
-        JsonNode config = node.path("config");
-        String format = validateFormat(config.path("format").asText("JSON"));
-        JsonNode sampleData = config.path("sampleData");
-        if (!sampleData.isArray()) {
-            throw fail("pipeline.validation.preview.sampleDataStringArray");
-        }
-        for (JsonNode item : sampleData) {
-            if (!item.isTextual()) {
-                throw fail("pipeline.validation.preview.sampleDataStringArray");
-            }
-            if ("JSON".equals(format)) {
-                validatePreviewJsonSample(item.asText());
-            }
-        }
-    }
-
-    private void validatePreviewSink(RuntimePipelineValidationSupport.RuntimeNodeDescriptor runtimeNode, JsonNode node) {
-        if (!KAFKA_SINK.equals(runtimeNode.operator())) {
-            return;
-        }
-        JsonNode config = node.path("config");
-        if (config != null && !config.isMissingNode() && !config.isNull() && config.hasNonNull("format")) {
-            String format = validateFormat(config.path("format").asText());
-            if ("TEXT".equals(format)) {
-                requireNonBlank(config, "messageField");
-            }
-        }
-    }
-
-    private void validatePreviewJsonSample(String sample) {
-        try {
-            JsonNode json = objectMapper.readTree(sample);
-            if (!json.isObject()) {
-                throw fail("pipeline.validation.preview.jsonObject");
-            }
-        } catch (IOException exception) {
-            throw fail("pipeline.validation.preview.jsonObject", exception);
-        }
-    }
-
-    private String requireNonBlank(JsonNode config, String fieldName) {
-        String value = config.path(fieldName).asText(null);
-        if (value == null || value.isBlank()) {
-            throw fail("pipeline.validation.config.missingField", fieldName);
-        }
-        return value;
-    }
-
-    private void validateKafkaAuth(JsonNode config, String nodeLabel) {
-        String authType = config.path("authType").asText(null);
-        if (authType == null || authType.isBlank()) {
-            throw fail("pipeline.validation.auth.required", nodeLabel);
-        }
-        if (!SUPPORTED_AUTH_TYPES.contains(authType)) {
-            throw fail("pipeline.validation.auth.oneOf", nodeLabel, joinValues(SUPPORTED_AUTH_TYPES));
-        }
-        switch (authType) {
-            case "NONE" -> {
-                return;
-            }
-            case "SASL_PLAIN" -> {
-                requireNodeField(config, nodeLabel, "username", authType);
-                requireNodeField(config, nodeLabel, "password", authType);
-            }
-            case "SASL_SCRAM" -> {
-                requireNodeField(config, nodeLabel, "username", authType);
-                requireNodeField(config, nodeLabel, "password", authType);
-                String scramMechanism = requireNodeField(config, nodeLabel, "scramMechanism", authType);
-                if (!SUPPORTED_SCRAM_MECHANISMS.contains(scramMechanism)) {
-                    throw fail("pipeline.validation.scram.oneOf", nodeLabel, joinValues(SUPPORTED_SCRAM_MECHANISMS));
-                }
-            }
-            default -> throw fail("pipeline.validation.auth.oneOf", nodeLabel, joinValues(SUPPORTED_AUTH_TYPES));
-        }
-    }
-
-    private String requireNodeField(JsonNode config, String nodeLabel, String fieldName, String authType) {
-        String value = config.path(fieldName).asText(null);
-        if (value == null || value.isBlank()) {
-            throw fail("pipeline.validation.auth.fieldRequired", nodeLabel, fieldName, authType);
-        }
-        return value;
-    }
-
-    private void validateConsumeMode(String consumeMode) {
-        if (!SUPPORTED_CONSUME_MODES.contains(consumeMode)) {
-            throw fail("pipeline.validation.consumeMode.oneOf", joinValues(SUPPORTED_CONSUME_MODES));
-        }
-    }
-
-    private String validateFormat(String format) {
-        if (!SUPPORTED_FORMATS.contains(format)) {
-            throw fail("pipeline.validation.format.oneOf", "JSON, TEXT");
-        }
-        return format;
-    }
-
-    private String joinValues(Set<String> values) {
-        return String.join(", ", values.stream().sorted().toList());
+        return fail(error.messageKey(), error.cause(), error.args());
     }
 
     private IllegalArgumentException fail(String key, Object... args) {
