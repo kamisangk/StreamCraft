@@ -41,7 +41,7 @@ public class GlobalTaskMonitorService {
     }
 
     public GlobalTaskMonitorResponse getMonitor() {
-        List<PipelineRuntimeSnapshot> runtimeSnapshots = pipelineService.listRuntimeSnapshots();
+        List<PipelineRuntimeSnapshot> runtimeSnapshotList = pipelineService.listRuntimeSnapshots();
         FlinkRuntimeTarget runtimeTarget = runtimeTargetService.findTarget().orElse(null);
         int connectedRuntimeTargets = runtimeTarget != null && runtimeTarget.getStatus() == RuntimeTargetStatus.CONNECTED ? 1 : 0;
         int totalRuntimeTargets = runtimeTarget == null ? 0 : 1;
@@ -49,44 +49,44 @@ public class GlobalTaskMonitorService {
         int availableSlots = runtimeTarget == null ? 0 : safeInt(runtimeTarget.getAvailableSlots());
         int usedSlots = totalSlots - availableSlots;
 
-        List<MonitorCard> monitorCards = new ArrayList<>();
+        List<MonitorCard> monitorEntries = new ArrayList<>();
         int skippedLiveMetricsCount = 0;
         long runtimeInputRecords = 0L;
         long runtimeOutputRecords = 0L;
         int includedPipelineCount = 0;
         int missingPipelineCount = 0;
 
-        for (PipelineRuntimeSnapshot runtimeSnapshot : runtimeSnapshots) {
-            PipelineRuntimeView runtimeView = PipelineRuntimeView.of(runtimeSnapshot, runtimeTarget);
-            MonitorCard monitorCard = buildCard(runtimeView);
+        for (PipelineRuntimeSnapshot pipelineRuntimeSnapshot : runtimeSnapshotList) {
+            PipelineRuntimeView runtimeView = PipelineRuntimeView.of(pipelineRuntimeSnapshot, runtimeTarget);
+            MonitorCard monitorEntry = buildCard(runtimeView);
             if (runtimeView.running()) {
-                if (monitorCard.card.metricsAvailable()) {
-                    runtimeInputRecords += safeLong(monitorCard.card.totalInputRecords());
-                    runtimeOutputRecords += safeLong(monitorCard.card.totalOutputRecords());
+                if (monitorEntry.taskCard.metricsAvailable()) {
+                    runtimeInputRecords += safeLong(monitorEntry.taskCard.totalInputRecords());
+                    runtimeOutputRecords += safeLong(monitorEntry.taskCard.totalOutputRecords());
                     includedPipelineCount++;
                 } else {
                     missingPipelineCount++;
                     skippedLiveMetricsCount++;
                 }
             }
-            monitorCards.add(monitorCard);
+            monitorEntries.add(monitorEntry);
         }
 
-        monitorCards.sort(Comparator.comparingInt((MonitorCard card) -> card.monitorStatus.priority())
+        monitorEntries.sort(Comparator.comparingInt((MonitorCard monitorEntry) -> monitorEntry.monitorStatus.priority())
                 .thenComparing(
-                        card -> card.card.updatedAt(),
+                        monitorEntry -> monitorEntry.taskCard.updatedAt(),
                         Comparator.nullsLast(Comparator.reverseOrder())));
 
-        List<GlobalTaskMonitorResponse.TaskCard> cards = monitorCards.stream()
-                .map(card -> card.card)
+        List<GlobalTaskMonitorResponse.TaskCard> taskCards = monitorEntries.stream()
+                .map(monitorEntry -> monitorEntry.taskCard)
                 .toList();
 
-        int failedCount = countByStatus(monitorCards, MonitorStatus.FAILED);
-        int degradedCount = countByStatus(monitorCards, MonitorStatus.DEGRADED);
-        int runningCount = countByStatus(monitorCards, MonitorStatus.RUNNING);
-        int stoppedCount = countByStatus(monitorCards, MonitorStatus.STOPPED);
+        int failedCount = countByStatus(monitorEntries, MonitorStatus.FAILED);
+        int degradedCount = countByStatus(monitorEntries, MonitorStatus.DEGRADED);
+        int runningCount = countByStatus(monitorEntries, MonitorStatus.RUNNING);
+        int stoppedCount = countByStatus(monitorEntries, MonitorStatus.STOPPED);
 
-        int totalTasks = cards.size();
+        int totalTasks = taskCards.size();
         int healthScore = totalTasks == 0 ? 0 : (int) Math.round((runningCount * 100.0) / totalTasks);
 
         GlobalTaskMonitorResponse.Summary summary = new GlobalTaskMonitorResponse.Summary(
@@ -118,7 +118,7 @@ public class GlobalTaskMonitorService {
                 totalTasks,
                 skippedLiveMetricsCount);
 
-        return new GlobalTaskMonitorResponse(summary, statusDistribution, cards, runtimeSnapshot, metadata);
+        return new GlobalTaskMonitorResponse(summary, statusDistribution, taskCards, runtimeSnapshot, metadata);
     }
 
     private MonitorCard buildCard(PipelineRuntimeView runtimeView) {
@@ -139,7 +139,7 @@ public class GlobalTaskMonitorService {
             metricsUnavailableReason = messages.get("main.metrics.unavailable");
         }
 
-        GlobalTaskMonitorResponse.TaskCard card = new GlobalTaskMonitorResponse.TaskCard(
+        GlobalTaskMonitorResponse.TaskCard taskCard = new GlobalTaskMonitorResponse.TaskCard(
                 pipeline.getId(),
                 pipeline.getName(),
                 pipeline.getLastRunStatus() == null ? null : pipeline.getLastRunStatus().name(),
@@ -154,7 +154,7 @@ public class GlobalTaskMonitorService {
                 metricsUnavailableReason,
                 pipeline.getUpdatedAt());
 
-        return new MonitorCard(monitorStatus, card);
+        return new MonitorCard(monitorStatus, taskCard);
     }
 
     private MonitorStatus determineStatus(
@@ -174,9 +174,9 @@ public class GlobalTaskMonitorService {
         return MonitorStatus.STOPPED;
     }
 
-    private int countByStatus(List<MonitorCard> cards, MonitorStatus status) {
-        return (int) cards.stream()
-                .filter(card -> card.monitorStatus == status)
+    private int countByStatus(List<MonitorCard> monitorEntries, MonitorStatus status) {
+        return (int) monitorEntries.stream()
+                .filter(monitorEntry -> monitorEntry.monitorStatus == status)
                 .count();
     }
 
@@ -188,7 +188,7 @@ public class GlobalTaskMonitorService {
         return value == null ? 0L : value;
     }
 
-    private record MonitorCard(MonitorStatus monitorStatus, GlobalTaskMonitorResponse.TaskCard card) {
+    private record MonitorCard(MonitorStatus monitorStatus, GlobalTaskMonitorResponse.TaskCard taskCard) {
     }
 
     private enum MonitorStatus {
