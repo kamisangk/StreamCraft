@@ -8,7 +8,7 @@ import com.streamcraft.service.flink.client.FlinkOverviewClient;
 import com.streamcraft.service.flink.client.LocalCorePreviewClient;
 import com.streamcraft.service.flink.client.LocalCoreProcessClient;
 import com.streamcraft.service.flink.service.MergedRuntimeTargetValidationGateway;
-import com.streamcraft.service.flink.service.MergedFlinkJobGateway;
+import com.streamcraft.service.flink.service.CompositeFlinkJobGateway;
 import com.streamcraft.service.pipeline.client.FlinkJobGateway;
 import com.streamcraft.service.pipeline.client.FlinkMetricsClient;
 import com.streamcraft.service.security.InternalAccessProperties;
@@ -66,7 +66,7 @@ public class FlinkClientConfiguration {
             FlinkJobControlClient flinkJobControlClient,
             FlinkGatewayProperties properties,
             InternalAccessProperties internalAccessProperties) {
-        return new MergedFlinkJobGateway(
+        return new CompositeFlinkJobGateway(
                 coreSubmissionClient,
                 corePreviewClient,
                 flinkJobControlClient,
