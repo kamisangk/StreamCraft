@@ -37,8 +37,8 @@ public class OverviewService {
 
     public OverviewResponse getOverview() {
         FlinkRuntimeTarget runtimeTarget = runtimeTargetService.findTarget().orElse(null);
-        List<PipelineRuntimeSnapshot> runtimeSnapshots = pipelineService.listRuntimeSnapshots();
-        List<Pipeline> pipelines = runtimeSnapshots.stream()
+        List<PipelineRuntimeSnapshot> pipelineRuntimeSnapshots = pipelineService.listRuntimeSnapshots();
+        List<Pipeline> pipelines = pipelineRuntimeSnapshots.stream()
                 .map(PipelineRuntimeSnapshot::pipeline)
                 .toList();
 
@@ -46,21 +46,22 @@ public class OverviewService {
                 ? List.of()
                 : List.of(toCapacity(runtimeTarget));
 
-        SnapshotAccumulator snapshot = new SnapshotAccumulator();
+        SnapshotAccumulator overviewAccumulator = new SnapshotAccumulator();
         List<OverviewResponse.PipelineRow> pipelineRows = new ArrayList<>();
-        for (PipelineRuntimeSnapshot runtimeSnapshot : runtimeSnapshots) {
-            pipelineRows.add(buildPipelineRow(PipelineRuntimeView.of(runtimeSnapshot, runtimeTarget), snapshot));
+        for (PipelineRuntimeSnapshot pipelineRuntimeSnapshot : pipelineRuntimeSnapshots) {
+            pipelineRows.add(buildPipelineRow(
+                    PipelineRuntimeView.of(pipelineRuntimeSnapshot, runtimeTarget), overviewAccumulator));
         }
         pipelineRows.sort(Comparator.comparing(
                         OverviewResponse.PipelineRow::updatedAt,
                         Comparator.nullsLast(Comparator.reverseOrder()))
                 .thenComparing(OverviewResponse.PipelineRow::pipelineId, Comparator.nullsLast(Comparator.naturalOrder())));
 
-        OverviewResponse.RuntimeSnapshot runtimeSnapshot = new OverviewResponse.RuntimeSnapshot(
-                snapshot.totalInputRecords,
-                snapshot.totalOutputRecords,
-                snapshot.includedPipelineCount,
-                snapshot.missingPipelineCount);
+        OverviewResponse.RuntimeSnapshot overviewRuntimeSnapshot = new OverviewResponse.RuntimeSnapshot(
+                overviewAccumulator.totalInputRecords,
+                overviewAccumulator.totalOutputRecords,
+                overviewAccumulator.includedPipelineCount,
+                overviewAccumulator.missingPipelineCount);
 
         OverviewResponse.Summary summary = new OverviewResponse.Summary(
                 runtimeTarget == null ? 0 : 1,
@@ -68,14 +69,14 @@ public class OverviewService {
                 pipelines.size(),
                 (int) pipelines.stream().filter(p -> p.getLastRunStatus() == PipelineRunStatus.RUNNING).count(),
                 (int) pipelines.stream().filter(p -> p.getLastRunStatus() != PipelineRunStatus.RUNNING).count(),
-                snapshot.unhealthyPipelineCount,
+                overviewAccumulator.unhealthyPipelineCount,
                 pipelines.stream()
                         .map(Pipeline::getLastSubmittedAt)
                         .filter(i -> i != null)
                         .max(Comparator.naturalOrder())
                         .orElse(null));
 
-        return new OverviewResponse(summary, runtimeSnapshot, runtimeTargetCapacities, pipelineRows);
+        return new OverviewResponse(summary, overviewRuntimeSnapshot, runtimeTargetCapacities, pipelineRows);
     }
 
     private OverviewResponse.RuntimeTargetCapacity toCapacity(FlinkRuntimeTarget runtimeTarget) {
@@ -100,7 +101,7 @@ public class OverviewService {
 
     private OverviewResponse.PipelineRow buildPipelineRow(
             PipelineRuntimeView runtimeView,
-            SnapshotAccumulator snapshot) {
+            SnapshotAccumulator overviewAccumulator) {
         Pipeline pipeline = runtimeView.pipeline();
         Labels labels = parseLabels(pipeline.getDefinitionJson());
         boolean running = runtimeView.running();
@@ -123,18 +124,18 @@ public class OverviewService {
 
         if (running) {
             if (metricsAvailable) {
-                snapshot.totalInputRecords += aggregate.inputRecords;
-                snapshot.totalOutputRecords += aggregate.outputRecords;
-                snapshot.includedPipelineCount++;
+                overviewAccumulator.totalInputRecords += aggregate.inputRecords;
+                overviewAccumulator.totalOutputRecords += aggregate.outputRecords;
+                overviewAccumulator.includedPipelineCount++;
             } else {
-                snapshot.missingPipelineCount++;
+                overviewAccumulator.missingPipelineCount++;
             }
         }
 
         if (pipeline.getLastRunStatus() == PipelineRunStatus.FAILED
                 || runtimeView.runtimeTargetUnavailable()
                 || (running && !metricsAvailable)) {
-            snapshot.unhealthyPipelineCount++;
+            overviewAccumulator.unhealthyPipelineCount++;
         }
 
         return new OverviewResponse.PipelineRow(
