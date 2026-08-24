@@ -61,10 +61,6 @@ public class PipelineRuntime {
         this.executionMode = executionMode == null ? ExecutionMode.RUN : executionMode;
     }
 
-    public PipelineRuntime(StreamExecutionEnvironment env) {
-        this(env, PipelineRuntimeDependencies.defaults(), false, ExecutionMode.RUN);
-    }
-
     public PipelineRuntime(StreamExecutionEnvironment env, boolean testMode) {
         this(env, PipelineRuntimeDependencies.defaults(), testMode, ExecutionMode.RUN);
     }
