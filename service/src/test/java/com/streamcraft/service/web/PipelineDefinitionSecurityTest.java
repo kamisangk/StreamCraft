@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streamcraft.service.config.SecurityConfig;
 import com.streamcraft.service.config.StreamCraftAuthProperties;
+import com.streamcraft.service.pipeline.service.PipelineExecutionService;
 import com.streamcraft.service.pipeline.service.PipelineRuntimeQueryService;
 import com.streamcraft.service.pipeline.service.PipelineService;
 import com.streamcraft.service.pipeline.web.PipelineApiController;
@@ -49,6 +50,9 @@ class PipelineDefinitionSecurityTest {
 
     @MockBean
     private PipelineRuntimeQueryService pipelineRuntimeQueryService;
+
+    @MockBean
+    private PipelineExecutionService pipelineExecutionService;
 
     @MockBean
     private UserDetailsService userDetailsService;
