@@ -4,25 +4,19 @@ import com.streamcraft.core.model.DataEntity;
 import com.streamcraft.core.model.PipelineNode;
 import com.streamcraft.core.runtime.transform.TransformFactory;
 import com.streamcraft.core.runtime.transform.TransformOutputs;
-import com.streamcraft.shared.aggregation.AggregateConfig;
 import com.streamcraft.shared.aggregation.AggregateConfig.AggregationFunction;
-import com.streamcraft.shared.aggregation.AggregateConfig.EventTimeUnit;
-import com.streamcraft.shared.aggregation.AggregateConfig.OutputMode;
 import com.streamcraft.shared.aggregation.AggregateConfig.SortDirection;
 import com.streamcraft.shared.aggregation.AggregateConfig.TimeMode;
-import com.streamcraft.shared.aggregation.AggregateConfig.TimeUnit;
 import com.streamcraft.shared.aggregation.AggregateConfig.WindowType;
 import com.streamcraft.shared.aggregation.AggregateConfigParser;
 import com.streamcraft.shared.fields.FieldPathSupport;
+import com.streamcraft.core.runtime.transform.transforms.AggregateRuntimeConfig.RuntimeAggregateConfig;
+import com.streamcraft.core.runtime.transform.transforms.AggregateRuntimeConfig.RuntimeAggregationSpec;
+import com.streamcraft.core.runtime.transform.transforms.AggregateRuntimeConfig.RuntimeFieldPath;
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.sql.Timestamp;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -30,9 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
-import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner;
-import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.AggregateFunction;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -50,11 +41,11 @@ public class AggregateTransformFactory implements TransformFactory {
 
     @Override
     public TransformOutputs apply(DataStream<DataEntity> input, PipelineNode node) {
-        RuntimeAggregateConfig config = RuntimeAggregateConfig.from(
+        RuntimeAggregateConfig config = AggregateRuntimeConfig.from(
                 AggregateConfigParser.parse(node.config(), IllegalArgumentException::new));
         AggregateContext context = new AggregateContext(node.id(), config);
         DataStream<DataEntity> stream = config.timeMode() == TimeMode.EVENT_TIME && config.timeWindow()
-                ? input.assignTimestampsAndWatermarks(watermarkStrategy(config))
+                ? input.assignTimestampsAndWatermarks(AggregateTimeSupport.watermarkStrategy(config))
                 : input;
 
         if (config.windowType() == WindowType.COUNT) {
@@ -78,8 +69,12 @@ public class AggregateTransformFactory implements TransformFactory {
     private static DataStream<DataEntity> applyTimeWindow(DataStream<DataEntity> input, AggregateContext context) {
         AggregateFunction<DataEntity, MetricsAccumulator, MetricsAccumulator> aggregateFunction =
                 new MetricsAggregateFunction(context.config());
-        Duration windowSize = duration(context.config().windowSize(), context.config().timeUnit());
-        Duration windowSlide = duration(context.config().windowSlide(), context.config().timeUnit());
+        Duration windowSize = AggregateTimeSupport.duration(
+                context.config().windowSize(),
+                context.config().timeUnit());
+        Duration windowSlide = AggregateTimeSupport.duration(
+                context.config().windowSlide(),
+                context.config().timeUnit());
 
         if (context.config().grouped()) {
             if (context.config().windowType() == WindowType.SLIDING_TIME) {
@@ -118,250 +113,25 @@ public class AggregateTransformFactory implements TransformFactory {
                 .aggregate(aggregateFunction, new AllTimeWindowProcessFunction(context));
     }
 
-    private static WatermarkStrategy<DataEntity> watermarkStrategy(RuntimeAggregateConfig config) {
-        return WatermarkStrategy
-                .<DataEntity>forBoundedOutOfOrderness(Duration.ofMillis(toMillis(config.watermarkDelay(), config.timeUnit())))
-                .withTimestampAssigner((SerializableTimestampAssigner<DataEntity>)
-                        (element, recordTimestamp) -> eventTimestamp(element, config));
-    }
-
-    private static long eventTimestamp(DataEntity element, RuntimeAggregateConfig config) {
-        if (config.eventTimePath().path().isBlank()) {
-            return element.timestamp();
-        }
-        Long timestamp = parseEventTimestamp(rawValue(element, config.eventTimePath()), config.eventTimeUnit());
-        return timestamp == null ? element.timestamp() : timestamp;
-    }
-
-    private static Long parseEventTimestamp(Object value, EventTimeUnit unit) {
-        if (value instanceof Number number) {
-            return eventTimeNumber(number.longValue(), unit);
-        }
-        if (value instanceof String text && !text.isBlank()) {
-            String normalized = text.trim();
-            try {
-                return eventTimeNumber(Long.parseLong(normalized), unit);
-            } catch (NumberFormatException ignored) {
-                try {
-                    return Instant.parse(normalized).toEpochMilli();
-                } catch (Exception ignoredAgain) {
-                    try {
-                        return Timestamp.valueOf(normalized).getTime();
-                    } catch (Exception ignoredTimestamp) {
-                        return null;
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
-    private static long eventTimeNumber(long value, EventTimeUnit unit) {
-        return switch (unit) {
-            case MILLISECONDS -> value;
-            case SECONDS -> value * 1000L;
-        };
-    }
-
-    private static Duration duration(long value, TimeUnit unit) {
-        return switch (unit) {
-            case MILLISECONDS -> Duration.ofMillis(value);
-            case SECONDS -> Duration.ofSeconds(value);
-            case MINUTES -> Duration.ofMinutes(value);
-            case HOURS -> Duration.ofHours(value);
-        };
-    }
-
-    private static long toMillis(long value, TimeUnit unit) {
-        return switch (unit) {
-            case MILLISECONDS -> value;
-            case SECONDS -> value * 1000L;
-            case MINUTES -> value * 60_000L;
-            case HOURS -> value * 3_600_000L;
-        };
-    }
-
     private static DataEntity output(AggregateContext context, MetricsAccumulator accumulator, Map<String, Object> window) {
-        Map<String, Object> fields = new LinkedHashMap<>();
-        if (context.config().outputMode() == OutputMode.FLAT) {
-            fields.put("windowType", window.get("type"));
-            if (window.containsKey("start")) {
-                fields.put(context.config().windowStartField(), window.get("start"));
-            }
-            if (window.containsKey("end")) {
-                fields.put(context.config().windowEndField(), window.get("end"));
-            }
-            if (window.containsKey("size")) {
-                fields.put("windowSize", window.get("size"));
-            }
-            fields.putAll(accumulator.group());
-            fields.putAll(accumulator.metrics(context.config().aggregations()));
-        } else {
-            fields.put("window", window);
-            fields.put("group", accumulator.group());
-            fields.put("metrics", accumulator.metrics(context.config().aggregations()));
-        }
-
-        Map<String, String> headers = new LinkedHashMap<>();
-        headers.put("operator", "AGGREGATE");
-        headers.put("nodeId", context.nodeId());
-        headers.put("windowType", context.config().windowType().name());
-        return new DataEntity(outputId(context, accumulator, window),
-                System.currentTimeMillis(),
-                fields,
-                headers);
-    }
-
-    private static String outputId(AggregateContext context, MetricsAccumulator accumulator, Map<String, Object> window) {
-        if (context.config().timeWindow()) {
-            return "aggregate:%s:%s:%s:%s".formatted(
-                    context.nodeId(),
-                    window.get("start"),
-                    window.get("end"),
-                    groupIdentity(accumulator.group()));
-        }
-        return "aggregate:%s:count:%s".formatted(context.nodeId(), UUID.randomUUID());
-    }
-
-    private static String groupIdentity(Map<String, Object> group) {
-        if (group.isEmpty()) {
-            return "global";
-        }
-        StringBuilder builder = new StringBuilder();
-        group.forEach((key, value) -> builder.append(key.length())
-                .append(':')
-                .append(key)
-                .append('=')
-                .append(value == null ? "null" : value.getClass().getName())
-                .append('#')
-                .append(value == null ? -1 : Objects.toString(value).length())
-                .append(':')
-                .append(Objects.toString(value, ""))
-                .append(';'));
-        return Base64.getUrlEncoder()
-                .withoutPadding()
-                .encodeToString(builder.toString().getBytes(StandardCharsets.UTF_8));
+        return AggregateOutputSupport.output(
+                context.nodeId(),
+                context.config(),
+                accumulator.group(),
+                accumulator.metrics(context.config().aggregations()),
+                window);
     }
 
     private static Map<String, Object> countWindow(AggregateContext context) {
-        Map<String, Object> window = new LinkedHashMap<>();
-        window.put("type", context.config().windowType().name());
-        window.put("size", context.config().countWindowSize());
-        return window;
+        return AggregateOutputSupport.countWindow(context.config());
     }
 
     private static Map<String, Object> timeWindow(AggregateContext context, TimeWindow timeWindow) {
-        Map<String, Object> window = new LinkedHashMap<>();
-        window.put("type", context.config().windowType().name());
-        window.put("timeMode", context.config().timeMode().name());
-        window.put("start", timeWindow.getStart());
-        window.put("end", timeWindow.getEnd());
-        return window;
+        return AggregateOutputSupport.timeWindow(context.config(), timeWindow);
     }
 
     private record AggregateContext(String nodeId, RuntimeAggregateConfig config) implements Serializable {
         private static final long serialVersionUID = 1L;
-    }
-
-    private record RuntimeAggregateConfig(
-            boolean grouped,
-            WindowType windowType,
-            TimeMode timeMode,
-            TimeUnit timeUnit,
-            long windowSize,
-            long windowSlide,
-            long watermarkDelay,
-            long countWindowSize,
-            RuntimeFieldPath eventTimePath,
-            EventTimeUnit eventTimeUnit,
-            OutputMode outputMode,
-            String windowStartField,
-            String windowEndField,
-            List<RuntimeFieldPath> groupPaths,
-            List<RuntimeAggregationSpec> aggregations) implements Serializable {
-
-        private static final long serialVersionUID = 1L;
-
-        private static RuntimeAggregateConfig from(AggregateConfig config) {
-            return new RuntimeAggregateConfig(
-                    config.grouped(),
-                    config.windowType(),
-                    config.timeMode(),
-                    config.timeUnit(),
-                    config.windowSize(),
-                    config.windowSlide(),
-                    config.watermarkDelay(),
-                    config.countWindowSize(),
-                    RuntimeFieldPath.from(config.eventTimeField()),
-                    config.eventTimeUnit(),
-                    config.outputMode(),
-                    config.windowStartField(),
-                    config.windowEndField(),
-                    config.groupBy().stream()
-                            .map(RuntimeFieldPath::from)
-                            .toList(),
-                    config.aggregations().stream()
-                            .map(spec -> new RuntimeAggregationSpec(
-                                    spec.function(),
-                                    RuntimeFieldPath.from(spec.field()),
-                                    spec.outputField(),
-                                    RuntimeFieldPath.from(spec.sortField()),
-                                    spec.sortDirection(),
-                                    spec.limit()))
-                            .toList());
-        }
-
-        private boolean timeWindow() {
-            return windowType == WindowType.TUMBLING_TIME || windowType == WindowType.SLIDING_TIME;
-        }
-    }
-
-    private record RuntimeAggregationSpec(
-            AggregationFunction function,
-            RuntimeFieldPath fieldPath,
-            String outputField,
-            RuntimeFieldPath sortPath,
-            SortDirection sortDirection,
-            int limit) implements Serializable {
-
-        private static final long serialVersionUID = 1L;
-    }
-
-    private record RuntimeFieldPath(String path, List<String> segments) implements Serializable {
-
-        private static final long serialVersionUID = 1L;
-
-        private static RuntimeFieldPath from(String path) {
-            String normalized = path == null ? "" : path.trim();
-            List<String> segments = normalized.contains(".")
-                    ? Arrays.asList(normalized.split("\\.", -1))
-                    : List.of();
-            return new RuntimeFieldPath(normalized, segments);
-        }
-
-        private FieldPathSupport.Lookup lookup(Map<String, Object> fields) {
-            if (fields == null || path.isBlank()) {
-                return FieldPathSupport.Lookup.notFound();
-            }
-            if (fields.containsKey(path)) {
-                return FieldPathSupport.Lookup.found(fields.get(path));
-            }
-            if (segments.isEmpty()) {
-                return FieldPathSupport.Lookup.notFound();
-            }
-
-            Object current = fields;
-            for (String segment : segments) {
-                if (segment.isEmpty() || !(current instanceof Map<?, ?> currentMap)) {
-                    return FieldPathSupport.Lookup.notFound();
-                }
-                if (!currentMap.containsKey(segment)) {
-                    return FieldPathSupport.Lookup.notFound();
-                }
-                current = currentMap.get(segment);
-            }
-            return FieldPathSupport.Lookup.found(current);
-        }
     }
 
     private static final class GroupKey implements Serializable {
@@ -457,7 +227,7 @@ public class AggregateTransformFactory implements TransformFactory {
                     metric.count++;
                     continue;
                 }
-                Object rawValue = rawValue(entity, spec.fieldPath());
+                Object rawValue = AggregateRuntimeConfig.rawValue(entity, spec.fieldPath());
                 if (rawValue == null) {
                     continue;
                 }
@@ -482,7 +252,7 @@ public class AggregateTransformFactory implements TransformFactory {
                     case TOP_N -> {
                         Object sortValue = spec.sortPath().path().isBlank()
                                 ? rawValue
-                                : rawValue(entity, spec.sortPath());
+                                : AggregateRuntimeConfig.rawValue(entity, spec.sortPath());
                         metric.topValues.add(new TopValue(rawValue, sortValue == null ? rawValue : sortValue));
                     }
                     case COLLECT_LIST -> metric.listValues.add(rawValue);
@@ -586,14 +356,6 @@ public class AggregateTransformFactory implements TransformFactory {
 
     private record TopValue(Object value, Object sortValue) implements Serializable {
         private static final long serialVersionUID = 1L;
-    }
-
-    private static Object rawValue(DataEntity entity, RuntimeFieldPath field) {
-        FieldPathSupport.Lookup lookup = field.lookup(entity.fields());
-        if (!lookup.found() || lookup.value() == null) {
-            return null;
-        }
-        return lookup.value();
     }
 
     private static Double numeric(Object value) {
