@@ -85,37 +85,6 @@ public class PipelineRuntime {
                 .build(), testMode, executionMode);
     }
 
-    public PipelineRuntime(StreamExecutionEnvironment env,
-                           KafkaSourceFactory kafkaSourceFactory,
-                           MockSourceFactory mockSourceFactory,
-                           ElasticsearchSourceFactory elasticsearchSourceFactory,
-                           InfluxDbSourceFactory influxDbSourceFactory,
-                           HdfsFileSourceFactory hdfsFileSourceFactory,
-                           JdbcSourceFactory jdbcSourceFactory,
-                           KafkaSinkFactory kafkaSinkFactory,
-                           JdbcSinkFactory jdbcSinkFactory,
-                           ElasticsearchSinkFactory elasticsearchSinkFactory,
-                           InfluxDbSinkFactory influxDbSinkFactory,
-                           HdfsFileSinkFactory hdfsFileSinkFactory,
-                           TransformOperatorFactory transformFactory,
-                           boolean testMode,
-                           ExecutionMode executionMode) {
-        this(env, PipelineRuntimeDependencies.builder()
-                .kafkaSourceFactory(kafkaSourceFactory)
-                .mockSourceFactory(mockSourceFactory)
-                .elasticsearchSourceFactory(elasticsearchSourceFactory)
-                .influxDbSourceFactory(influxDbSourceFactory)
-                .hdfsFileSourceFactory(hdfsFileSourceFactory)
-                .jdbcSourceFactory(jdbcSourceFactory)
-                .kafkaSinkFactory(kafkaSinkFactory)
-                .jdbcSinkFactory(jdbcSinkFactory)
-                .elasticsearchSinkFactory(elasticsearchSinkFactory)
-                .influxDbSinkFactory(influxDbSinkFactory)
-                .hdfsFileSinkFactory(hdfsFileSinkFactory)
-                .transformFactory(transformFactory)
-                .build(), testMode, executionMode);
-    }
-
     public void run(PipelineDefinition definition) {
         RuntimeGraphPlanner.Plan plan = new RuntimeGraphPlanner().plan(definition);
         Map<NodePortKey, DataStream<DataEntity>> streamsByOutputPort = new HashMap<>();
