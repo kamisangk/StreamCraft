@@ -644,11 +644,22 @@ class PipelineRuntimeAggregateExecutionTest {
 
         PipelineRuntime runtime = new PipelineRuntime(
                 env,
-                new KafkaSourceFactory(),
-                new DataEntitySourceFactory(),
-                new CapturingKafkaSinkFactory(),
-                new TransformOperatorFactory(),
-                true);
+                PipelineRuntimeDependencies.builder()
+                        .kafkaSourceFactory(new KafkaSourceFactory())
+                        .mockSourceFactory(new DataEntitySourceFactory())
+                        .elasticsearchSourceFactory(new ElasticsearchSourceFactory())
+                        .influxDbSourceFactory(new InfluxDbSourceFactory())
+                        .hdfsFileSourceFactory(new HdfsFileSourceFactory())
+                        .jdbcSourceFactory(new JdbcSourceFactory())
+                        .kafkaSinkFactory(new CapturingKafkaSinkFactory())
+                        .jdbcSinkFactory(new JdbcSinkFactory())
+                        .elasticsearchSinkFactory(new ElasticsearchSinkFactory())
+                        .influxDbSinkFactory(new InfluxDbSinkFactory())
+                        .hdfsFileSinkFactory(new HdfsFileSinkFactory())
+                        .transformFactory(new TransformOperatorFactory())
+                        .build(),
+                true,
+                ExecutionMode.RUN);
 
         try {
             runtime.run(definition);
