@@ -61,30 +61,6 @@ public class PipelineRuntime {
         this.executionMode = executionMode == null ? ExecutionMode.RUN : executionMode;
     }
 
-    public PipelineRuntime(StreamExecutionEnvironment env,
-                           KafkaSourceFactory kafkaSourceFactory,
-                           MockSourceFactory mockSourceFactory,
-                           JdbcSourceFactory jdbcSourceFactory,
-                           KafkaSinkFactory kafkaSinkFactory,
-                           TransformOperatorFactory transformFactory,
-                           boolean testMode,
-                           ExecutionMode executionMode) {
-        this(env, PipelineRuntimeDependencies.builder()
-                .kafkaSourceFactory(kafkaSourceFactory)
-                .mockSourceFactory(mockSourceFactory)
-                .elasticsearchSourceFactory(new ElasticsearchSourceFactory())
-                .influxDbSourceFactory(new InfluxDbSourceFactory())
-                .hdfsFileSourceFactory(new HdfsFileSourceFactory())
-                .jdbcSourceFactory(jdbcSourceFactory)
-                .kafkaSinkFactory(kafkaSinkFactory)
-                .jdbcSinkFactory(new JdbcSinkFactory())
-                .elasticsearchSinkFactory(new ElasticsearchSinkFactory())
-                .influxDbSinkFactory(new InfluxDbSinkFactory())
-                .hdfsFileSinkFactory(new HdfsFileSinkFactory())
-                .transformFactory(transformFactory)
-                .build(), testMode, executionMode);
-    }
-
     public void run(PipelineDefinition definition) {
         RuntimeGraphPlanner.Plan plan = new RuntimeGraphPlanner().plan(definition);
         Map<NodePortKey, DataStream<DataEntity>> streamsByOutputPort = new HashMap<>();
