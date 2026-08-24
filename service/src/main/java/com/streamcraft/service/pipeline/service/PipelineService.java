@@ -1,7 +1,6 @@
 package com.streamcraft.service.pipeline.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streamcraft.service.runtime.model.FlinkRuntimeTarget;
 import com.streamcraft.service.runtime.service.FlinkRuntimeTargetService;
 import com.streamcraft.service.config.PipelineRuntimeProperties;
@@ -17,7 +16,6 @@ import com.streamcraft.service.pipeline.model.Pipeline;
 import com.streamcraft.service.pipeline.model.PipelineMetrics;
 import com.streamcraft.service.pipeline.model.PipelineRunStatus;
 import com.streamcraft.service.pipeline.persistence.PipelineRepository;
-import com.streamcraft.service.pipeline.web.PipelinePreviewOutputResponse;
 import com.streamcraft.service.pipeline.web.PipelinePreviewRequest;
 import com.streamcraft.service.pipeline.web.PipelinePreviewResponse;
 import com.streamcraft.service.pipeline.web.RunPipelineRequest;
@@ -25,9 +23,7 @@ import com.streamcraft.service.pipeline.web.SavePipelineRequest;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -38,9 +34,8 @@ import org.springframework.web.client.HttpClientErrorException;
 public class PipelineService {
 
     private final PipelineRepository repository;
-    private final ObjectMapper objectMapper;
     private final PipelineDefinitionValidator validator;
-    private final PipelineDefinitionNormalizer definitionNormalizer;
+    private final PipelineDefinitionService definitionService;
     private final FlinkRuntimeTargetService runtimeTargetService;
     private final FlinkJobGateway flinkJobGateway;
     private final FlinkMetricsClient flinkMetricsClient;
@@ -49,43 +44,21 @@ public class PipelineService {
 
     @Autowired
     public PipelineService(PipelineRepository repository,
-                           ObjectMapper objectMapper,
                            PipelineDefinitionValidator validator,
-                           PipelineDefinitionNormalizer definitionNormalizer,
+                           PipelineDefinitionService definitionService,
                            FlinkRuntimeTargetService runtimeTargetService,
                            FlinkJobGateway flinkJobGateway,
                            FlinkMetricsClient flinkMetricsClient,
                            PipelineRuntimeProperties runtimeProperties,
                            UiMessageService messages) {
         this.repository = repository;
-        this.objectMapper = objectMapper;
         this.validator = validator;
-        this.definitionNormalizer = definitionNormalizer;
+        this.definitionService = definitionService;
         this.runtimeTargetService = runtimeTargetService;
         this.flinkJobGateway = flinkJobGateway;
         this.flinkMetricsClient = flinkMetricsClient;
         this.runtimeProperties = runtimeProperties;
         this.messages = messages == null ? UiMessageService.englishFallback() : messages;
-    }
-
-    public PipelineService(PipelineRepository repository,
-                           ObjectMapper objectMapper,
-                           PipelineDefinitionValidator validator,
-                           PipelineDefinitionNormalizer definitionNormalizer,
-                           FlinkRuntimeTargetService runtimeTargetService,
-                           FlinkJobGateway flinkJobGateway,
-                           FlinkMetricsClient flinkMetricsClient,
-                           PipelineRuntimeProperties runtimeProperties) {
-        this(
-                repository,
-                objectMapper,
-                validator,
-                definitionNormalizer,
-                runtimeTargetService,
-                flinkJobGateway,
-                flinkMetricsClient,
-                runtimeProperties,
-                UiMessageService.englishFallback());
     }
 
     @Transactional
@@ -94,8 +67,7 @@ public class PipelineService {
                 ? new Pipeline()
                 : getStored(request.id());
 
-        String normalizedDefinition = definitionNormalizer.normalize(request.definitionJson());
-        validator.validateForSave(normalizedDefinition);
+        String normalizedDefinition = definitionService.normalizeAndValidateForSave(request.definitionJson());
 
         pipeline.setName(request.name());
         pipeline.setDescription(request.description());
@@ -133,24 +105,17 @@ public class PipelineService {
 
     @Transactional(readOnly = true)
     public JsonNode getDefinition(Long id) {
-        Pipeline pipeline = getStored(id);
-        try {
-            JsonNode definition = objectMapper.readTree(pipeline.getDefinitionJson());
-            return definitionNormalizer.normalizeTree(definition);
-        } catch (IOException ex) {
-            throw new IllegalStateException(messages.get("pipeline.error.storedDefinitionInvalidJson"), ex);
-        }
+        return definitionService.getDefinition(id);
     }
 
     public PipelinePreviewResponse preview(PipelinePreviewRequest request) {
-        String normalizedDefinition = definitionNormalizer.normalize(request.definitionJson());
-        validator.validateForPreview(normalizedDefinition);
+        String normalizedDefinition = definitionService.normalizeAndValidateForPreview(request.definitionJson());
         try {
             PipelinePreviewExecutionResult result = toPreviewExecutionResult(
                     flinkJobGateway.preview(new PreviewFlinkJobRequest(
                             normalizedDefinition,
                             1)));
-            return toPreviewResponse(normalizedDefinition, result);
+            return definitionService.toPreviewResponse(normalizedDefinition, result);
         } catch (Exception exception) {
             throw new IllegalStateException(messages.get("pipeline.error.previewExecutionFailed"), exception);
         }
@@ -233,16 +198,6 @@ public class PipelineService {
     private Pipeline getStored(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException(messages.get("pipeline.error.notFound")));
-    }
-
-    PipelinePreviewResponse toPreviewResponse(String normalizedDefinition, PipelinePreviewExecutionResult result) {
-        Map<String, String> titleByNodeId = indexPreviewTitles(normalizedDefinition);
-        return new PipelinePreviewResponse(result.outputs().stream()
-                .map(output -> new PipelinePreviewOutputResponse(
-                        output.nodeId(),
-                        titleByNodeId.getOrDefault(output.nodeId(), output.nodeId()),
-                        output.records()))
-                .toList());
     }
 
     private Pipeline withResolvedRuntimeStatus(Pipeline pipeline) {
@@ -328,7 +283,8 @@ public class PipelineService {
 
     private PipelineMetrics resolveMetrics(Pipeline pipeline, FlinkRuntimeTarget runtimeTarget) {
         try {
-            DefinitionNodes definitionNodes = parseDefinitionNodes(pipeline.getDefinitionJson());
+            PipelineDefinitionService.DefinitionNodes definitionNodes =
+                    definitionService.parseDefinitionNodes(pipeline.getDefinitionJson());
             return flinkMetricsClient.getJobMetrics(
                     runtimeTarget.getJobManagerUrl(),
                     pipeline.getLastJobId(),
@@ -336,39 +292,6 @@ public class PipelineService {
                     definitionNodes.nodeNames());
         } catch (IOException ex) {
             throw new IllegalStateException(messages.get("pipeline.error.parseDefinitionFailed"), ex);
-        }
-    }
-
-    private DefinitionNodes parseDefinitionNodes(String definitionJson) throws IOException {
-        JsonNode definition = objectMapper.readTree(definitionJson);
-        JsonNode nodes = definition.path("nodes");
-
-        List<String> nodeIds = new ArrayList<>();
-        Map<String, String> nodeNames = new HashMap<>();
-
-        for (JsonNode node : nodes) {
-            String nodeId = node.path("id").asText();
-            String nodeName = node.path("name").asText();
-            nodeIds.add(nodeId);
-            nodeNames.put(nodeId, nodeName);
-        }
-
-        return new DefinitionNodes(nodeIds, nodeNames);
-    }
-
-    private Map<String, String> indexPreviewTitles(String definitionJson) {
-        try {
-            JsonNode root = objectMapper.readTree(definitionJson);
-            Map<String, String> titles = new HashMap<>();
-            for (JsonNode node : root.path("nodes")) {
-                String nodeId = node.path("id").asText();
-                String displayName = node.path("displayName").asText("");
-                String fallbackName = node.path("name").asText(nodeId);
-                titles.put(nodeId, displayName == null || displayName.isBlank() ? fallbackName : displayName);
-            }
-            return titles;
-        } catch (IOException exception) {
-            throw new IllegalStateException(messages.get("pipeline.error.mapPreviewTitlesFailed"), exception);
         }
     }
 
@@ -422,6 +345,4 @@ public class PipelineService {
         return value != null && !value.isBlank();
     }
 
-    private record DefinitionNodes(List<String> nodeIds, Map<String, String> nodeNames) {
-    }
 }
