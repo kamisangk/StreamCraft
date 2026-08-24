@@ -29,10 +29,20 @@ class PipelineRuntimePreviewModeContractTest {
 
         PipelineRuntime runtime = new PipelineRuntime(
                 env,
-                kafkaSourceFactory,
-                mockSourceFactory,
-                new NoOpKafkaSinkFactory(),
-                new TransformOperatorFactory(),
+                PipelineRuntimeDependencies.builder()
+                        .kafkaSourceFactory(kafkaSourceFactory)
+                        .mockSourceFactory(mockSourceFactory)
+                        .elasticsearchSourceFactory(new ElasticsearchSourceFactory())
+                        .influxDbSourceFactory(new InfluxDbSourceFactory())
+                        .hdfsFileSourceFactory(new HdfsFileSourceFactory())
+                        .jdbcSourceFactory(new JdbcSourceFactory())
+                        .kafkaSinkFactory(new NoOpKafkaSinkFactory())
+                        .jdbcSinkFactory(new JdbcSinkFactory())
+                        .elasticsearchSinkFactory(new ElasticsearchSinkFactory())
+                        .influxDbSinkFactory(new InfluxDbSinkFactory())
+                        .hdfsFileSinkFactory(new HdfsFileSinkFactory())
+                        .transformFactory(new TransformOperatorFactory())
+                        .build(),
                 false,
                 ExecutionMode.PREVIEW);
 
@@ -50,10 +60,20 @@ class PipelineRuntimePreviewModeContractTest {
 
         PipelineRuntime runtime = new PipelineRuntime(
                 env,
-                kafkaSourceFactory,
-                mockSourceFactory,
-                new NoOpKafkaSinkFactory(),
-                new TransformOperatorFactory(),
+                PipelineRuntimeDependencies.builder()
+                        .kafkaSourceFactory(kafkaSourceFactory)
+                        .mockSourceFactory(mockSourceFactory)
+                        .elasticsearchSourceFactory(new ElasticsearchSourceFactory())
+                        .influxDbSourceFactory(new InfluxDbSourceFactory())
+                        .hdfsFileSourceFactory(new HdfsFileSourceFactory())
+                        .jdbcSourceFactory(new JdbcSourceFactory())
+                        .kafkaSinkFactory(new NoOpKafkaSinkFactory())
+                        .jdbcSinkFactory(new JdbcSinkFactory())
+                        .elasticsearchSinkFactory(new ElasticsearchSinkFactory())
+                        .influxDbSinkFactory(new InfluxDbSinkFactory())
+                        .hdfsFileSinkFactory(new HdfsFileSinkFactory())
+                        .transformFactory(new TransformOperatorFactory())
+                        .build(),
                 false,
                 ExecutionMode.RUN);
 
