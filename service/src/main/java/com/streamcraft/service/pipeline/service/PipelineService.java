@@ -2,11 +2,9 @@ package com.streamcraft.service.pipeline.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.streamcraft.service.runtime.model.FlinkRuntimeTarget;
-import com.streamcraft.service.runtime.service.FlinkRuntimeTargetService;
 import com.streamcraft.service.config.PipelineRuntimeProperties;
 import com.streamcraft.service.config.UiMessageService;
 import com.streamcraft.service.pipeline.client.FlinkJobGateway;
-import com.streamcraft.service.pipeline.client.FlinkMetricsClient;
 import com.streamcraft.service.pipeline.client.PreviewFlinkJobRequest;
 import com.streamcraft.service.pipeline.client.StopFlinkJobRequest;
 import com.streamcraft.service.pipeline.client.StopFlinkJobResponse;
@@ -20,15 +18,12 @@ import com.streamcraft.service.pipeline.web.PipelinePreviewRequest;
 import com.streamcraft.service.pipeline.web.PipelinePreviewResponse;
 import com.streamcraft.service.pipeline.web.RunPipelineRequest;
 import com.streamcraft.service.pipeline.web.SavePipelineRequest;
-import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.HttpClientErrorException;
 
 @Service
 public class PipelineService {
@@ -36,9 +31,8 @@ public class PipelineService {
     private final PipelineRepository repository;
     private final PipelineDefinitionValidator validator;
     private final PipelineDefinitionService definitionService;
-    private final FlinkRuntimeTargetService runtimeTargetService;
+    private final PipelineRuntimeStateSupport runtimeStateSupport;
     private final FlinkJobGateway flinkJobGateway;
-    private final FlinkMetricsClient flinkMetricsClient;
     private final PipelineRuntimeProperties runtimeProperties;
     private final UiMessageService messages;
 
@@ -46,17 +40,15 @@ public class PipelineService {
     public PipelineService(PipelineRepository repository,
                            PipelineDefinitionValidator validator,
                            PipelineDefinitionService definitionService,
-                           FlinkRuntimeTargetService runtimeTargetService,
+                           PipelineRuntimeStateSupport runtimeStateSupport,
                            FlinkJobGateway flinkJobGateway,
-                           FlinkMetricsClient flinkMetricsClient,
                            PipelineRuntimeProperties runtimeProperties,
                            UiMessageService messages) {
         this.repository = repository;
         this.validator = validator;
         this.definitionService = definitionService;
-        this.runtimeTargetService = runtimeTargetService;
+        this.runtimeStateSupport = runtimeStateSupport;
         this.flinkJobGateway = flinkJobGateway;
-        this.flinkMetricsClient = flinkMetricsClient;
         this.runtimeProperties = runtimeProperties;
         this.messages = messages == null ? UiMessageService.englishFallback() : messages;
     }
@@ -77,30 +69,32 @@ public class PipelineService {
     }
 
     public List<Pipeline> list() {
-        FlinkRuntimeTarget runtimeTarget = loadRuntimeTarget();
-        return resolveRuntimeStatus(repository.findAllByOrderByUpdatedAtDesc(), runtimeTarget);
+        FlinkRuntimeTarget runtimeTarget = runtimeStateSupport.findRuntimeTarget();
+        return runtimeStateSupport.resolveRuntimeStatuses(
+                repository.findAllByOrderByUpdatedAtDesc(), runtimeTarget);
     }
 
     public List<Pipeline> listRunningPipelines() {
-        FlinkRuntimeTarget runtimeTarget = loadRuntimeTarget();
-        return resolveRuntimeStatus(repository.findByLastRunStatus(PipelineRunStatus.RUNNING), runtimeTarget).stream()
-                .filter(this::isRunning)
+        FlinkRuntimeTarget runtimeTarget = runtimeStateSupport.findRuntimeTarget();
+        return runtimeStateSupport.resolveRuntimeStatuses(
+                        repository.findByLastRunStatus(PipelineRunStatus.RUNNING), runtimeTarget).stream()
+                .filter(runtimeStateSupport::isRunning)
                 .toList();
     }
 
     public List<PipelineRuntimeSnapshot> listRuntimeSnapshots() {
         List<Pipeline> storedPipelines = repository.findAllByOrderByUpdatedAtDesc();
-        FlinkRuntimeTarget runtimeTarget = loadRuntimeTarget();
+        FlinkRuntimeTarget runtimeTarget = runtimeStateSupport.findRuntimeTarget();
 
         List<PipelineRuntimeSnapshot> snapshots = new ArrayList<>();
         for (Pipeline pipeline : storedPipelines) {
-            snapshots.add(buildRuntimeSnapshot(pipeline, runtimeTarget));
+            snapshots.add(runtimeStateSupport.buildRuntimeSnapshot(pipeline, runtimeTarget));
         }
         return snapshots;
     }
 
     public Pipeline get(Long id) {
-        return withResolvedRuntimeStatus(getStored(id));
+        return runtimeStateSupport.withResolvedRuntimeStatus(getStored(id));
     }
 
     @Transactional(readOnly = true)
@@ -124,7 +118,7 @@ public class PipelineService {
     public Pipeline run(Long id, RunPipelineRequest request) {
         Pipeline pipeline = getStored(id);
         validator.validateForRun(pipeline.getDefinitionJson());
-        FlinkRuntimeTarget runtimeTarget = runtimeTargetService.requireTarget();
+        FlinkRuntimeTarget runtimeTarget = runtimeStateSupport.requireRuntimeTarget();
 
         SubmitFlinkJobResponse response = flinkJobGateway.submit(new SubmitFlinkJobRequest(
                 runtimeTarget.getJobManagerUrl(),
@@ -144,11 +138,11 @@ public class PipelineService {
         if (!hasText(pipeline.getLastJobId())) {
             throw new IllegalArgumentException(messages.get("pipeline.error.runningJobIdMissing"));
         }
-        FlinkRuntimeTarget runtimeTarget = runtimeTargetService.requireTarget();
+        FlinkRuntimeTarget runtimeTarget = runtimeStateSupport.requireRuntimeTarget();
 
-        PipelineRunStatus runtimeStatus = resolveRuntimeStatus(pipeline, runtimeTarget);
+        PipelineRunStatus runtimeStatus = runtimeStateSupport.resolveRuntimeStatus(pipeline, runtimeTarget);
         if (runtimeStatus != PipelineRunStatus.RUNNING) {
-            return copyWithRunStatus(
+            return runtimeStateSupport.copyWithRunStatus(
                     pipeline,
                     runtimeStatus,
                     runtimeStatus == PipelineRunStatus.FAILED
@@ -162,9 +156,9 @@ public class PipelineService {
                     runtimeTarget.getJobManagerUrl(),
                     pipeline.getLastJobId()));
         } catch (RuntimeException exception) {
-            PipelineRunStatus refreshedStatus = resolveRuntimeStatus(pipeline, runtimeTarget);
+            PipelineRunStatus refreshedStatus = runtimeStateSupport.resolveRuntimeStatus(pipeline, runtimeTarget);
             if (refreshedStatus != PipelineRunStatus.RUNNING) {
-                return copyWithRunStatus(
+                return runtimeStateSupport.copyWithRunStatus(
                         pipeline,
                         refreshedStatus,
                         refreshedStatus == PipelineRunStatus.FAILED
@@ -181,7 +175,7 @@ public class PipelineService {
 
     public void delete(Long id) {
         Pipeline pipeline = getStored(id);
-        if (resolveRuntimeStatus(pipeline) == PipelineRunStatus.RUNNING) {
+        if (runtimeStateSupport.resolveRuntimeStatus(pipeline) == PipelineRunStatus.RUNNING) {
             throw new IllegalArgumentException(messages.get("pipeline.error.stopBeforeDeletion"));
         }
         repository.delete(pipeline);
@@ -192,138 +186,12 @@ public class PipelineService {
         if (!hasText(pipeline.getLastJobId())) {
             throw new IllegalArgumentException(messages.get("pipeline.error.runningJobMissing"));
         }
-        return resolveMetrics(pipeline, runtimeTargetService.requireTarget());
+        return runtimeStateSupport.resolveMetrics(pipeline, runtimeStateSupport.requireRuntimeTarget());
     }
 
     private Pipeline getStored(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException(messages.get("pipeline.error.notFound")));
-    }
-
-    private Pipeline withResolvedRuntimeStatus(Pipeline pipeline) {
-        return withResolvedRuntimeStatus(pipeline, loadRuntimeTarget());
-    }
-
-    private Pipeline withResolvedRuntimeStatus(Pipeline pipeline, FlinkRuntimeTarget runtimeTarget) {
-        Pipeline snapshot = copyPipeline(pipeline);
-        snapshot.setLastRunStatus(resolveRuntimeStatus(pipeline, runtimeTarget));
-        return snapshot;
-    }
-
-    private List<Pipeline> resolveRuntimeStatus(
-            List<Pipeline> storedPipelines,
-            FlinkRuntimeTarget runtimeTarget) {
-        List<Pipeline> pipelines = new ArrayList<>();
-        for (Pipeline pipeline : storedPipelines) {
-            pipelines.add(withResolvedRuntimeStatus(pipeline, runtimeTarget));
-        }
-        return pipelines;
-    }
-
-    private PipelineRuntimeSnapshot buildRuntimeSnapshot(
-            Pipeline pipeline,
-            FlinkRuntimeTarget runtimeTarget) {
-        Pipeline snapshot = copyPipeline(pipeline);
-        snapshot.setLastRunStatus(resolveRuntimeStatus(pipeline, runtimeTarget));
-        PipelineMetrics metrics = resolveMetricsIfEligible(snapshot, runtimeTarget);
-        return new PipelineRuntimeSnapshot(snapshot, metrics);
-    }
-
-    private PipelineRunStatus resolveRuntimeStatus(Pipeline pipeline) {
-        return resolveRuntimeStatus(pipeline, loadRuntimeTarget());
-    }
-
-    private PipelineRunStatus resolveRuntimeStatus(
-            Pipeline pipeline,
-            FlinkRuntimeTarget runtimeTarget) {
-        if (!hasResolvableRunningJob(pipeline)
-                || runtimeTarget == null
-                || !hasText(runtimeTarget.getJobManagerUrl())) {
-            return pipeline.getLastRunStatus();
-        }
-
-        try {
-            PipelineRunStatus liveStatus = flinkMetricsClient.getJobStatus(
-                    runtimeTarget.getJobManagerUrl(),
-                    pipeline.getLastJobId());
-            if (liveStatus == null) {
-                return pipeline.getLastRunStatus();
-            }
-            return liveStatus == PipelineRunStatus.RUNNING ? PipelineRunStatus.RUNNING : PipelineRunStatus.FAILED;
-        } catch (HttpClientErrorException exception) {
-            return exception.getStatusCode() == HttpStatus.NOT_FOUND
-                    ? PipelineRunStatus.FAILED
-                    : pipeline.getLastRunStatus();
-        } catch (RuntimeException exception) {
-            return pipeline.getLastRunStatus();
-        }
-    }
-
-    private FlinkRuntimeTarget loadRuntimeTarget() {
-        return runtimeTargetService.findTarget().orElse(null);
-    }
-
-    private PipelineMetrics resolveMetricsIfEligible(
-            Pipeline pipeline,
-            FlinkRuntimeTarget runtimeTarget) {
-        if (!hasResolvableRunningJob(pipeline)) {
-            return null;
-        }
-
-        if (runtimeTarget == null || !hasText(runtimeTarget.getJobManagerUrl())) {
-            return null;
-        }
-
-        try {
-            return resolveMetrics(pipeline, runtimeTarget);
-        } catch (RuntimeException exception) {
-            return null;
-        }
-    }
-
-    private PipelineMetrics resolveMetrics(Pipeline pipeline, FlinkRuntimeTarget runtimeTarget) {
-        try {
-            PipelineDefinitionService.DefinitionNodes definitionNodes =
-                    definitionService.parseDefinitionNodes(pipeline.getDefinitionJson());
-            return flinkMetricsClient.getJobMetrics(
-                    runtimeTarget.getJobManagerUrl(),
-                    pipeline.getLastJobId(),
-                    definitionNodes.nodeIds(),
-                    definitionNodes.nodeNames());
-        } catch (IOException ex) {
-            throw new IllegalStateException(messages.get("pipeline.error.parseDefinitionFailed"), ex);
-        }
-    }
-
-    private boolean hasResolvableRunningJob(Pipeline pipeline) {
-        return pipeline.getLastRunStatus() == PipelineRunStatus.RUNNING
-                && hasText(pipeline.getLastJobId());
-    }
-
-    private boolean isRunning(Pipeline pipeline) {
-        return pipeline.getLastRunStatus() == PipelineRunStatus.RUNNING;
-    }
-
-    private Pipeline copyPipeline(Pipeline source) {
-        Pipeline copy = new Pipeline();
-        copy.setId(source.getId());
-        copy.setName(source.getName());
-        copy.setDescription(source.getDescription());
-        copy.setDefinitionJson(source.getDefinitionJson());
-        copy.setLastJobId(source.getLastJobId());
-        copy.setLastRunStatus(source.getLastRunStatus());
-        copy.setLastRunMessage(source.getLastRunMessage());
-        copy.setLastSubmittedAt(source.getLastSubmittedAt());
-        copy.setCreatedAt(source.getCreatedAt());
-        copy.setUpdatedAt(source.getUpdatedAt());
-        return copy;
-    }
-
-    private Pipeline copyWithRunStatus(Pipeline source, PipelineRunStatus runStatus, String runMessage) {
-        Pipeline copy = copyPipeline(source);
-        copy.setLastRunStatus(runStatus);
-        copy.setLastRunMessage(runMessage);
-        return copy;
     }
 
     private String buildDefinitionUrl(Long id) {
