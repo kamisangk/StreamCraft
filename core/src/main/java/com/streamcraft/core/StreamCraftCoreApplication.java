@@ -7,6 +7,8 @@ import com.streamcraft.core.model.PipelineDefinition;
 import com.streamcraft.core.runtime.ExecutionMode;
 import com.streamcraft.core.runtime.ElasticsearchSinkFactory;
 import com.streamcraft.core.runtime.ElasticsearchSourceFactory;
+import com.streamcraft.core.runtime.HdfsFileSinkFactory;
+import com.streamcraft.core.runtime.HdfsFileSourceFactory;
 import com.streamcraft.core.runtime.InfluxDbSinkFactory;
 import com.streamcraft.core.runtime.InfluxDbSourceFactory;
 import com.streamcraft.core.runtime.JdbcSinkFactory;
@@ -15,6 +17,7 @@ import com.streamcraft.core.runtime.KafkaSinkFactory;
 import com.streamcraft.core.runtime.KafkaSourceFactory;
 import com.streamcraft.core.runtime.MockSourceFactory;
 import com.streamcraft.core.runtime.PipelineRuntime;
+import com.streamcraft.core.runtime.PipelineRuntimeDependencies;
 import com.streamcraft.core.runtime.PreviewCollectingSinkFactory;
 import com.streamcraft.core.runtime.transform.TransformOperatorFactory;
 import com.streamcraft.core.submission.PackagedProgramJobGraphFactory;
@@ -61,20 +64,22 @@ public class StreamCraftCoreApplication {
                 : null;
         KafkaSinkFactory sinkFactory = previewSinkFactory != null ? previewSinkFactory : new KafkaSinkFactory();
 
-        new PipelineRuntime(
-                env,
-                new KafkaSourceFactory(),
-                new MockSourceFactory(),
-                new ElasticsearchSourceFactory(),
-                new InfluxDbSourceFactory(),
-                new JdbcSourceFactory(),
-                sinkFactory,
-                new JdbcSinkFactory(),
-                new ElasticsearchSinkFactory(),
-                new InfluxDbSinkFactory(),
-                new TransformOperatorFactory(),
-                options.testMode(),
-                executionMode).run(definition);
+        PipelineRuntimeDependencies dependencies = PipelineRuntimeDependencies.builder()
+                .kafkaSourceFactory(new KafkaSourceFactory())
+                .mockSourceFactory(new MockSourceFactory())
+                .elasticsearchSourceFactory(new ElasticsearchSourceFactory())
+                .influxDbSourceFactory(new InfluxDbSourceFactory())
+                .hdfsFileSourceFactory(new HdfsFileSourceFactory())
+                .jdbcSourceFactory(new JdbcSourceFactory())
+                .kafkaSinkFactory(sinkFactory)
+                .jdbcSinkFactory(new JdbcSinkFactory())
+                .elasticsearchSinkFactory(new ElasticsearchSinkFactory())
+                .influxDbSinkFactory(new InfluxDbSinkFactory())
+                .hdfsFileSinkFactory(new HdfsFileSinkFactory())
+                .transformFactory(new TransformOperatorFactory())
+                .build();
+
+        new PipelineRuntime(env, dependencies, options.testMode(), executionMode).run(definition);
         String jobName = "StreamCraft_Job_" + definition.pipelineId();
         env.execute(jobName);
 

@@ -40,20 +40,37 @@ public class PipelineRuntime {
     private final boolean testMode;
     private final ExecutionMode executionMode;
 
+    public PipelineRuntime(StreamExecutionEnvironment env,
+                           PipelineRuntimeDependencies dependencies,
+                           boolean testMode,
+                           ExecutionMode executionMode) {
+        this.env = env;
+        this.kafkaSourceFactory = dependencies.kafkaSourceFactory();
+        this.mockSourceFactory = dependencies.mockSourceFactory();
+        this.elasticsearchSourceFactory = dependencies.elasticsearchSourceFactory();
+        this.influxDbSourceFactory = dependencies.influxDbSourceFactory();
+        this.hdfsFileSourceFactory = dependencies.hdfsFileSourceFactory();
+        this.jdbcSourceFactory = dependencies.jdbcSourceFactory();
+        this.kafkaSinkFactory = dependencies.kafkaSinkFactory();
+        this.jdbcSinkFactory = dependencies.jdbcSinkFactory();
+        this.elasticsearchSinkFactory = dependencies.elasticsearchSinkFactory();
+        this.influxDbSinkFactory = dependencies.influxDbSinkFactory();
+        this.hdfsFileSinkFactory = dependencies.hdfsFileSinkFactory();
+        this.transformFactory = dependencies.transformFactory();
+        this.testMode = testMode;
+        this.executionMode = executionMode == null ? ExecutionMode.RUN : executionMode;
+    }
+
     public PipelineRuntime(StreamExecutionEnvironment env) {
-        this(env, false, ExecutionMode.RUN);
+        this(env, PipelineRuntimeDependencies.defaults(), false, ExecutionMode.RUN);
     }
 
     public PipelineRuntime(StreamExecutionEnvironment env, boolean testMode) {
-        this(env, testMode, ExecutionMode.RUN);
+        this(env, PipelineRuntimeDependencies.defaults(), testMode, ExecutionMode.RUN);
     }
 
     public PipelineRuntime(StreamExecutionEnvironment env, boolean testMode, ExecutionMode executionMode) {
-        this(env, new KafkaSourceFactory(), new MockSourceFactory(), new ElasticsearchSourceFactory(),
-                new InfluxDbSourceFactory(), new HdfsFileSourceFactory(), new JdbcSourceFactory(),
-                new KafkaSinkFactory(), new JdbcSinkFactory(), new ElasticsearchSinkFactory(),
-                new InfluxDbSinkFactory(), new HdfsFileSinkFactory(), new TransformOperatorFactory(),
-                testMode, executionMode);
+        this(env, PipelineRuntimeDependencies.defaults(), testMode, executionMode);
     }
 
     public PipelineRuntime(StreamExecutionEnvironment env,
@@ -62,8 +79,20 @@ public class PipelineRuntime {
                            KafkaSinkFactory kafkaSinkFactory,
                            TransformOperatorFactory transformFactory,
                            boolean testMode) {
-        this(env, kafkaSourceFactory, mockSourceFactory, new JdbcSourceFactory(), kafkaSinkFactory,
-                new JdbcSinkFactory(), transformFactory, testMode, ExecutionMode.RUN);
+        this(env, PipelineRuntimeDependencies.builder()
+                .kafkaSourceFactory(kafkaSourceFactory)
+                .mockSourceFactory(mockSourceFactory)
+                .elasticsearchSourceFactory(new ElasticsearchSourceFactory())
+                .influxDbSourceFactory(new InfluxDbSourceFactory())
+                .hdfsFileSourceFactory(new HdfsFileSourceFactory())
+                .jdbcSourceFactory(new JdbcSourceFactory())
+                .kafkaSinkFactory(kafkaSinkFactory)
+                .jdbcSinkFactory(new JdbcSinkFactory())
+                .elasticsearchSinkFactory(new ElasticsearchSinkFactory())
+                .influxDbSinkFactory(new InfluxDbSinkFactory())
+                .hdfsFileSinkFactory(new HdfsFileSinkFactory())
+                .transformFactory(transformFactory)
+                .build(), testMode, ExecutionMode.RUN);
     }
 
     public PipelineRuntime(StreamExecutionEnvironment env,
@@ -73,8 +102,20 @@ public class PipelineRuntime {
                            KafkaSinkFactory kafkaSinkFactory,
                            TransformOperatorFactory transformFactory,
                            boolean testMode) {
-        this(env, kafkaSourceFactory, mockSourceFactory, jdbcSourceFactory, kafkaSinkFactory,
-                new JdbcSinkFactory(), transformFactory, testMode, ExecutionMode.RUN);
+        this(env, PipelineRuntimeDependencies.builder()
+                .kafkaSourceFactory(kafkaSourceFactory)
+                .mockSourceFactory(mockSourceFactory)
+                .elasticsearchSourceFactory(new ElasticsearchSourceFactory())
+                .influxDbSourceFactory(new InfluxDbSourceFactory())
+                .hdfsFileSourceFactory(new HdfsFileSourceFactory())
+                .jdbcSourceFactory(jdbcSourceFactory)
+                .kafkaSinkFactory(kafkaSinkFactory)
+                .jdbcSinkFactory(new JdbcSinkFactory())
+                .elasticsearchSinkFactory(new ElasticsearchSinkFactory())
+                .influxDbSinkFactory(new InfluxDbSinkFactory())
+                .hdfsFileSinkFactory(new HdfsFileSinkFactory())
+                .transformFactory(transformFactory)
+                .build(), testMode, ExecutionMode.RUN);
     }
 
     public PipelineRuntime(StreamExecutionEnvironment env,
@@ -84,8 +125,20 @@ public class PipelineRuntime {
                            TransformOperatorFactory transformFactory,
                            boolean testMode,
                            ExecutionMode executionMode) {
-        this(env, kafkaSourceFactory, mockSourceFactory, new JdbcSourceFactory(), kafkaSinkFactory,
-                new JdbcSinkFactory(), transformFactory, testMode, executionMode);
+        this(env, PipelineRuntimeDependencies.builder()
+                .kafkaSourceFactory(kafkaSourceFactory)
+                .mockSourceFactory(mockSourceFactory)
+                .elasticsearchSourceFactory(new ElasticsearchSourceFactory())
+                .influxDbSourceFactory(new InfluxDbSourceFactory())
+                .hdfsFileSourceFactory(new HdfsFileSourceFactory())
+                .jdbcSourceFactory(new JdbcSourceFactory())
+                .kafkaSinkFactory(kafkaSinkFactory)
+                .jdbcSinkFactory(new JdbcSinkFactory())
+                .elasticsearchSinkFactory(new ElasticsearchSinkFactory())
+                .influxDbSinkFactory(new InfluxDbSinkFactory())
+                .hdfsFileSinkFactory(new HdfsFileSinkFactory())
+                .transformFactory(transformFactory)
+                .build(), testMode, executionMode);
     }
 
     public PipelineRuntime(StreamExecutionEnvironment env,
@@ -96,8 +149,20 @@ public class PipelineRuntime {
                            TransformOperatorFactory transformFactory,
                            boolean testMode,
                            ExecutionMode executionMode) {
-        this(env, kafkaSourceFactory, mockSourceFactory, jdbcSourceFactory, kafkaSinkFactory,
-                new JdbcSinkFactory(), transformFactory, testMode, executionMode);
+        this(env, PipelineRuntimeDependencies.builder()
+                .kafkaSourceFactory(kafkaSourceFactory)
+                .mockSourceFactory(mockSourceFactory)
+                .elasticsearchSourceFactory(new ElasticsearchSourceFactory())
+                .influxDbSourceFactory(new InfluxDbSourceFactory())
+                .hdfsFileSourceFactory(new HdfsFileSourceFactory())
+                .jdbcSourceFactory(jdbcSourceFactory)
+                .kafkaSinkFactory(kafkaSinkFactory)
+                .jdbcSinkFactory(new JdbcSinkFactory())
+                .elasticsearchSinkFactory(new ElasticsearchSinkFactory())
+                .influxDbSinkFactory(new InfluxDbSinkFactory())
+                .hdfsFileSinkFactory(new HdfsFileSinkFactory())
+                .transformFactory(transformFactory)
+                .build(), testMode, executionMode);
     }
 
     public PipelineRuntime(StreamExecutionEnvironment env,
@@ -110,10 +175,20 @@ public class PipelineRuntime {
                            TransformOperatorFactory transformFactory,
                            boolean testMode,
                            ExecutionMode executionMode) {
-        this(env, kafkaSourceFactory, mockSourceFactory, elasticsearchSourceFactory, new InfluxDbSourceFactory(),
-                new HdfsFileSourceFactory(), jdbcSourceFactory, kafkaSinkFactory, jdbcSinkFactory,
-                new ElasticsearchSinkFactory(), new InfluxDbSinkFactory(), new HdfsFileSinkFactory(),
-                transformFactory, testMode, executionMode);
+        this(env, PipelineRuntimeDependencies.builder()
+                .kafkaSourceFactory(kafkaSourceFactory)
+                .mockSourceFactory(mockSourceFactory)
+                .elasticsearchSourceFactory(elasticsearchSourceFactory)
+                .influxDbSourceFactory(new InfluxDbSourceFactory())
+                .hdfsFileSourceFactory(new HdfsFileSourceFactory())
+                .jdbcSourceFactory(jdbcSourceFactory)
+                .kafkaSinkFactory(kafkaSinkFactory)
+                .jdbcSinkFactory(jdbcSinkFactory)
+                .elasticsearchSinkFactory(new ElasticsearchSinkFactory())
+                .influxDbSinkFactory(new InfluxDbSinkFactory())
+                .hdfsFileSinkFactory(new HdfsFileSinkFactory())
+                .transformFactory(transformFactory)
+                .build(), testMode, executionMode);
     }
 
     public PipelineRuntime(StreamExecutionEnvironment env,
@@ -129,10 +204,20 @@ public class PipelineRuntime {
                            TransformOperatorFactory transformFactory,
                            boolean testMode,
                            ExecutionMode executionMode) {
-        this(env, kafkaSourceFactory, mockSourceFactory, elasticsearchSourceFactory, influxDbSourceFactory,
-                new HdfsFileSourceFactory(), jdbcSourceFactory, kafkaSinkFactory, jdbcSinkFactory,
-                elasticsearchSinkFactory, influxDbSinkFactory, new HdfsFileSinkFactory(), transformFactory,
-                testMode, executionMode);
+        this(env, PipelineRuntimeDependencies.builder()
+                .kafkaSourceFactory(kafkaSourceFactory)
+                .mockSourceFactory(mockSourceFactory)
+                .elasticsearchSourceFactory(elasticsearchSourceFactory)
+                .influxDbSourceFactory(influxDbSourceFactory)
+                .hdfsFileSourceFactory(new HdfsFileSourceFactory())
+                .jdbcSourceFactory(jdbcSourceFactory)
+                .kafkaSinkFactory(kafkaSinkFactory)
+                .jdbcSinkFactory(jdbcSinkFactory)
+                .elasticsearchSinkFactory(elasticsearchSinkFactory)
+                .influxDbSinkFactory(influxDbSinkFactory)
+                .hdfsFileSinkFactory(new HdfsFileSinkFactory())
+                .transformFactory(transformFactory)
+                .build(), testMode, executionMode);
     }
 
     public PipelineRuntime(StreamExecutionEnvironment env,
@@ -150,21 +235,20 @@ public class PipelineRuntime {
                            TransformOperatorFactory transformFactory,
                            boolean testMode,
                            ExecutionMode executionMode) {
-        this.env = env;
-        this.kafkaSourceFactory = kafkaSourceFactory;
-        this.mockSourceFactory = mockSourceFactory;
-        this.elasticsearchSourceFactory = elasticsearchSourceFactory;
-        this.influxDbSourceFactory = influxDbSourceFactory;
-        this.hdfsFileSourceFactory = hdfsFileSourceFactory;
-        this.jdbcSourceFactory = jdbcSourceFactory;
-        this.kafkaSinkFactory = kafkaSinkFactory;
-        this.jdbcSinkFactory = jdbcSinkFactory;
-        this.elasticsearchSinkFactory = elasticsearchSinkFactory;
-        this.influxDbSinkFactory = influxDbSinkFactory;
-        this.hdfsFileSinkFactory = hdfsFileSinkFactory;
-        this.transformFactory = transformFactory;
-        this.testMode = testMode;
-        this.executionMode = executionMode == null ? ExecutionMode.RUN : executionMode;
+        this(env, PipelineRuntimeDependencies.builder()
+                .kafkaSourceFactory(kafkaSourceFactory)
+                .mockSourceFactory(mockSourceFactory)
+                .elasticsearchSourceFactory(elasticsearchSourceFactory)
+                .influxDbSourceFactory(influxDbSourceFactory)
+                .hdfsFileSourceFactory(hdfsFileSourceFactory)
+                .jdbcSourceFactory(jdbcSourceFactory)
+                .kafkaSinkFactory(kafkaSinkFactory)
+                .jdbcSinkFactory(jdbcSinkFactory)
+                .elasticsearchSinkFactory(elasticsearchSinkFactory)
+                .influxDbSinkFactory(influxDbSinkFactory)
+                .hdfsFileSinkFactory(hdfsFileSinkFactory)
+                .transformFactory(transformFactory)
+                .build(), testMode, executionMode);
     }
 
     public PipelineRuntime(StreamExecutionEnvironment env,
@@ -176,8 +260,20 @@ public class PipelineRuntime {
                            TransformOperatorFactory transformFactory,
                            boolean testMode,
                            ExecutionMode executionMode) {
-        this(env, kafkaSourceFactory, mockSourceFactory, new ElasticsearchSourceFactory(), jdbcSourceFactory,
-                kafkaSinkFactory, jdbcSinkFactory, transformFactory, testMode, executionMode);
+        this(env, PipelineRuntimeDependencies.builder()
+                .kafkaSourceFactory(kafkaSourceFactory)
+                .mockSourceFactory(mockSourceFactory)
+                .elasticsearchSourceFactory(new ElasticsearchSourceFactory())
+                .influxDbSourceFactory(new InfluxDbSourceFactory())
+                .hdfsFileSourceFactory(new HdfsFileSourceFactory())
+                .jdbcSourceFactory(jdbcSourceFactory)
+                .kafkaSinkFactory(kafkaSinkFactory)
+                .jdbcSinkFactory(jdbcSinkFactory)
+                .elasticsearchSinkFactory(new ElasticsearchSinkFactory())
+                .influxDbSinkFactory(new InfluxDbSinkFactory())
+                .hdfsFileSinkFactory(new HdfsFileSinkFactory())
+                .transformFactory(transformFactory)
+                .build(), testMode, executionMode);
     }
 
     public void run(PipelineDefinition definition) {
