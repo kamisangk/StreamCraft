@@ -9,8 +9,8 @@ import com.streamcraft.service.overview.web.OverviewResponse;
 import com.streamcraft.service.pipeline.model.Pipeline;
 import com.streamcraft.service.pipeline.model.PipelineRunStatus;
 import com.streamcraft.service.pipeline.service.PipelineRuntimeView;
-import com.streamcraft.service.pipeline.service.PipelineService;
 import com.streamcraft.service.pipeline.service.PipelineRuntimeSnapshot;
+import com.streamcraft.service.pipeline.service.PipelineRuntimeQueryService;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -23,21 +23,21 @@ public class OverviewService {
     private static final String METRICS_UNAVAILABLE = "Metrics unavailable";
 
     private final FlinkRuntimeTargetService runtimeTargetService;
-    private final PipelineService pipelineService;
+    private final PipelineRuntimeQueryService pipelineRuntimeQueryService;
     private final ObjectMapper objectMapper;
 
     public OverviewService(
             FlinkRuntimeTargetService runtimeTargetService,
-            PipelineService pipelineService,
+            PipelineRuntimeQueryService pipelineRuntimeQueryService,
             ObjectMapper objectMapper) {
         this.runtimeTargetService = runtimeTargetService;
-        this.pipelineService = pipelineService;
+        this.pipelineRuntimeQueryService = pipelineRuntimeQueryService;
         this.objectMapper = objectMapper;
     }
 
     public OverviewResponse getOverview() {
         FlinkRuntimeTarget runtimeTarget = runtimeTargetService.findTarget().orElse(null);
-        List<PipelineRuntimeSnapshot> pipelineRuntimeSnapshots = pipelineService.listRuntimeSnapshots();
+        List<PipelineRuntimeSnapshot> pipelineRuntimeSnapshots = pipelineRuntimeQueryService.listRuntimeSnapshots();
         List<Pipeline> pipelines = pipelineRuntimeSnapshots.stream()
                 .map(PipelineRuntimeSnapshot::pipeline)
                 .toList();

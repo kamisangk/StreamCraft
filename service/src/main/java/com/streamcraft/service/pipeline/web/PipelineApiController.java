@@ -1,6 +1,7 @@
 package com.streamcraft.service.pipeline.web;
 
 import com.streamcraft.service.pipeline.model.PipelineMetrics;
+import com.streamcraft.service.pipeline.service.PipelineRuntimeQueryService;
 import com.streamcraft.service.pipeline.service.PipelineService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -21,9 +22,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class PipelineApiController {
 
     private final PipelineService pipelineService;
+    private final PipelineRuntimeQueryService pipelineRuntimeQueryService;
 
-    public PipelineApiController(PipelineService pipelineService) {
+    public PipelineApiController(
+            PipelineService pipelineService,
+            PipelineRuntimeQueryService pipelineRuntimeQueryService) {
         this.pipelineService = pipelineService;
+        this.pipelineRuntimeQueryService = pipelineRuntimeQueryService;
     }
 
     @PostMapping
@@ -34,14 +39,14 @@ public class PipelineApiController {
 
     @GetMapping
     public List<PipelineSummaryResponse> list() {
-        return pipelineService.list().stream()
+        return pipelineRuntimeQueryService.list().stream()
                 .map(PipelineSummaryResponse::from)
                 .toList();
     }
 
     @GetMapping("/{id}")
     public PipelineDetailResponse get(@PathVariable Long id) {
-        return PipelineDetailResponse.from(pipelineService.get(id));
+        return PipelineDetailResponse.from(pipelineRuntimeQueryService.get(id));
     }
 
     @GetMapping("/{id}/definition")
@@ -72,7 +77,7 @@ public class PipelineApiController {
 
     @GetMapping("/{id}/metrics")
     public PipelineMetrics metrics(@PathVariable Long id) {
-        return pipelineService.getMetrics(id);
+        return pipelineRuntimeQueryService.getMetrics(id);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
