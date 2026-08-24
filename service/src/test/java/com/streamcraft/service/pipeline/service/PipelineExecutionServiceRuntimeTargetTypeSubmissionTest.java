@@ -10,7 +10,6 @@ import com.streamcraft.service.runtime.model.RuntimeTargetStatus;
 import com.streamcraft.service.runtime.model.RuntimeTargetType;
 import com.streamcraft.service.runtime.service.FlinkRuntimeTargetService;
 import com.streamcraft.service.config.PipelineRuntimeProperties;
-import com.streamcraft.service.config.UiMessageService;
 import com.streamcraft.service.pipeline.client.FlinkJobGateway;
 import com.streamcraft.service.pipeline.client.FlinkMetricsClient;
 import com.streamcraft.service.pipeline.client.StopFlinkJobRequest;
@@ -30,7 +29,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class PipelineServiceRuntimeTargetTypeSubmissionTest {
+class PipelineExecutionServiceRuntimeTargetTypeSubmissionTest {
 
     @Mock
     private PipelineRepository repository;
@@ -52,7 +51,7 @@ class PipelineServiceRuntimeTargetTypeSubmissionTest {
 
     private AtomicReference<SubmitFlinkJobRequest> capturedRequest;
     private AtomicReference<StopFlinkJobRequest> capturedStopRequest;
-    private PipelineService service;
+    private PipelineExecutionService service;
 
     @BeforeEach
     void setUp() {
@@ -64,17 +63,15 @@ class PipelineServiceRuntimeTargetTypeSubmissionTest {
                 new ObjectMapper(),
                 validator,
                 definitionNormalizer);
-        service = new PipelineService(
+        service = new PipelineExecutionService(
                 repository,
-                validator,
                 definitionService,
                 new PipelineRuntimeStateSupport(
                         definitionService,
                         runtimeTargetService,
                         flinkMetricsClient),
                 flinkJobGateway,
-                runtimeProperties,
-                UiMessageService.englishFallback());
+                runtimeProperties);
     }
 
     @Test

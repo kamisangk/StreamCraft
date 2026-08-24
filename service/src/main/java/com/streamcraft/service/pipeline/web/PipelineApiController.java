@@ -1,6 +1,7 @@
 package com.streamcraft.service.pipeline.web;
 
 import com.streamcraft.service.pipeline.model.PipelineMetrics;
+import com.streamcraft.service.pipeline.service.PipelineExecutionService;
 import com.streamcraft.service.pipeline.service.PipelineRuntimeQueryService;
 import com.streamcraft.service.pipeline.service.PipelineService;
 import jakarta.validation.Valid;
@@ -23,12 +24,15 @@ public class PipelineApiController {
 
     private final PipelineService pipelineService;
     private final PipelineRuntimeQueryService pipelineRuntimeQueryService;
+    private final PipelineExecutionService pipelineExecutionService;
 
     public PipelineApiController(
             PipelineService pipelineService,
-            PipelineRuntimeQueryService pipelineRuntimeQueryService) {
+            PipelineRuntimeQueryService pipelineRuntimeQueryService,
+            PipelineExecutionService pipelineExecutionService) {
         this.pipelineService = pipelineService;
         this.pipelineRuntimeQueryService = pipelineRuntimeQueryService;
+        this.pipelineExecutionService = pipelineExecutionService;
     }
 
     @PostMapping
@@ -56,17 +60,17 @@ public class PipelineApiController {
 
     @PostMapping("/{id}/run")
     public PipelineSummaryResponse run(@PathVariable Long id, @RequestBody(required = false) RunPipelineRequest request) {
-        return PipelineSummaryResponse.from(pipelineService.run(id, request));
+        return PipelineSummaryResponse.from(pipelineExecutionService.run(id, request));
     }
 
     @PostMapping("/preview")
     public PipelinePreviewResponse preview(@RequestBody PipelinePreviewRequest request) {
-        return pipelineService.preview(request);
+        return pipelineExecutionService.preview(request);
     }
 
     @PostMapping("/{id}/stop")
     public PipelineSummaryResponse stop(@PathVariable Long id) {
-        return PipelineSummaryResponse.from(pipelineService.stop(id));
+        return PipelineSummaryResponse.from(pipelineExecutionService.stop(id));
     }
 
     @DeleteMapping("/{id}")

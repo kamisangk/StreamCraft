@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.streamcraft.service.config.SecurityConfig;
 import com.streamcraft.service.config.StreamCraftAuthProperties;
+import com.streamcraft.service.pipeline.service.PipelineExecutionService;
 import com.streamcraft.service.pipeline.service.PipelineRuntimeQueryService;
 import com.streamcraft.service.pipeline.service.PipelineService;
 import com.streamcraft.service.pipeline.web.PipelineApiController;
@@ -52,11 +53,14 @@ class PipelinePreviewSecurityTest {
     private PipelineRuntimeQueryService pipelineRuntimeQueryService;
 
     @MockBean
+    private PipelineExecutionService pipelineExecutionService;
+
+    @MockBean
     private UserDetailsService userDetailsService;
 
     @Test
     void allowsAuthenticatedUsersToPreviewCurrentDefinition() throws Exception {
-        when(pipelineService.preview(any())).thenReturn(new PipelinePreviewResponse(List.of(
+        when(pipelineExecutionService.preview(any())).thenReturn(new PipelinePreviewResponse(List.of(
                 new PipelinePreviewOutputResponse("sink-1", "订单输出", List.of("{\"status\":\"ok\"}"))
         )));
 
