@@ -7,8 +7,11 @@ import com.streamcraft.core.runtime.transform.TransformOutputs;
 import com.streamcraft.core.runtime.transform.transforms.AggregateMetricSupport.MetricsAccumulator;
 import com.streamcraft.core.runtime.transform.transforms.AggregateMetricSupport.MetricsAggregateFunction;
 import com.streamcraft.core.runtime.transform.transforms.AggregateRuntimeConfig.RuntimeAggregateConfig;
-import com.streamcraft.core.runtime.transform.transforms.AggregateRuntimeConfig.RuntimeAggregationSpec;
 import com.streamcraft.core.runtime.transform.transforms.AggregateRuntimeConfig.RuntimeFieldPath;
+import com.streamcraft.core.runtime.transform.transforms.AggregateWindowSupport.AllTimeWindowProcessFunction;
+import com.streamcraft.core.runtime.transform.transforms.AggregateWindowSupport.GlobalWindowProcessFunction;
+import com.streamcraft.core.runtime.transform.transforms.AggregateWindowSupport.GroupedGlobalWindowProcessFunction;
+import com.streamcraft.core.runtime.transform.transforms.AggregateWindowSupport.GroupedTimeWindowProcessFunction;
 import com.streamcraft.shared.aggregation.AggregateConfig.TimeMode;
 import com.streamcraft.shared.aggregation.AggregateConfig.WindowType;
 import com.streamcraft.shared.aggregation.AggregateConfigParser;
@@ -20,15 +23,11 @@ import java.util.Map;
 import org.apache.flink.api.common.functions.AggregateFunction;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.functions.windowing.ProcessAllWindowFunction;
-import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.assigners.SlidingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.assigners.SlidingProcessingTimeWindows;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
-import org.apache.flink.streaming.api.windowing.windows.GlobalWindow;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
-import org.apache.flink.util.Collector;
 
 public class AggregateTransformFactory implements TransformFactory {
 
@@ -106,7 +105,7 @@ public class AggregateTransformFactory implements TransformFactory {
                 .aggregate(aggregateFunction, new AllTimeWindowProcessFunction(context));
     }
 
-    private static DataEntity output(AggregateContext context, MetricsAccumulator accumulator, Map<String, Object> window) {
+    static DataEntity output(AggregateContext context, MetricsAccumulator accumulator, Map<String, Object> window) {
         return AggregateOutputSupport.output(
                 context.nodeId(),
                 context.config(),
@@ -115,28 +114,28 @@ public class AggregateTransformFactory implements TransformFactory {
                 window);
     }
 
-    private static Map<String, Object> countWindow(AggregateContext context) {
+    static Map<String, Object> countWindow(AggregateContext context) {
         return AggregateOutputSupport.countWindow(context.config());
     }
 
-    private static Map<String, Object> timeWindow(AggregateContext context, TimeWindow timeWindow) {
+    static Map<String, Object> timeWindow(AggregateContext context, TimeWindow timeWindow) {
         return AggregateOutputSupport.timeWindow(context.config(), timeWindow);
     }
 
-    private record AggregateContext(String nodeId, RuntimeAggregateConfig config) implements Serializable {
+    record AggregateContext(String nodeId, RuntimeAggregateConfig config) implements Serializable {
         private static final long serialVersionUID = 1L;
     }
 
-    private static final class GroupKey implements Serializable {
+    static final class GroupKey implements Serializable {
 
         private static final long serialVersionUID = 1L;
         private final Map<String, Object> values;
 
-        private GroupKey(Map<String, Object> values) {
+        GroupKey(Map<String, Object> values) {
             this.values = new LinkedHashMap<>(values);
         }
 
-        private Map<String, Object> values() {
+        Map<String, Object> values() {
             return values;
         }
 
@@ -176,85 +175,4 @@ public class AggregateTransformFactory implements TransformFactory {
         }
     }
 
-    private static final class GroupedGlobalWindowProcessFunction
-            extends ProcessWindowFunction<MetricsAccumulator, DataEntity, GroupKey, GlobalWindow> {
-
-        private static final long serialVersionUID = 1L;
-        private final AggregateContext aggregateContext;
-
-        private GroupedGlobalWindowProcessFunction(AggregateContext aggregateContext) {
-            this.aggregateContext = aggregateContext;
-        }
-
-        @Override
-        public void process(
-                GroupKey key,
-                Context context,
-                Iterable<MetricsAccumulator> elements,
-                Collector<DataEntity> out) {
-            MetricsAccumulator accumulator = elements.iterator().next();
-            accumulator.setGroup(key.values());
-            out.collect(output(aggregateContext, accumulator, countWindow(aggregateContext)));
-        }
-    }
-
-    private static final class GlobalWindowProcessFunction
-            extends ProcessAllWindowFunction<MetricsAccumulator, DataEntity, GlobalWindow> {
-
-        private static final long serialVersionUID = 1L;
-        private final AggregateContext aggregateContext;
-
-        private GlobalWindowProcessFunction(AggregateContext aggregateContext) {
-            this.aggregateContext = aggregateContext;
-        }
-
-        @Override
-        public void process(
-                Context context,
-                Iterable<MetricsAccumulator> elements,
-                Collector<DataEntity> out) {
-            out.collect(output(aggregateContext, elements.iterator().next(), countWindow(aggregateContext)));
-        }
-    }
-
-    private static final class GroupedTimeWindowProcessFunction
-            extends ProcessWindowFunction<MetricsAccumulator, DataEntity, GroupKey, TimeWindow> {
-
-        private static final long serialVersionUID = 1L;
-        private final AggregateContext aggregateContext;
-
-        private GroupedTimeWindowProcessFunction(AggregateContext aggregateContext) {
-            this.aggregateContext = aggregateContext;
-        }
-
-        @Override
-        public void process(
-                GroupKey key,
-                Context context,
-                Iterable<MetricsAccumulator> elements,
-                Collector<DataEntity> out) {
-            MetricsAccumulator accumulator = elements.iterator().next();
-            accumulator.setGroup(key.values());
-            out.collect(output(aggregateContext, accumulator, timeWindow(aggregateContext, context.window())));
-        }
-    }
-
-    private static final class AllTimeWindowProcessFunction
-            extends ProcessAllWindowFunction<MetricsAccumulator, DataEntity, TimeWindow> {
-
-        private static final long serialVersionUID = 1L;
-        private final AggregateContext aggregateContext;
-
-        private AllTimeWindowProcessFunction(AggregateContext aggregateContext) {
-            this.aggregateContext = aggregateContext;
-        }
-
-        @Override
-        public void process(
-                Context context,
-                Iterable<MetricsAccumulator> elements,
-                Collector<DataEntity> out) {
-            out.collect(output(aggregateContext, elements.iterator().next(), timeWindow(aggregateContext, context.window())));
-        }
-    }
 }
