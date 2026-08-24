@@ -30,10 +30,20 @@ class PipelineRuntimePreviewSinkCollectionTest {
 
         PipelineRuntime runtime = new PipelineRuntime(
                 env,
-                new KafkaSourceFactory(),
-                new MockSourceFactory(),
-                previewSinkFactory,
-                new TransformOperatorFactory(),
+                PipelineRuntimeDependencies.builder()
+                        .kafkaSourceFactory(new KafkaSourceFactory())
+                        .mockSourceFactory(new MockSourceFactory())
+                        .elasticsearchSourceFactory(new ElasticsearchSourceFactory())
+                        .influxDbSourceFactory(new InfluxDbSourceFactory())
+                        .hdfsFileSourceFactory(new HdfsFileSourceFactory())
+                        .jdbcSourceFactory(new JdbcSourceFactory())
+                        .kafkaSinkFactory(previewSinkFactory)
+                        .jdbcSinkFactory(new JdbcSinkFactory())
+                        .elasticsearchSinkFactory(new ElasticsearchSinkFactory())
+                        .influxDbSinkFactory(new InfluxDbSinkFactory())
+                        .hdfsFileSinkFactory(new HdfsFileSinkFactory())
+                        .transformFactory(new TransformOperatorFactory())
+                        .build(),
                 false,
                 ExecutionMode.PREVIEW);
 
@@ -60,10 +70,20 @@ class PipelineRuntimePreviewSinkCollectionTest {
 
         PipelineRuntime runtime = new PipelineRuntime(
                 env,
-                new KafkaSourceFactory(),
-                new MockSourceFactory(),
-                previewSinkFactory,
-                new TransformOperatorFactory(),
+                PipelineRuntimeDependencies.builder()
+                        .kafkaSourceFactory(new KafkaSourceFactory())
+                        .mockSourceFactory(new MockSourceFactory())
+                        .elasticsearchSourceFactory(new ElasticsearchSourceFactory())
+                        .influxDbSourceFactory(new InfluxDbSourceFactory())
+                        .hdfsFileSourceFactory(new HdfsFileSourceFactory())
+                        .jdbcSourceFactory(new JdbcSourceFactory())
+                        .kafkaSinkFactory(previewSinkFactory)
+                        .jdbcSinkFactory(new JdbcSinkFactory())
+                        .elasticsearchSinkFactory(new ElasticsearchSinkFactory())
+                        .influxDbSinkFactory(new InfluxDbSinkFactory())
+                        .hdfsFileSinkFactory(new HdfsFileSinkFactory())
+                        .transformFactory(new TransformOperatorFactory())
+                        .build(),
                 false,
                 ExecutionMode.PREVIEW);
 
@@ -84,10 +104,20 @@ class PipelineRuntimePreviewSinkCollectionTest {
 
         PipelineRuntime runtime = new PipelineRuntime(
                 env,
-                new KafkaSourceFactory(),
-                new MockSourceFactory(),
-                previewSinkFactory,
-                new TransformOperatorFactory(),
+                PipelineRuntimeDependencies.builder()
+                        .kafkaSourceFactory(new KafkaSourceFactory())
+                        .mockSourceFactory(new MockSourceFactory())
+                        .elasticsearchSourceFactory(new ElasticsearchSourceFactory())
+                        .influxDbSourceFactory(new InfluxDbSourceFactory())
+                        .hdfsFileSourceFactory(new HdfsFileSourceFactory())
+                        .jdbcSourceFactory(new JdbcSourceFactory())
+                        .kafkaSinkFactory(previewSinkFactory)
+                        .jdbcSinkFactory(new JdbcSinkFactory())
+                        .elasticsearchSinkFactory(new ElasticsearchSinkFactory())
+                        .influxDbSinkFactory(new InfluxDbSinkFactory())
+                        .hdfsFileSinkFactory(new HdfsFileSinkFactory())
+                        .transformFactory(new TransformOperatorFactory())
+                        .build(),
                 false,
                 ExecutionMode.PREVIEW);
 
