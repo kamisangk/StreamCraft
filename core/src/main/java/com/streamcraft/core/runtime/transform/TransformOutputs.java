@@ -1,12 +1,11 @@
 package com.streamcraft.core.runtime.transform;
 
 import com.streamcraft.core.model.DataEntity;
+import com.streamcraft.shared.port.RuntimePortContract;
 import java.util.Map;
 import org.apache.flink.streaming.api.datastream.DataStream;
 
 public record TransformOutputs(Map<String, DataStream<DataEntity>> streamsByPort) {
-
-    private static final String DEFAULT_OUTPUT_PORT = "output-0";
 
     public TransformOutputs {
         if (streamsByPort == null || streamsByPort.isEmpty()) {
@@ -16,6 +15,6 @@ public record TransformOutputs(Map<String, DataStream<DataEntity>> streamsByPort
     }
 
     public static TransformOutputs single(DataStream<DataEntity> stream) {
-        return new TransformOutputs(Map.of(DEFAULT_OUTPUT_PORT, stream));
+        return new TransformOutputs(Map.of(RuntimePortContract.RECORDS_PORT, stream));
     }
 }

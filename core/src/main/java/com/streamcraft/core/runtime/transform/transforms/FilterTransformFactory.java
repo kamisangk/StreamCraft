@@ -5,6 +5,7 @@ import com.streamcraft.core.model.PipelineNode;
 import com.streamcraft.shared.expression.SafeExpressionSupport;
 import com.streamcraft.core.runtime.transform.TransformFactory;
 import com.streamcraft.core.runtime.transform.TransformOutputs;
+import com.streamcraft.shared.port.RuntimePortContract;
 import java.util.Map;
 import org.apache.flink.api.common.functions.OpenContext;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
@@ -22,11 +23,11 @@ public class FilterTransformFactory implements TransformFactory {
     @Override
     public TransformOutputs apply(DataStream<DataEntity> input, PipelineNode node) {
         String condition = node.config().path("condition").asText();
-        OutputTag<DataEntity> falseOutputTag = new OutputTag<>(node.id() + "-false") {
+        OutputTag<DataEntity> rejectedOutputTag = new OutputTag<>(node.id() + "-rejected") {
             private static final long serialVersionUID = 1L;
         };
 
-        SingleOutputStreamOperator<DataEntity> trueStream = input.process(new ProcessFunction<DataEntity, DataEntity>() {
+        SingleOutputStreamOperator<DataEntity> matchedStream = input.process(new ProcessFunction<DataEntity, DataEntity>() {
             private static final long serialVersionUID = 1L;
             private transient SafeExpressionSupport.CompiledExpression compiledCondition;
 
@@ -45,22 +46,24 @@ public class FilterTransformFactory implements TransformFactory {
                     result = compiledCondition.evaluateBoolean(entity.fields());
                 } catch (Exception exception) {
                     LOG.warn(
-                            "Routing Filter transform record '{}' to false branch because {}",
+                            "Routing Filter transform record '{}' to rejected branch because {}",
                             entity.id(),
                             exception.getMessage());
-                    context.output(falseOutputTag, entity);
+                    context.output(rejectedOutputTag, entity);
                     return;
                 }
                 if (result != null && result) {
                     collector.collect(entity);
                     return;
                 }
-                context.output(falseOutputTag, entity);
+                context.output(rejectedOutputTag, entity);
             }
-        }).name(node.name() + "-true");
-        DataStream<DataEntity> falseStream = trueStream.getSideOutput(falseOutputTag)
+        }).name(node.name() + "-matched");
+        DataStream<DataEntity> rejectedStream = matchedStream.getSideOutput(rejectedOutputTag)
                 .map(entity -> entity)
-                .name(node.name() + "-false");
-        return new TransformOutputs(Map.of("true", trueStream, "false", falseStream));
+                .name(node.name() + "-rejected");
+        return new TransformOutputs(Map.of(
+                RuntimePortContract.MATCHED_PORT, matchedStream,
+                RuntimePortContract.REJECTED_PORT, rejectedStream));
     }
 }

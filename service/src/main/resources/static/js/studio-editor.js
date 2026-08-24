@@ -6,10 +6,10 @@ const MONITOR_REFRESH_TIMEOUT_MS = 4500;
 const NODE_WIDTH = 236;
 const NODE_HEIGHT = 120;
 const CANVAS_NODE_PADDING = 24;
-const DEFAULT_SOURCE_PORT_ID = "output-0";
-const DEFAULT_TARGET_PORT_ID = "input-0";
-const FILTER_OUTPUT_PORT_IDS = ["true", "false"];
-const DATA_QUALITY_OUTPUT_PORT_IDS = [DEFAULT_SOURCE_PORT_ID, "dirty"];
+const PORT_CONTRACT = window.StreamCraftPipelinePortContract;
+if (!PORT_CONTRACT) {
+    throw new Error("StreamCraft pipeline port contract is unavailable.");
+}
 const FILTER_PORT_STACK_OUTSET_X = 6;
 const DEFAULT_RUN_PARALLELISM = 1;
 let edgeRefreshFrameId = null;
@@ -3632,58 +3632,11 @@ function nodeTone(type) {
 }
 
 function outputPortsForNode(node) {
-    if (node.type === "SINK") {
-        return [];
-    }
-    if (node.operator === "FILTER") {
-        return FILTER_OUTPUT_PORT_IDS.map(portId => ({ id: portId }));
-    }
-    if (node.operator === "DATA_QUALITY") {
-        return DATA_QUALITY_OUTPUT_PORT_IDS.map(portId => ({ id: portId }));
-    }
-    if (node.operator === "ROUTE") {
-        const routePorts = Array.isArray(node.config?.routes)
-            ? node.config.routes.map(route => String(route?.portId || "").trim()).filter(Boolean)
-            : [];
-        if (node.config?.includeUnmatched !== false) {
-            routePorts.push(String(node.config?.unmatchedPort || "unmatched").trim() || "unmatched");
-        }
-        return [...new Set(routePorts)].map(portId => ({ id: portId }));
-    }
-    return [{ id: DEFAULT_SOURCE_PORT_ID, label: "" }];
+    return PORT_CONTRACT.outputPortsForNode(node).map(portId => ({ id: portId, label: "" }));
 }
 
 function inputPortsForNode(node) {
-    if (node.type === "SOURCE") {
-        return [];
-    }
-    if (node.operator === "STREAM_JOIN") {
-        return [
-            { id: "left", label: "" },
-            { id: "right", label: "" }
-        ];
-    }
-    return [{ id: DEFAULT_TARGET_PORT_ID, label: "" }];
-}
-
-function sourcePortIdForEdge(edge, sourceNode) {
-    if (sourceNode?.operator === "FILTER") {
-        return edge.sourcePortId;
-    }
-    if (sourceNode?.operator === "ROUTE") {
-        return edge.sourcePortId;
-    }
-    return edge.sourcePortId;
-}
-
-function outputPortIdForAnchor(node, portId) {
-    if (node?.operator === "FILTER") {
-        return portId;
-    }
-    if (node?.operator === "ROUTE") {
-        return portId;
-    }
-    return portId;
+    return PORT_CONTRACT.inputPortsForNode(node).map(portId => ({ id: portId, label: "" }));
 }
 
 function canvasWidthFootprintForNode(node) {
@@ -3846,7 +3799,7 @@ function bindNodeInteractions() {
                 event.stopPropagation();
                 completeConnectionDrag(
                     nodeElement.dataset.nodeId,
-                    event.currentTarget.dataset.portId || DEFAULT_TARGET_PORT_ID
+                    event.currentTarget.dataset.portId
                 );
             });
         });
@@ -3926,50 +3879,18 @@ function renderNodeContextMenu() {
     });
 }
 
-function fallbackPortAnchor(node, direction, portId) {
-    const baseX = direction === "output"
-        ? Number(node.ui?.x ?? 120) + NODE_WIDTH
-        : Number(node.ui?.x ?? 120);
-    const baseY = Number(node.ui?.y ?? 120) + NODE_HEIGHT / 2;
-    if (direction === "output" && node.operator === "FILTER") {
-        const portIndex = FILTER_OUTPUT_PORT_IDS.indexOf(portId);
-        if (portIndex === 0) {
-            return { x: baseX, y: baseY - 14 };
-        }
-        if (portIndex === 1) {
-            return { x: baseX, y: baseY + 14 };
-        }
-        return null;
-    }
-    if (direction === "input" && node.operator === "STREAM_JOIN") {
-        if (portId === "left") {
-            return { x: baseX, y: baseY - 14 };
-        }
-        if (portId === "right") {
-            return { x: baseX, y: baseY + 14 };
-        }
-    }
-    return { x: baseX, y: baseY };
-}
-
 function resolvePortAnchor(nodeId, direction, portId) {
     const canvas = byId("canvas-drop-zone");
     const node = findNodeById(nodeId);
-    if (!canvas || !node) {
+    if (!canvas || !node || !portId) {
         return null;
     }
 
-    const resolvedPortId = direction === "input"
-        ? portId || DEFAULT_TARGET_PORT_ID
-        : outputPortIdForAnchor(node, portId);
-    if (resolvedPortId == null || resolvedPortId === "") {
-        return fallbackPortAnchor(node, direction, resolvedPortId);
-    }
     const port = document.querySelector(
-        `.draggable-node[data-node-id="${nodeId}"] [data-port-direction="${direction}"][data-port-id="${resolvedPortId}"]`
+        `.draggable-node[data-node-id="${nodeId}"] [data-port-direction="${direction}"][data-port-id="${portId}"]`
     );
     if (!port) {
-        return fallbackPortAnchor(node, direction, resolvedPortId);
+        return null;
     }
 
     const canvasRect = canvas.getBoundingClientRect();
@@ -4129,7 +4050,7 @@ function buildDefinition() {
         edges: state.edges.map(edge => ({
             id: edge.id,
             sourceNodeId: edge.sourceNodeId,
-            sourcePortId: sourcePortIdForEdge(edge, findNodeById(edge.sourceNodeId)),
+            sourcePortId: edge.sourcePortId,
             targetNodeId: edge.targetNodeId,
             targetPortId: edge.targetPortId
         }))
@@ -4302,7 +4223,10 @@ function startConnectionDrag(nodeId, event) {
 
     hideNodeContextMenu();
     selectNode(nodeId);
-    const sourcePortId = event.currentTarget?.dataset?.portId || DEFAULT_SOURCE_PORT_ID;
+    const sourcePortId = event.currentTarget?.dataset?.portId;
+    if (!sourcePortId || !PORT_CONTRACT.isOutputPortDeclared(source, sourcePortId)) {
+        return;
+    }
     state.connectState = {
         sourceNodeId: nodeId,
         sourcePortId,
@@ -4357,7 +4281,7 @@ function updateTemporaryConnectionPath() {
     tempPath.classList.add("opacity-100");
 }
 
-function completeConnectionDrag(targetNodeId, targetPortId = "input-0") {
+function completeConnectionDrag(targetNodeId, targetPortId) {
     if (!state.connectState || state.connectState.sourceNodeId === targetNodeId) {
         cancelConnectionDrag();
         return;
@@ -4365,9 +4289,15 @@ function completeConnectionDrag(targetNodeId, targetPortId = "input-0") {
 
     const source = findNodeById(state.connectState.sourceNodeId);
     const target = findNodeById(targetNodeId);
+    if (!source || !target || !targetPortId
+        || !PORT_CONTRACT.isOutputPortDeclared(source, state.connectState.sourcePortId)
+        || !PORT_CONTRACT.isInputPortDeclared(target, targetPortId)) {
+        cancelConnectionDrag();
+        return;
+    }
     const duplicate = state.edges.find(edge =>
         edge.sourceNodeId === source?.id
-        && edge.sourcePortId === (state.connectState.sourcePortId || DEFAULT_SOURCE_PORT_ID)
+        && edge.sourcePortId === state.connectState.sourcePortId
         && edge.targetNodeId === target?.id
         && edge.targetPortId === targetPortId
     );
@@ -4386,7 +4316,7 @@ function completeConnectionDrag(targetNodeId, targetPortId = "input-0") {
     const edge = {
         id: nextEdgeId(source.id, target.id),
         sourceNodeId: source.id,
-        sourcePortId: state.connectState.sourcePortId || DEFAULT_SOURCE_PORT_ID,
+        sourcePortId: state.connectState.sourcePortId,
         targetNodeId: target.id,
         targetPortId
     };
@@ -4494,12 +4424,11 @@ function normalizeNode(node) {
     return normalizedNode;
 }
 
-function normalizeEdge(edge, nodes = state.nodes) {
-    const sourceNode = nodes.find(node => node.id === edge.sourceNodeId);
+function normalizeEdge(edge) {
     return {
         id: edge.id || `edge-${edge.sourceNodeId}-${edge.targetNodeId}`,
         sourceNodeId: edge.sourceNodeId,
-        sourcePortId: sourcePortIdForEdge(edge, sourceNode),
+        sourcePortId: edge.sourcePortId,
         targetNodeId: edge.targetNodeId,
         targetPortId: edge.targetPortId
     };
@@ -4508,7 +4437,7 @@ function normalizeEdge(edge, nodes = state.nodes) {
 function loadDefinitionIntoState(definition) {
     const nodes = Array.isArray(definition?.nodes) ? definition.nodes.map(normalizeNode) : [];
     state.nodes = nodes;
-    state.edges = Array.isArray(definition?.edges) ? definition.edges.map(edge => normalizeEdge(edge, nodes)) : [];
+    state.edges = Array.isArray(definition?.edges) ? definition.edges.map(normalizeEdge) : [];
     hideNodeContextMenu();
     state.selectedNodeId = null;
     state.selectedEdgeId = null;
@@ -4839,7 +4768,7 @@ function validateStreamJoinConfig(node, definition = null) {
     if (definition) {
         const incomingPorts = new Set((definition.edges || [])
             .filter(edge => edge.targetNodeId === node.id)
-            .map(edge => edge.targetPortId || DEFAULT_TARGET_PORT_ID));
+            .map(edge => edge.targetPortId));
         if (!incomingPorts.has("left") || !incomingPorts.has("right")) {
             return { ok: false, message: t("studio.validation.streamJoin.inputPortsRequired", "{0}: connect both left and right inputs.", [nodeName]) };
         }
@@ -5220,11 +5149,20 @@ function validateRunnableGraph(definition) {
     const adjacency = new Map(definition.nodes.map(node => [node.id, []]));
 
     for (const edge of definition.edges) {
-        if (!nodeById.has(edge.sourceNodeId) || !nodeById.has(edge.targetNodeId)) {
+        const sourceNode = nodeById.get(edge.sourceNodeId);
+        const targetNode = nodeById.get(edge.targetNodeId);
+        if (!sourceNode || !targetNode) {
             return { ok: false, message: t("studio.validation.unknownEdgeNode", "A connection references an unknown node.") };
         }
         if (edge.sourceNodeId === edge.targetNodeId) {
             return { ok: false, message: t("studio.validation.selfEdge", "A node cannot connect to itself.") };
+        }
+        if (!edge.sourcePortId || !edge.targetPortId) {
+            return { ok: false, message: t("studio.validation.edgePortRequired", "Every connection must declare both port identifiers.") };
+        }
+        if (!PORT_CONTRACT.isOutputPortDeclared(sourceNode, edge.sourcePortId)
+            || !PORT_CONTRACT.isInputPortDeclared(targetNode, edge.targetPortId)) {
+            return { ok: false, message: t("studio.validation.edgePortUnsupported", "A connection uses a port that is not declared by its node.") };
         }
 
         incoming.set(edge.targetNodeId, (incoming.get(edge.targetNodeId) || 0) + 1);

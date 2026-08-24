@@ -11,6 +11,7 @@ import com.streamcraft.core.runtime.metrics.InputMetricsCollector;
 import com.streamcraft.core.runtime.metrics.OutputMetricsCollector;
 import com.streamcraft.core.runtime.transform.TransformOperatorFactory;
 import com.streamcraft.core.runtime.transform.TransformOutputs;
+import com.streamcraft.shared.port.RuntimePortContract;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.HashMap;
@@ -20,10 +21,6 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
 public class PipelineRuntime {
-
-    private static final String DEFAULT_OUTPUT_PORT = "output-0";
-    private static final String DEFAULT_INPUT_PORT = "input-0";
-
     private final StreamExecutionEnvironment env;
     private final KafkaSourceFactory kafkaSourceFactory;
     private final MockSourceFactory mockSourceFactory;
@@ -68,7 +65,7 @@ public class PipelineRuntime {
         for (String nodeId : plan.topologicalNodeIds()) {
             PipelineNode node = plan.nodeById().get(nodeId);
             if (node.type() == PipelineNodeType.SOURCE) {
-                streamsByOutputPort.put(defaultOutput(node.id()), createSource(node));
+                streamsByOutputPort.put(sourcePortKey(node), createSource(node));
                 continue;
             }
             if (node.type() == PipelineNodeType.TRANSFORM) {
@@ -81,7 +78,7 @@ public class PipelineRuntime {
                 continue;
             }
             if (node.type() == PipelineNodeType.SINK) {
-                attachSink(node, mergeDefaultInput(node, plan, streamsByOutputPort));
+                attachSink(node, mergeSinkInput(node, plan, streamsByOutputPort));
             }
         }
     }
@@ -122,16 +119,18 @@ public class PipelineRuntime {
             };
         }
         return sourceStream.map(new OutputMetricsCollector(sourceNode.id()))
-                .name("output-metrics-" + sourceNode.id() + "-" + DEFAULT_OUTPUT_PORT);
+                .name("output-metrics-" + sourceNode.id() + "-" + sourceOutputPort(sourceNode));
     }
 
-    private DataStream<DataEntity> mergeDefaultInput(PipelineNode node,
-                                                     RuntimeGraphPlanner.Plan plan,
-                                                     Map<NodePortKey, DataStream<DataEntity>> streamsByOutputPort) {
+    private DataStream<DataEntity> mergeSinkInput(PipelineNode node,
+                                                  RuntimeGraphPlanner.Plan plan,
+                                                  Map<NodePortKey, DataStream<DataEntity>> streamsByOutputPort) {
         Map<String, DataStream<DataEntity>> inputsByPort = mergeInputsByPort(node, plan, streamsByOutputPort);
-        DataStream<DataEntity> input = inputsByPort.get(DEFAULT_INPUT_PORT);
+        String inputPortId = sinkInputPort(node);
+        DataStream<DataEntity> input = inputsByPort.get(inputPortId);
         if (input == null) {
-            throw new IllegalArgumentException("Node " + node.id() + " does not have an executable input path on input-0.");
+            throw new IllegalArgumentException(
+                    "Node " + node.id() + " does not have an executable input path on " + inputPortId + ".");
         }
         return input;
     }
@@ -177,7 +176,15 @@ public class PipelineRuntime {
                 .name("input-metrics-" + node.id() + "-" + inputKey.inputPortId());
     }
 
-    private NodePortKey defaultOutput(String nodeId) {
-        return new NodePortKey(nodeId, DEFAULT_OUTPUT_PORT);
+    private NodePortKey sourcePortKey(PipelineNode sourceNode) {
+        return new NodePortKey(sourceNode.id(), sourceOutputPort(sourceNode));
+    }
+
+    private String sourceOutputPort(PipelineNode sourceNode) {
+        return RuntimePortContract.forOperator(sourceNode.operator().name()).singleOutputPort();
+    }
+
+    private String sinkInputPort(PipelineNode sinkNode) {
+        return RuntimePortContract.forOperator(sinkNode.operator().name()).singleInputPort();
     }
 }
