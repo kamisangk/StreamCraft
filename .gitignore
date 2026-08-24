@@ -17,6 +17,9 @@ service/*.log
 service/page-red.txt
 service/security-red.txt
 
+# Local-only test experiments
+**/*Test.java
+
 # Local worktrees and temporary files
 .worktrees/
 temp/
