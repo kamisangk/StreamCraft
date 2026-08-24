@@ -59,17 +59,20 @@ class PipelineServiceRuntimeTargetTypeSubmissionTest {
         capturedRequest = new AtomicReference<>();
         capturedStopRequest = new AtomicReference<>();
         FlinkJobGateway flinkJobGateway = new CapturingFlinkJobGateway(capturedRequest, capturedStopRequest);
+        PipelineDefinitionService definitionService = new PipelineDefinitionService(
+                repository,
+                new ObjectMapper(),
+                validator,
+                definitionNormalizer);
         service = new PipelineService(
                 repository,
                 validator,
-                new PipelineDefinitionService(
-                        repository,
-                        new ObjectMapper(),
-                        validator,
-                        definitionNormalizer),
-                runtimeTargetService,
+                definitionService,
+                new PipelineRuntimeStateSupport(
+                        definitionService,
+                        runtimeTargetService,
+                        flinkMetricsClient),
                 flinkJobGateway,
-                flinkMetricsClient,
                 runtimeProperties,
                 UiMessageService.englishFallback());
     }
