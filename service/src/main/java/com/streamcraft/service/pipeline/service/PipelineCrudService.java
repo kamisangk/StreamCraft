@@ -1,6 +1,5 @@
 package com.streamcraft.service.pipeline.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.streamcraft.service.config.UiMessageService;
 import com.streamcraft.service.pipeline.model.Pipeline;
 import com.streamcraft.service.pipeline.model.PipelineRunStatus;
@@ -11,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class PipelineService {
+public class PipelineCrudService {
 
     private final PipelineRepository repository;
     private final PipelineDefinitionService definitionService;
@@ -19,14 +18,22 @@ public class PipelineService {
     private final UiMessageService messages;
 
     @Autowired
-    public PipelineService(PipelineRepository repository,
-                           PipelineDefinitionService definitionService,
-                           PipelineRuntimeStateSupport runtimeStateSupport,
-                           UiMessageService messages) {
+    public PipelineCrudService(
+            PipelineRepository repository,
+            PipelineDefinitionService definitionService,
+            PipelineRuntimeStateSupport runtimeStateSupport,
+            UiMessageService messages) {
         this.repository = repository;
         this.definitionService = definitionService;
         this.runtimeStateSupport = runtimeStateSupport;
         this.messages = messages == null ? UiMessageService.englishFallback() : messages;
+    }
+
+    public PipelineCrudService(
+            PipelineRepository repository,
+            PipelineDefinitionService definitionService,
+            PipelineRuntimeStateSupport runtimeStateSupport) {
+        this(repository, definitionService, runtimeStateSupport, UiMessageService.englishFallback());
     }
 
     @Transactional
@@ -44,11 +51,6 @@ public class PipelineService {
         return repository.save(pipeline);
     }
 
-    @Transactional(readOnly = true)
-    public JsonNode getDefinition(Long id) {
-        return definitionService.getDefinition(id);
-    }
-
     public void delete(Long id) {
         Pipeline pipeline = getStored(id);
         if (runtimeStateSupport.resolveRuntimeStatus(pipeline) == PipelineRunStatus.RUNNING) {
@@ -61,5 +63,4 @@ public class PipelineService {
         return repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException(messages.get("pipeline.error.notFound")));
     }
-
 }
