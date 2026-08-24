@@ -31,7 +31,7 @@ public final class StreamCraftDatasourceEnvironmentPostProcessor implements Envi
     }
 
     private enum DatabaseType {
-        SQLITE("org.sqlite.JDBC", "org.hibernate.community.dialect.SQLiteDialect"),
+        SQLITE("org.sqlite.JDBC", "com.streamcraft.service.config.StreamCraftSQLiteDialect"),
         MYSQL("com.mysql.cj.jdbc.Driver", "org.hibernate.dialect.MySQLDialect");
 
         private final String driverClassName;

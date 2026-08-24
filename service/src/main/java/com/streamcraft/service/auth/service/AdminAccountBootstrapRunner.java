@@ -18,23 +18,6 @@ public class AdminAccountBootstrapRunner implements ApplicationRunner {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AdminAccountBootstrapRunner.class);
 
-    private static final String CREATE_USERS_TABLE = """
-            create table if not exists users (
-                username varchar(50) not null primary key,
-                password varchar(500) not null,
-                enabled boolean not null
-            )
-            """;
-
-    private static final String CREATE_AUTHORITIES_TABLE = """
-            create table if not exists authorities (
-                username varchar(50) not null,
-                authority varchar(50) not null,
-                constraint fk_authorities_users foreign key (username) references users(username),
-                constraint uk_authorities unique (username, authority)
-            )
-            """;
-
     private static final String ADMIN_AUTHORITY = "ROLE_ADMIN";
 
     private final JdbcTemplate jdbcTemplate;
@@ -57,8 +40,6 @@ public class AdminAccountBootstrapRunner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        createSchemaIfMissing();
-
         String username = properties.username();
         if (userDetailsManager.userExists(username)) {
             ensureAdminAuthority(username);
@@ -81,11 +62,6 @@ public class AdminAccountBootstrapRunner implements ApplicationRunner {
             }
         }
         ensureAdminAuthority(username);
-    }
-
-    private void createSchemaIfMissing() {
-        jdbcTemplate.execute(CREATE_USERS_TABLE);
-        jdbcTemplate.execute(CREATE_AUTHORITIES_TABLE);
     }
 
     private void ensureAdminAuthority(String username) {
