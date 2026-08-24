@@ -69,7 +69,7 @@ class PipelineRuntimeJdbcSinkExecutionTest {
     private void execute(PipelineDefinition definition, String jobName) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
-        new PipelineRuntime(env, true).run(definition);
+        new PipelineRuntime(env, PipelineRuntimeDependencies.defaults(), true, ExecutionMode.RUN).run(definition);
         env.execute(jobName);
     }
 
