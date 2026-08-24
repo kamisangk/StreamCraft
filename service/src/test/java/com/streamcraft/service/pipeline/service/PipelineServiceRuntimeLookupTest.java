@@ -55,9 +55,12 @@ class PipelineServiceRuntimeLookupTest {
     void setUp() {
         service = new PipelineService(
                 repository,
-                new ObjectMapper(),
                 validator,
-                definitionNormalizer,
+                new PipelineDefinitionService(
+                        repository,
+                        new ObjectMapper(),
+                        validator,
+                        definitionNormalizer),
                 runtimeTargetService,
                 flinkJobGateway,
                 flinkMetricsClient,
