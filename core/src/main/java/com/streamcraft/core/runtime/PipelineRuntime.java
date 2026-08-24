@@ -89,32 +89,6 @@ public class PipelineRuntime {
                            KafkaSourceFactory kafkaSourceFactory,
                            MockSourceFactory mockSourceFactory,
                            ElasticsearchSourceFactory elasticsearchSourceFactory,
-                           JdbcSourceFactory jdbcSourceFactory,
-                           KafkaSinkFactory kafkaSinkFactory,
-                           JdbcSinkFactory jdbcSinkFactory,
-                           TransformOperatorFactory transformFactory,
-                           boolean testMode,
-                           ExecutionMode executionMode) {
-        this(env, PipelineRuntimeDependencies.builder()
-                .kafkaSourceFactory(kafkaSourceFactory)
-                .mockSourceFactory(mockSourceFactory)
-                .elasticsearchSourceFactory(elasticsearchSourceFactory)
-                .influxDbSourceFactory(new InfluxDbSourceFactory())
-                .hdfsFileSourceFactory(new HdfsFileSourceFactory())
-                .jdbcSourceFactory(jdbcSourceFactory)
-                .kafkaSinkFactory(kafkaSinkFactory)
-                .jdbcSinkFactory(jdbcSinkFactory)
-                .elasticsearchSinkFactory(new ElasticsearchSinkFactory())
-                .influxDbSinkFactory(new InfluxDbSinkFactory())
-                .hdfsFileSinkFactory(new HdfsFileSinkFactory())
-                .transformFactory(transformFactory)
-                .build(), testMode, executionMode);
-    }
-
-    public PipelineRuntime(StreamExecutionEnvironment env,
-                           KafkaSourceFactory kafkaSourceFactory,
-                           MockSourceFactory mockSourceFactory,
-                           ElasticsearchSourceFactory elasticsearchSourceFactory,
                            InfluxDbSourceFactory influxDbSourceFactory,
                            JdbcSourceFactory jdbcSourceFactory,
                            KafkaSinkFactory kafkaSinkFactory,
