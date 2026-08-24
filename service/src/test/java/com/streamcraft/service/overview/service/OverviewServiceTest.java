@@ -17,7 +17,7 @@ import com.streamcraft.service.pipeline.model.Pipeline;
 import com.streamcraft.service.pipeline.model.PipelineMetrics;
 import com.streamcraft.service.pipeline.model.PipelineRunStatus;
 import com.streamcraft.service.pipeline.service.PipelineRuntimeSnapshot;
-import com.streamcraft.service.pipeline.service.PipelineService;
+import com.streamcraft.service.pipeline.service.PipelineRuntimeQueryService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -34,13 +34,16 @@ class OverviewServiceTest {
     private FlinkRuntimeTargetService runtimeTargetService;
 
     @Mock
-    private PipelineService pipelineService;
+    private PipelineRuntimeQueryService pipelineRuntimeQueryService;
 
     private OverviewService service;
 
     @BeforeEach
     void setUp() {
-        service = new OverviewService(runtimeTargetService, pipelineService, new ObjectMapper());
+        service = new OverviewService(
+                runtimeTargetService,
+                pipelineRuntimeQueryService,
+                new ObjectMapper());
     }
 
     @Test
@@ -50,7 +53,7 @@ class OverviewServiceTest {
         Pipeline failed = pipeline(103L, "failed", PipelineRunStatus.FAILED, "job-103");
 
         when(runtimeTargetService.findTarget()).thenReturn(Optional.of(target(12, 10)));
-        when(pipelineService.listRuntimeSnapshots()).thenReturn(List.of(
+        when(pipelineRuntimeQueryService.listRuntimeSnapshots()).thenReturn(List.of(
                 snapshot(runningWithMetrics, metrics(List.of(
                         new NodeMetrics("n-1", "node-1", 10L, 8L),
                         new NodeMetrics("n-2", "node-2", 5L, 4L)))),
@@ -73,8 +76,8 @@ class OverviewServiceTest {
         });
         assertThat(response.pipelines()).extracting(OverviewResponse.PipelineRow::pipelineId)
                 .containsExactly(101L, 102L, 103L);
-        verify(pipelineService, never()).list();
-        verify(pipelineService, never()).getMetrics(anyLong());
+        verify(pipelineRuntimeQueryService, never()).list();
+        verify(pipelineRuntimeQueryService, never()).getMetrics(anyLong());
     }
 
     private FlinkRuntimeTarget target(int totalSlots, int availableSlots) {

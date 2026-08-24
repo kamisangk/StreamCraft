@@ -11,7 +11,6 @@ import com.streamcraft.service.pipeline.client.StopFlinkJobResponse;
 import com.streamcraft.service.pipeline.client.SubmitFlinkJobRequest;
 import com.streamcraft.service.pipeline.client.SubmitFlinkJobResponse;
 import com.streamcraft.service.pipeline.model.Pipeline;
-import com.streamcraft.service.pipeline.model.PipelineMetrics;
 import com.streamcraft.service.pipeline.model.PipelineRunStatus;
 import com.streamcraft.service.pipeline.persistence.PipelineRepository;
 import com.streamcraft.service.pipeline.web.PipelinePreviewRequest;
@@ -19,8 +18,6 @@ import com.streamcraft.service.pipeline.web.PipelinePreviewResponse;
 import com.streamcraft.service.pipeline.web.RunPipelineRequest;
 import com.streamcraft.service.pipeline.web.SavePipelineRequest;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,35 +63,6 @@ public class PipelineService {
         pipeline.setDefinitionJson(normalizedDefinition);
 
         return repository.save(pipeline);
-    }
-
-    public List<Pipeline> list() {
-        FlinkRuntimeTarget runtimeTarget = runtimeStateSupport.findRuntimeTarget();
-        return runtimeStateSupport.resolveRuntimeStatuses(
-                repository.findAllByOrderByUpdatedAtDesc(), runtimeTarget);
-    }
-
-    public List<Pipeline> listRunningPipelines() {
-        FlinkRuntimeTarget runtimeTarget = runtimeStateSupport.findRuntimeTarget();
-        return runtimeStateSupport.resolveRuntimeStatuses(
-                        repository.findByLastRunStatus(PipelineRunStatus.RUNNING), runtimeTarget).stream()
-                .filter(runtimeStateSupport::isRunning)
-                .toList();
-    }
-
-    public List<PipelineRuntimeSnapshot> listRuntimeSnapshots() {
-        List<Pipeline> storedPipelines = repository.findAllByOrderByUpdatedAtDesc();
-        FlinkRuntimeTarget runtimeTarget = runtimeStateSupport.findRuntimeTarget();
-
-        List<PipelineRuntimeSnapshot> snapshots = new ArrayList<>();
-        for (Pipeline pipeline : storedPipelines) {
-            snapshots.add(runtimeStateSupport.buildRuntimeSnapshot(pipeline, runtimeTarget));
-        }
-        return snapshots;
-    }
-
-    public Pipeline get(Long id) {
-        return runtimeStateSupport.withResolvedRuntimeStatus(getStored(id));
     }
 
     @Transactional(readOnly = true)
@@ -179,14 +147,6 @@ public class PipelineService {
             throw new IllegalArgumentException(messages.get("pipeline.error.stopBeforeDeletion"));
         }
         repository.delete(pipeline);
-    }
-
-    public PipelineMetrics getMetrics(Long id) {
-        Pipeline pipeline = getStored(id);
-        if (!hasText(pipeline.getLastJobId())) {
-            throw new IllegalArgumentException(messages.get("pipeline.error.runningJobMissing"));
-        }
-        return runtimeStateSupport.resolveMetrics(pipeline, runtimeStateSupport.requireRuntimeTarget());
     }
 
     private Pipeline getStored(Long id) {

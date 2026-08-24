@@ -8,8 +8,8 @@ import com.streamcraft.service.pipeline.model.Pipeline;
 import com.streamcraft.service.pipeline.model.PipelineRunStatus;
 import com.streamcraft.service.pipeline.monitor.web.GlobalTaskMonitorResponse;
 import com.streamcraft.service.pipeline.service.PipelineRuntimeView;
-import com.streamcraft.service.pipeline.service.PipelineService;
 import com.streamcraft.service.pipeline.service.PipelineRuntimeSnapshot;
+import com.streamcraft.service.pipeline.service.PipelineRuntimeQueryService;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -20,28 +20,28 @@ import org.springframework.stereotype.Service;
 @Service
 public class GlobalTaskMonitorService {
 
-    private final PipelineService pipelineService;
+    private final PipelineRuntimeQueryService pipelineRuntimeQueryService;
     private final FlinkRuntimeTargetService runtimeTargetService;
     private final UiMessageService messages;
 
     @Autowired
     public GlobalTaskMonitorService(
-            PipelineService pipelineService,
+            PipelineRuntimeQueryService pipelineRuntimeQueryService,
             FlinkRuntimeTargetService runtimeTargetService,
             UiMessageService messages) {
-        this.pipelineService = pipelineService;
+        this.pipelineRuntimeQueryService = pipelineRuntimeQueryService;
         this.runtimeTargetService = runtimeTargetService;
         this.messages = messages == null ? UiMessageService.englishFallback() : messages;
     }
 
     public GlobalTaskMonitorService(
-            PipelineService pipelineService,
+            PipelineRuntimeQueryService pipelineRuntimeQueryService,
             FlinkRuntimeTargetService runtimeTargetService) {
-        this(pipelineService, runtimeTargetService, UiMessageService.englishFallback());
+        this(pipelineRuntimeQueryService, runtimeTargetService, UiMessageService.englishFallback());
     }
 
     public GlobalTaskMonitorResponse getMonitor() {
-        List<PipelineRuntimeSnapshot> runtimeSnapshotList = pipelineService.listRuntimeSnapshots();
+        List<PipelineRuntimeSnapshot> runtimeSnapshotList = pipelineRuntimeQueryService.listRuntimeSnapshots();
         FlinkRuntimeTarget runtimeTarget = runtimeTargetService.findTarget().orElse(null);
         int connectedRuntimeTargets = runtimeTarget != null && runtimeTarget.getStatus() == RuntimeTargetStatus.CONNECTED ? 1 : 0;
         int totalRuntimeTargets = runtimeTarget == null ? 0 : 1;

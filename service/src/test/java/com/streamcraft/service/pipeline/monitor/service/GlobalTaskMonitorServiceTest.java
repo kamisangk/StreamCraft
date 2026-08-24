@@ -16,7 +16,7 @@ import com.streamcraft.service.pipeline.model.PipelineMetrics;
 import com.streamcraft.service.pipeline.model.PipelineRunStatus;
 import com.streamcraft.service.pipeline.monitor.web.GlobalTaskMonitorResponse;
 import com.streamcraft.service.pipeline.service.PipelineRuntimeSnapshot;
-import com.streamcraft.service.pipeline.service.PipelineService;
+import com.streamcraft.service.pipeline.service.PipelineRuntimeQueryService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -30,7 +30,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class GlobalTaskMonitorServiceTest {
 
     @Mock
-    private PipelineService pipelineService;
+    private PipelineRuntimeQueryService pipelineRuntimeQueryService;
 
     @Mock
     private FlinkRuntimeTargetService runtimeTargetService;
@@ -42,7 +42,7 @@ class GlobalTaskMonitorServiceTest {
     void monitorSummaryUsesSingletonRuntimeTargetSlotSnapshotWithoutRevalidation() {
         FlinkRuntimeTarget target = target(12, 11);
 
-        when(pipelineService.listRuntimeSnapshots()).thenReturn(List.of());
+        when(pipelineRuntimeQueryService.listRuntimeSnapshots()).thenReturn(List.of());
         when(runtimeTargetService.findTarget()).thenReturn(Optional.of(target));
 
         GlobalTaskMonitorResponse response = service.getMonitor();
@@ -53,8 +53,8 @@ class GlobalTaskMonitorServiceTest {
         assertThat(response.summary().totalRuntimeTargets()).isEqualTo(1);
         assertThat(response.summary().connectedRuntimeTargets()).isEqualTo(1);
         verify(runtimeTargetService, never()).revalidate();
-        verify(pipelineService, never()).list();
-        verify(pipelineService, never()).getMetrics(anyLong());
+        verify(pipelineRuntimeQueryService, never()).list();
+        verify(pipelineRuntimeQueryService, never()).getMetrics(anyLong());
     }
 
     @Test
@@ -65,7 +65,7 @@ class GlobalTaskMonitorServiceTest {
         Pipeline failed = pipeline(104L, "failed", PipelineRunStatus.FAILED, "job-104");
 
         when(runtimeTargetService.findTarget()).thenReturn(Optional.of(target(12, 11)));
-        when(pipelineService.listRuntimeSnapshots()).thenReturn(List.of(
+        when(pipelineRuntimeQueryService.listRuntimeSnapshots()).thenReturn(List.of(
                 snapshot(runningWithMetricsOne, metrics(List.of(
                         new NodeMetrics("n-1", "node-1", 10L, 7L),
                         new NodeMetrics("n-2", "node-2", 4L, 6L)))),
@@ -81,8 +81,8 @@ class GlobalTaskMonitorServiceTest {
         assertThat(response.runtimeSnapshot().includedPipelineCount()).isEqualTo(2);
         assertThat(response.runtimeSnapshot().missingPipelineCount()).isEqualTo(1);
         assertThat(response.metadata().skippedLiveMetricsCount()).isEqualTo(1);
-        verify(pipelineService, never()).list();
-        verify(pipelineService, never()).getMetrics(anyLong());
+        verify(pipelineRuntimeQueryService, never()).list();
+        verify(pipelineRuntimeQueryService, never()).getMetrics(anyLong());
     }
 
     @Test
@@ -92,7 +92,8 @@ class GlobalTaskMonitorServiceTest {
         metricsWithoutNodes.setNodeMetrics(null);
 
         when(runtimeTargetService.findTarget()).thenReturn(Optional.of(target(12, 11)));
-        when(pipelineService.listRuntimeSnapshots()).thenReturn(List.of(snapshot(runningWithMetrics, metricsWithoutNodes)));
+        when(pipelineRuntimeQueryService.listRuntimeSnapshots()).thenReturn(List.of(
+                snapshot(runningWithMetrics, metricsWithoutNodes)));
 
         GlobalTaskMonitorResponse response = service.getMonitor();
 
@@ -105,8 +106,8 @@ class GlobalTaskMonitorServiceTest {
         assertThat(response.runtimeSnapshot().totalOutputRecords()).isZero();
         assertThat(response.runtimeSnapshot().includedPipelineCount()).isEqualTo(1);
         assertThat(response.runtimeSnapshot().missingPipelineCount()).isZero();
-        verify(pipelineService, never()).list();
-        verify(pipelineService, never()).getMetrics(anyLong());
+        verify(pipelineRuntimeQueryService, never()).list();
+        verify(pipelineRuntimeQueryService, never()).getMetrics(anyLong());
     }
 
     private FlinkRuntimeTarget target(int totalSlots, int availableSlots) {

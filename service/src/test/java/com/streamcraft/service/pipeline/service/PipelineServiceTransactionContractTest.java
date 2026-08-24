@@ -14,13 +14,8 @@ class PipelineServiceTransactionContractTest {
     void remoteCallingPipelineOperationsDoNotHoldTransactionOpen() throws Exception {
         assertNotTransactional("preview", PipelinePreviewRequest.class);
         assertNotTransactional("run", Long.class, RunPipelineRequest.class);
-        assertNotTransactional("list");
-        assertNotTransactional("listRunningPipelines");
-        assertNotTransactional("listRuntimeSnapshots");
-        assertNotTransactional("get", Long.class);
         assertNotTransactional("stop", Long.class);
         assertNotTransactional("delete", Long.class);
-        assertNotTransactional("getMetrics", Long.class);
     }
 
     private void assertNotTransactional(String methodName, Class<?>... parameterTypes) throws Exception {

@@ -6,13 +6,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.streamcraft.service.runtime.model.RuntimeTargetType;
 import com.streamcraft.service.runtime.model.FlinkRuntimeTarget;
+import com.streamcraft.service.runtime.model.RuntimeTargetType;
 import com.streamcraft.service.runtime.service.FlinkRuntimeTargetService;
-import com.streamcraft.service.config.PipelineRuntimeProperties;
-import com.streamcraft.service.config.UiMessageService;
-import com.streamcraft.service.pipeline.client.FlinkJobGateway;
 import com.streamcraft.service.pipeline.client.FlinkMetricsClient;
 import com.streamcraft.service.pipeline.model.Pipeline;
 import com.streamcraft.service.pipeline.model.PipelineRunStatus;
@@ -26,49 +22,31 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class PipelineServiceRuntimeLookupTest {
+class PipelineRuntimeQueryServiceTest {
 
     @Mock
     private PipelineRepository repository;
 
     @Mock
-    private PipelineDefinitionValidator validator;
-
-    @Mock
-    private PipelineDefinitionNormalizer definitionNormalizer;
-
-    @Mock
     private FlinkRuntimeTargetService runtimeTargetService;
-
-    @Mock
-    private FlinkJobGateway flinkJobGateway;
 
     @Mock
     private FlinkMetricsClient flinkMetricsClient;
 
     @Mock
-    private PipelineRuntimeProperties runtimeProperties;
+    private PipelineDefinitionService definitionService;
 
-    private PipelineService service;
+    private PipelineRuntimeQueryService service;
 
     @BeforeEach
     void setUp() {
-        PipelineDefinitionService definitionService = new PipelineDefinitionService(
-                repository,
-                new ObjectMapper(),
-                validator,
-                definitionNormalizer);
-        service = new PipelineService(
-                repository,
-                validator,
+        PipelineRuntimeStateSupport runtimeStateSupport = new PipelineRuntimeStateSupport(
                 definitionService,
-                new PipelineRuntimeStateSupport(
-                        definitionService,
-                        runtimeTargetService,
-                        flinkMetricsClient),
-                flinkJobGateway,
-                runtimeProperties,
-                UiMessageService.englishFallback());
+                runtimeTargetService,
+                flinkMetricsClient);
+        service = new PipelineRuntimeQueryService(
+                repository,
+                runtimeStateSupport);
     }
 
     @Test
