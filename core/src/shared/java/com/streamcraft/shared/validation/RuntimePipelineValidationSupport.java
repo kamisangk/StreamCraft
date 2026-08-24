@@ -1,5 +1,6 @@
 package com.streamcraft.shared.validation;
 
+import com.streamcraft.shared.port.RuntimePortContract;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,8 +27,6 @@ public final class RuntimePipelineValidationSupport {
     public static final String FILTER_OPERATOR = "FILTER";
     public static final String ROUTE_OPERATOR = "ROUTE";
     public static final String STREAM_JOIN_OPERATOR = "STREAM_JOIN";
-    public static final String DEFAULT_SOURCE_PORT = "output-0";
-    public static final String DEFAULT_TARGET_PORT = "input-0";
 
     private static final Set<String> SUPPORTED_RUNTIME_TYPES = Set.of(SOURCE_TYPE, TRANSFORM_TYPE, SINK_TYPE);
 
@@ -75,8 +74,9 @@ public final class RuntimePipelineValidationSupport {
     public static void validateRuntimePorts(
             RuntimeEdgeDescriptor edge, RuntimeNodeDescriptor sourceNode, RuntimeNodeDescriptor targetNode) {
         edge.requireExplicitPorts();
-        Set<String> allowedSourcePorts = allowedSourcePortsForOperator(sourceNode.operator());
-        if (!allowedSourcePorts.contains("*") && !allowedSourcePorts.contains(edge.sourcePortId())) {
+        RuntimePortContract.OperatorPortContract sourceContract =
+                RuntimePortContract.forOperator(sourceNode.operator());
+        if (!RuntimePortContract.isOutputPortDeclared(sourceNode.operator(), edge.sourcePortId())) {
             throw new IllegalArgumentException(
                     "Pipeline edge "
                             + edge.edgeIdOrDefault()
@@ -85,12 +85,13 @@ public final class RuntimePipelineValidationSupport {
                             + " for source operator "
                             + sourceNode.operator()
                             + ". Allowed source ports: "
-                            + allowedSourcePorts
+                            + describeOutputPorts(sourceContract)
                             + ".");
         }
 
-        Set<String> allowedTargetPorts = allowedTargetPortsForOperator(targetNode.operator());
-        if (!allowedTargetPorts.contains(edge.targetPortId())) {
+        RuntimePortContract.OperatorPortContract targetContract =
+                RuntimePortContract.forOperator(targetNode.operator());
+        if (!RuntimePortContract.isInputPortDeclared(targetNode.operator(), edge.targetPortId())) {
             throw new IllegalArgumentException(
                     "Pipeline edge "
                             + edge.edgeIdOrDefault()
@@ -99,7 +100,7 @@ public final class RuntimePipelineValidationSupport {
                             + " for target operator "
                             + targetNode.operator()
                             + ". Allowed target ports: "
-                            + allowedTargetPorts
+                            + targetContract.inputPorts()
                             + ".");
         }
     }
@@ -223,11 +224,16 @@ public final class RuntimePipelineValidationSupport {
                 continue;
             }
             Set<String> incomingPorts = incomingPortsByNodeId.getOrDefault(node.id(), Set.of());
-            if (!incomingPorts.contains("left") || !incomingPorts.contains("right")) {
+            if (!incomingPorts.contains(RuntimePortContract.LEFT_PORT)
+                    || !incomingPorts.contains(RuntimePortContract.RIGHT_PORT)) {
                 throw new IllegalArgumentException(
                         "Stream join node "
                                 + node.id()
-                                + " must have incoming edges on target ports [left, right].");
+                                + " must have incoming edges on target ports ["
+                                + RuntimePortContract.LEFT_PORT
+                                + ", "
+                                + RuntimePortContract.RIGHT_PORT
+                                + "].");
             }
         }
     }
@@ -247,24 +253,11 @@ public final class RuntimePipelineValidationSupport {
         }
     }
 
-    private static Set<String> allowedSourcePortsForOperator(String sourceOperator) {
-        if (ROUTE_OPERATOR.equals(sourceOperator)) {
-            return Set.of("*");
+    private static String describeOutputPorts(RuntimePortContract.OperatorPortContract contract) {
+        if (contract.outputPortsDynamic()) {
+            return "any non-blank configured port";
         }
-        if (FILTER_OPERATOR.equals(sourceOperator)) {
-            return Set.of("true", "false");
-        }
-        if ("DATA_QUALITY".equals(sourceOperator)) {
-            return Set.of(DEFAULT_SOURCE_PORT, "dirty");
-        }
-        return Set.of(DEFAULT_SOURCE_PORT);
-    }
-
-    private static Set<String> allowedTargetPortsForOperator(String targetOperator) {
-        if (STREAM_JOIN_OPERATOR.equals(targetOperator)) {
-            return Set.of("left", "right");
-        }
-        return Set.of(DEFAULT_TARGET_PORT);
+        return contract.outputPorts().toString();
     }
 
     private static Set<String> traverse(Set<String> startNodeIds, Map<String, List<String>> adjacency) {

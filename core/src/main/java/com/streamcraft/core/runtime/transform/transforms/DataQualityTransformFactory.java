@@ -10,6 +10,7 @@ import com.streamcraft.shared.dataquality.DataQualityConfig.Rule;
 import com.streamcraft.shared.dataquality.DataQualityConfig.ValueType;
 import com.streamcraft.shared.dataquality.DataQualityConfigParser;
 import com.streamcraft.shared.fields.FieldPathSupport;
+import com.streamcraft.shared.port.RuntimePortContract;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,9 +24,6 @@ import org.apache.flink.util.OutputTag;
 
 public class DataQualityTransformFactory implements TransformFactory {
 
-    private static final String CLEAN_PORT = "output-0";
-    private static final String DIRTY_PORT = "dirty";
-
     @Override
     public TransformOutputs apply(DataStream<DataEntity> input, PipelineNode node) {
         DataQualityConfig config = DataQualityConfigParser.parse(node.config(), IllegalArgumentException::new);
@@ -37,8 +35,8 @@ public class DataQualityTransformFactory implements TransformFactory {
                 .name(node.name());
 
         return new TransformOutputs(Map.of(
-                CLEAN_PORT, cleanStream,
-                DIRTY_PORT, cleanStream.getSideOutput(dirtyTag)));
+                RuntimePortContract.CLEAN_PORT, cleanStream,
+                RuntimePortContract.DIRTY_PORT, cleanStream.getSideOutput(dirtyTag)));
     }
 
     private static final class DataQualityProcessFunction extends ProcessFunction<DataEntity, DataEntity> {

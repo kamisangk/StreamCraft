@@ -5,6 +5,7 @@ import com.streamcraft.core.model.PipelineNode;
 import com.streamcraft.core.runtime.transform.TransformFactory;
 import com.streamcraft.core.runtime.transform.TransformOutputs;
 import com.streamcraft.shared.fields.FieldPathSupport;
+import com.streamcraft.shared.port.RuntimePortContract;
 import com.streamcraft.shared.streamjoin.StreamJoinConfig;
 import com.streamcraft.shared.streamjoin.StreamJoinConfig.JoinType;
 import com.streamcraft.shared.streamjoin.StreamJoinConfig.MissingStrategy;
@@ -32,9 +33,6 @@ import org.apache.flink.util.Collector;
 
 public class StreamJoinTransformFactory implements TransformFactory {
 
-    private static final String LEFT_PORT = "left";
-    private static final String RIGHT_PORT = "right";
-
     @Override
     public TransformOutputs apply(DataStream<DataEntity> input, PipelineNode node) {
         throw new IllegalArgumentException("STREAM_JOIN requires left and right input ports.");
@@ -44,8 +42,10 @@ public class StreamJoinTransformFactory implements TransformFactory {
     public TransformOutputs apply(Map<String, DataStream<DataEntity>> inputsByPort, PipelineNode node) {
         StreamJoinRuntimeConfig config = StreamJoinRuntimeConfig.from(
                 StreamJoinConfigParser.parse(node.config(), IllegalArgumentException::new));
-        DataStream<DataEntity> left = TransformFactory.requireInput(inputsByPort, LEFT_PORT);
-        DataStream<DataEntity> right = TransformFactory.requireInput(inputsByPort, RIGHT_PORT);
+        DataStream<DataEntity> left = TransformFactory.requireInput(
+                inputsByPort, RuntimePortContract.LEFT_PORT);
+        DataStream<DataEntity> right = TransformFactory.requireInput(
+                inputsByPort, RuntimePortContract.RIGHT_PORT);
 
         if (config.timeMode() == TimeMode.EVENT_TIME) {
             WatermarkStrategy<DataEntity> watermarkStrategy = WatermarkStrategy
