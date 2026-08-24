@@ -90,35 +90,6 @@ public class PipelineRuntime {
                            MockSourceFactory mockSourceFactory,
                            ElasticsearchSourceFactory elasticsearchSourceFactory,
                            InfluxDbSourceFactory influxDbSourceFactory,
-                           JdbcSourceFactory jdbcSourceFactory,
-                           KafkaSinkFactory kafkaSinkFactory,
-                           JdbcSinkFactory jdbcSinkFactory,
-                           ElasticsearchSinkFactory elasticsearchSinkFactory,
-                           InfluxDbSinkFactory influxDbSinkFactory,
-                           TransformOperatorFactory transformFactory,
-                           boolean testMode,
-                           ExecutionMode executionMode) {
-        this(env, PipelineRuntimeDependencies.builder()
-                .kafkaSourceFactory(kafkaSourceFactory)
-                .mockSourceFactory(mockSourceFactory)
-                .elasticsearchSourceFactory(elasticsearchSourceFactory)
-                .influxDbSourceFactory(influxDbSourceFactory)
-                .hdfsFileSourceFactory(new HdfsFileSourceFactory())
-                .jdbcSourceFactory(jdbcSourceFactory)
-                .kafkaSinkFactory(kafkaSinkFactory)
-                .jdbcSinkFactory(jdbcSinkFactory)
-                .elasticsearchSinkFactory(elasticsearchSinkFactory)
-                .influxDbSinkFactory(influxDbSinkFactory)
-                .hdfsFileSinkFactory(new HdfsFileSinkFactory())
-                .transformFactory(transformFactory)
-                .build(), testMode, executionMode);
-    }
-
-    public PipelineRuntime(StreamExecutionEnvironment env,
-                           KafkaSourceFactory kafkaSourceFactory,
-                           MockSourceFactory mockSourceFactory,
-                           ElasticsearchSourceFactory elasticsearchSourceFactory,
-                           InfluxDbSourceFactory influxDbSourceFactory,
                            HdfsFileSourceFactory hdfsFileSourceFactory,
                            JdbcSourceFactory jdbcSourceFactory,
                            KafkaSinkFactory kafkaSinkFactory,
