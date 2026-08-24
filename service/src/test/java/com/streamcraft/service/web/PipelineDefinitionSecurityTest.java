@@ -10,9 +10,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streamcraft.service.config.SecurityConfig;
 import com.streamcraft.service.config.StreamCraftAuthProperties;
+import com.streamcraft.service.pipeline.service.PipelineCrudService;
+import com.streamcraft.service.pipeline.service.PipelineDefinitionService;
 import com.streamcraft.service.pipeline.service.PipelineExecutionService;
 import com.streamcraft.service.pipeline.service.PipelineRuntimeQueryService;
-import com.streamcraft.service.pipeline.service.PipelineService;
 import com.streamcraft.service.pipeline.web.PipelineApiController;
 import com.streamcraft.service.security.InternalAccessProperties;
 import com.streamcraft.service.security.InternalTokenFilter;
@@ -46,7 +47,10 @@ class PipelineDefinitionSecurityTest {
     private ObjectMapper objectMapper;
 
     @MockBean
-    private PipelineService pipelineService;
+    private PipelineCrudService pipelineCrudService;
+
+    @MockBean
+    private PipelineDefinitionService pipelineDefinitionService;
 
     @MockBean
     private PipelineRuntimeQueryService pipelineRuntimeQueryService;
@@ -59,7 +63,7 @@ class PipelineDefinitionSecurityTest {
 
     @Test
     void redirectsAnonymousDefinitionRequestsToLogin() throws Exception {
-        when(pipelineService.getDefinition(1L)).thenReturn(objectMapper.readTree("""
+        when(pipelineDefinitionService.getDefinition(1L)).thenReturn(objectMapper.readTree("""
                 {
                   "nodes": [],
                   "edges": []
@@ -73,7 +77,7 @@ class PipelineDefinitionSecurityTest {
 
     @Test
     void allowsAuthenticatedUsersToReadDefinition() throws Exception {
-        when(pipelineService.getDefinition(1L)).thenReturn(objectMapper.readTree("""
+        when(pipelineDefinitionService.getDefinition(1L)).thenReturn(objectMapper.readTree("""
                 {
                   "nodes": [],
                   "edges": []
@@ -88,7 +92,7 @@ class PipelineDefinitionSecurityTest {
 
     @Test
     void allowsInternalTokenToReadDefinition() throws Exception {
-        when(pipelineService.getDefinition(1L)).thenReturn(objectMapper.readTree("""
+        when(pipelineDefinitionService.getDefinition(1L)).thenReturn(objectMapper.readTree("""
                 {
                   "nodes": [],
                   "edges": []

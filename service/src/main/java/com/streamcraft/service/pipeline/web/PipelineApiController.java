@@ -1,9 +1,10 @@
 package com.streamcraft.service.pipeline.web;
 
 import com.streamcraft.service.pipeline.model.PipelineMetrics;
+import com.streamcraft.service.pipeline.service.PipelineCrudService;
+import com.streamcraft.service.pipeline.service.PipelineDefinitionService;
 import com.streamcraft.service.pipeline.service.PipelineExecutionService;
 import com.streamcraft.service.pipeline.service.PipelineRuntimeQueryService;
-import com.streamcraft.service.pipeline.service.PipelineService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
@@ -22,15 +23,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/pipelines")
 public class PipelineApiController {
 
-    private final PipelineService pipelineService;
+    private final PipelineCrudService pipelineCrudService;
+    private final PipelineDefinitionService pipelineDefinitionService;
     private final PipelineRuntimeQueryService pipelineRuntimeQueryService;
     private final PipelineExecutionService pipelineExecutionService;
 
     public PipelineApiController(
-            PipelineService pipelineService,
+            PipelineCrudService pipelineCrudService,
+            PipelineDefinitionService pipelineDefinitionService,
             PipelineRuntimeQueryService pipelineRuntimeQueryService,
             PipelineExecutionService pipelineExecutionService) {
-        this.pipelineService = pipelineService;
+        this.pipelineCrudService = pipelineCrudService;
+        this.pipelineDefinitionService = pipelineDefinitionService;
         this.pipelineRuntimeQueryService = pipelineRuntimeQueryService;
         this.pipelineExecutionService = pipelineExecutionService;
     }
@@ -38,7 +42,7 @@ public class PipelineApiController {
     @PostMapping
     public ResponseEntity<PipelineSummaryResponse> save(@Valid @RequestBody SavePipelineRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(PipelineSummaryResponse.from(pipelineService.save(request)));
+                .body(PipelineSummaryResponse.from(pipelineCrudService.save(request)));
     }
 
     @GetMapping
@@ -55,7 +59,7 @@ public class PipelineApiController {
 
     @GetMapping("/{id}/definition")
     public PipelineDefinitionResponse definition(@PathVariable Long id) {
-        return PipelineDefinitionResponse.from(pipelineService.getDefinition(id));
+        return PipelineDefinitionResponse.from(pipelineDefinitionService.getDefinition(id));
     }
 
     @PostMapping("/{id}/run")
@@ -75,7 +79,7 @@ public class PipelineApiController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        pipelineService.delete(id);
+        pipelineCrudService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
