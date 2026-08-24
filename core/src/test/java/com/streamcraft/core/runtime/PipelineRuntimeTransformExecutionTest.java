@@ -944,11 +944,22 @@ class PipelineRuntimeTransformExecutionTest {
 
         PipelineRuntime runtime = new PipelineRuntime(
                 env,
-                new KafkaSourceFactory(),
-                mockSourceFactory,
-                new CapturingKafkaSinkFactory(),
-                new TransformOperatorFactory(),
-                true);
+                PipelineRuntimeDependencies.builder()
+                        .kafkaSourceFactory(new KafkaSourceFactory())
+                        .mockSourceFactory(mockSourceFactory)
+                        .elasticsearchSourceFactory(new ElasticsearchSourceFactory())
+                        .influxDbSourceFactory(new InfluxDbSourceFactory())
+                        .hdfsFileSourceFactory(new HdfsFileSourceFactory())
+                        .jdbcSourceFactory(new JdbcSourceFactory())
+                        .kafkaSinkFactory(new CapturingKafkaSinkFactory())
+                        .jdbcSinkFactory(new JdbcSinkFactory())
+                        .elasticsearchSinkFactory(new ElasticsearchSinkFactory())
+                        .influxDbSinkFactory(new InfluxDbSinkFactory())
+                        .hdfsFileSinkFactory(new HdfsFileSinkFactory())
+                        .transformFactory(new TransformOperatorFactory())
+                        .build(),
+                true,
+                ExecutionMode.RUN);
 
         runtime.run(definition);
         env.execute(jobName);

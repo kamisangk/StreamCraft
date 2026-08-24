@@ -28,6 +28,33 @@ class PipelineRuntimeFilterBranchingTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static final Map<String, List<Map<String, Object>>> CAPTURED_RECORDS = new ConcurrentHashMap<>();
 
+    private PipelineRuntime pipelineRuntime(
+            StreamExecutionEnvironment env,
+            KafkaSourceFactory kafkaSourceFactory,
+            MockSourceFactory mockSourceFactory,
+            KafkaSinkFactory kafkaSinkFactory,
+            TransformOperatorFactory transformFactory,
+            boolean testMode) {
+        return new PipelineRuntime(
+                env,
+                PipelineRuntimeDependencies.builder()
+                        .kafkaSourceFactory(kafkaSourceFactory)
+                        .mockSourceFactory(mockSourceFactory)
+                        .elasticsearchSourceFactory(new ElasticsearchSourceFactory())
+                        .influxDbSourceFactory(new InfluxDbSourceFactory())
+                        .hdfsFileSourceFactory(new HdfsFileSourceFactory())
+                        .jdbcSourceFactory(new JdbcSourceFactory())
+                        .kafkaSinkFactory(kafkaSinkFactory)
+                        .jdbcSinkFactory(new JdbcSinkFactory())
+                        .elasticsearchSinkFactory(new ElasticsearchSinkFactory())
+                        .influxDbSinkFactory(new InfluxDbSinkFactory())
+                        .hdfsFileSinkFactory(new HdfsFileSinkFactory())
+                        .transformFactory(transformFactory)
+                        .build(),
+                testMode,
+                ExecutionMode.RUN);
+    }
+
     @Test
     void routesFilterTrueAndFalseOutputsToMatchingSinkBranches() throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -35,7 +62,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -62,7 +89,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -85,7 +112,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -109,7 +136,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -133,7 +160,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -157,7 +184,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -181,7 +208,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -205,7 +232,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -228,7 +255,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -251,7 +278,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -276,7 +303,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -301,7 +328,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -325,7 +352,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -352,7 +379,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -381,7 +408,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -411,7 +438,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -438,7 +465,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -465,7 +492,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -492,7 +519,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -519,7 +546,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -546,7 +573,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -574,7 +601,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
@@ -601,7 +628,7 @@ class PipelineRuntimeFilterBranchingTest {
         CAPTURED_RECORDS.clear();
 
         CapturingKafkaSinkFactory sinkFactory = new CapturingKafkaSinkFactory();
-        PipelineRuntime runtime = new PipelineRuntime(
+        PipelineRuntime runtime = pipelineRuntime(
                 env,
                 new KafkaSourceFactory(),
                 new MockSourceFactory(),
