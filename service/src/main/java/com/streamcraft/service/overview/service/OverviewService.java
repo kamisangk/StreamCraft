@@ -1,17 +1,13 @@
 package com.streamcraft.service.overview.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streamcraft.service.runtime.model.RuntimeTargetStatus;
 import com.streamcraft.service.runtime.model.FlinkRuntimeTarget;
 import com.streamcraft.service.runtime.service.FlinkRuntimeTargetService;
 import com.streamcraft.service.overview.web.OverviewResponse;
-import com.streamcraft.service.pipeline.model.Pipeline;
-import com.streamcraft.service.pipeline.model.PipelineRunStatus;
-import com.streamcraft.service.pipeline.service.PipelineRuntimeView;
-import com.streamcraft.service.pipeline.service.PipelineRuntimeSnapshot;
 import com.streamcraft.service.pipeline.service.PipelineRuntimeQueryService;
-import java.time.Instant;
+import com.streamcraft.service.pipeline.service.PipelineRuntimeSnapshot;
+import com.streamcraft.service.pipeline.service.PipelineRuntimeView;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -20,11 +16,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class OverviewService {
 
-    private static final String METRICS_UNAVAILABLE = "Metrics unavailable";
-
     private final FlinkRuntimeTargetService runtimeTargetService;
     private final PipelineRuntimeQueryService pipelineRuntimeQueryService;
-    private final ObjectMapper objectMapper;
+    private final OverviewPipelineRowMapper pipelineRowMapper;
 
     public OverviewService(
             FlinkRuntimeTargetService runtimeTargetService,
@@ -32,51 +26,70 @@ public class OverviewService {
             ObjectMapper objectMapper) {
         this.runtimeTargetService = runtimeTargetService;
         this.pipelineRuntimeQueryService = pipelineRuntimeQueryService;
-        this.objectMapper = objectMapper;
+        this.pipelineRowMapper = new OverviewPipelineRowMapper(objectMapper);
     }
 
     public OverviewResponse getOverview() {
         FlinkRuntimeTarget runtimeTarget = runtimeTargetService.findTarget().orElse(null);
         List<PipelineRuntimeSnapshot> pipelineRuntimeSnapshots = pipelineRuntimeQueryService.listRuntimeSnapshots();
-        List<Pipeline> pipelines = pipelineRuntimeSnapshots.stream()
-                .map(PipelineRuntimeSnapshot::pipeline)
-                .toList();
+        OverviewPipelineStatistics statistics = new OverviewPipelineStatistics();
+        List<OverviewResponse.PipelineRow> pipelineRows = buildPipelineRows(
+                pipelineRuntimeSnapshots,
+                runtimeTarget,
+                statistics);
+        OverviewPipelineStatistics.Snapshot snapshot = statistics.snapshot();
 
-        List<OverviewResponse.RuntimeTargetCapacity> runtimeTargetCapacities = runtimeTarget == null
-                ? List.of()
-                : List.of(toCapacity(runtimeTarget));
+        OverviewResponse.RuntimeSnapshot runtimeSnapshot = new OverviewResponse.RuntimeSnapshot(
+                snapshot.totalInputRecords(),
+                snapshot.totalOutputRecords(),
+                snapshot.includedPipelineCount(),
+                snapshot.missingPipelineCount());
+        OverviewResponse.Summary summary = new OverviewResponse.Summary(
+                totalRuntimeTargets(runtimeTarget),
+                connectedRuntimeTargets(runtimeTarget),
+                snapshot.totalPipelineCount(),
+                snapshot.runningPipelineCount(),
+                snapshot.stoppedPipelineCount(),
+                snapshot.unhealthyPipelineCount(),
+                snapshot.latestSubmittedAt());
 
-        SnapshotAccumulator overviewAccumulator = new SnapshotAccumulator();
+        return new OverviewResponse(
+                summary,
+                runtimeSnapshot,
+                runtimeTargetCapacities(runtimeTarget),
+                pipelineRows);
+    }
+
+    private List<OverviewResponse.PipelineRow> buildPipelineRows(
+            List<PipelineRuntimeSnapshot> pipelineRuntimeSnapshots,
+            FlinkRuntimeTarget runtimeTarget,
+            OverviewPipelineStatistics statistics) {
         List<OverviewResponse.PipelineRow> pipelineRows = new ArrayList<>();
         for (PipelineRuntimeSnapshot pipelineRuntimeSnapshot : pipelineRuntimeSnapshots) {
-            pipelineRows.add(buildPipelineRow(
-                    PipelineRuntimeView.of(pipelineRuntimeSnapshot, runtimeTarget), overviewAccumulator));
+            PipelineRuntimeView runtimeView = PipelineRuntimeView.of(pipelineRuntimeSnapshot, runtimeTarget);
+            statistics.include(runtimeView);
+            pipelineRows.add(pipelineRowMapper.toResponse(runtimeView));
         }
         pipelineRows.sort(Comparator.comparing(
                         OverviewResponse.PipelineRow::updatedAt,
                         Comparator.nullsLast(Comparator.reverseOrder()))
                 .thenComparing(OverviewResponse.PipelineRow::pipelineId, Comparator.nullsLast(Comparator.naturalOrder())));
+        return pipelineRows;
+    }
 
-        OverviewResponse.RuntimeSnapshot overviewRuntimeSnapshot = new OverviewResponse.RuntimeSnapshot(
-                overviewAccumulator.totalInputRecords,
-                overviewAccumulator.totalOutputRecords,
-                overviewAccumulator.includedPipelineCount,
-                overviewAccumulator.missingPipelineCount);
+    private int totalRuntimeTargets(FlinkRuntimeTarget runtimeTarget) {
+        return runtimeTarget == null ? 0 : 1;
+    }
 
-        OverviewResponse.Summary summary = new OverviewResponse.Summary(
-                runtimeTarget == null ? 0 : 1,
-                runtimeTarget != null && runtimeTarget.getStatus() == RuntimeTargetStatus.CONNECTED ? 1 : 0,
-                pipelines.size(),
-                (int) pipelines.stream().filter(p -> p.getLastRunStatus() == PipelineRunStatus.RUNNING).count(),
-                (int) pipelines.stream().filter(p -> p.getLastRunStatus() != PipelineRunStatus.RUNNING).count(),
-                overviewAccumulator.unhealthyPipelineCount,
-                pipelines.stream()
-                        .map(Pipeline::getLastSubmittedAt)
-                        .filter(i -> i != null)
-                        .max(Comparator.naturalOrder())
-                        .orElse(null));
+    private int connectedRuntimeTargets(FlinkRuntimeTarget runtimeTarget) {
+        return runtimeTarget != null && runtimeTarget.getStatus() == RuntimeTargetStatus.CONNECTED ? 1 : 0;
+    }
 
-        return new OverviewResponse(summary, overviewRuntimeSnapshot, runtimeTargetCapacities, pipelineRows);
+    private List<OverviewResponse.RuntimeTargetCapacity> runtimeTargetCapacities(
+            FlinkRuntimeTarget runtimeTarget) {
+        return runtimeTarget == null
+                ? List.of()
+                : List.of(toCapacity(runtimeTarget));
     }
 
     private OverviewResponse.RuntimeTargetCapacity toCapacity(FlinkRuntimeTarget runtimeTarget) {
@@ -98,146 +111,4 @@ public class OverviewService {
                 usagePercent,
                 runtimeTarget.getStatusMessage());
     }
-
-    private OverviewResponse.PipelineRow buildPipelineRow(
-            PipelineRuntimeView runtimeView,
-            SnapshotAccumulator overviewAccumulator) {
-        Pipeline pipeline = runtimeView.pipeline();
-        Labels labels = parseLabels(pipeline.getDefinitionJson());
-        boolean running = runtimeView.running();
-        boolean metricsEligible = runtimeView.metricsEligible();
-        boolean metricsAvailable = runtimeView.metricsAvailable();
-        String metricsUnavailableReason = null;
-        Long durationMillis = runtimeView.durationMillis();
-        PipelineAggregate aggregate = new PipelineAggregate(
-                runtimeView.totalInputRecords(),
-                runtimeView.totalOutputRecords());
-
-        if (running
-                && pipeline.getLastJobId() != null
-                && !pipeline.getLastJobId().isBlank()
-                && runtimeView.runtimeTargetUnavailable()) {
-            metricsUnavailableReason = METRICS_UNAVAILABLE;
-        } else if (metricsEligible && !metricsAvailable) {
-            metricsUnavailableReason = METRICS_UNAVAILABLE;
-        }
-
-        if (running) {
-            if (metricsAvailable) {
-                overviewAccumulator.totalInputRecords += aggregate.inputRecords;
-                overviewAccumulator.totalOutputRecords += aggregate.outputRecords;
-                overviewAccumulator.includedPipelineCount++;
-            } else {
-                overviewAccumulator.missingPipelineCount++;
-            }
-        }
-
-        if (pipeline.getLastRunStatus() == PipelineRunStatus.FAILED
-                || runtimeView.runtimeTargetUnavailable()
-                || (running && !metricsAvailable)) {
-            overviewAccumulator.unhealthyPipelineCount++;
-        }
-
-        return new OverviewResponse.PipelineRow(
-                pipeline.getId(),
-                pipeline.getName(),
-                labels.sourceLabels,
-                labels.sinkLabels,
-                pipeline.getLastRunStatus() == null ? null : pipeline.getLastRunStatus().name(),
-                runtimeView.runtimeTargetLabel(),
-                durationMillis,
-                metricsAvailable,
-                metricsUnavailableReason,
-                pipeline.getUpdatedAt());
-    }
-
-    private Labels parseLabels(String definitionJson) {
-        if (definitionJson == null || definitionJson.isBlank()) {
-            return new Labels(List.of(), List.of());
-        }
-        try {
-            JsonNode root = objectMapper.readTree(definitionJson);
-            JsonNode nodes = root.path("nodes");
-            if (nodes == null || !nodes.isArray()) {
-                return new Labels(List.of(), List.of());
-            }
-
-            List<String> sourceLabels = new ArrayList<>();
-            List<String> sinkLabels = new ArrayList<>();
-            for (JsonNode node : nodes) {
-                String type = node.path("type").asText();
-                String label = nodeLabel(node);
-                if (label == null) {
-                    continue;
-                }
-                if ("SOURCE".equalsIgnoreCase(type)) {
-                    sourceLabels.add(label);
-                } else if ("SINK".equalsIgnoreCase(type)) {
-                    sinkLabels.add(label);
-                }
-            }
-            return new Labels(sourceLabels, sinkLabels);
-        } catch (Exception ex) {
-            return new Labels(List.of(), List.of());
-        }
-    }
-
-    private String nodeLabel(JsonNode node) {
-        if (node == null || node.isMissingNode()) {
-            return null;
-        }
-        String operator = node.path("operator").asText();
-        JsonNode config = node.path("config");
-
-        if ("KAFKA_SOURCE".equals(operator)) {
-            JsonNode topics = config.path("topics");
-            if (topics.isArray() && !topics.isEmpty()) {
-                String topic = topics.get(0).asText();
-                if (!topic.isBlank()) {
-                    return "Kafka (" + topic + ")";
-                }
-            }
-        }
-        if ("KAFKA_SINK".equals(operator)) {
-            String topic = config.path("topic").asText();
-            if (!topic.isBlank()) {
-                return "Kafka (" + topic + ")";
-            }
-        }
-        if ("HDFS_FILE_SOURCE".equals(operator) || "HDFS_FILE_SINK".equals(operator)) {
-            String path = config.path("path").asText();
-            if (!path.isBlank()) {
-                return "HDFS File (" + path + ")";
-            }
-        }
-        if ("ELASTICSEARCH_SINK".equals(operator)) {
-            String index = config.path("index").asText();
-            if (!index.isBlank()) {
-                return "Elasticsearch (" + index + ")";
-            }
-        }
-        if ("INFLUXDB_SINK".equals(operator)) {
-            String measurement = config.path("measurement").asText();
-            if (!measurement.isBlank()) {
-                return "InfluxDB (" + measurement + ")";
-            }
-        }
-        String name = node.path("name").asText();
-        return name.isBlank() ? null : name;
-    }
-
-    private record Labels(List<String> sourceLabels, List<String> sinkLabels) {
-    }
-
-    private record PipelineAggregate(long inputRecords, long outputRecords) {
-    }
-
-    private static class SnapshotAccumulator {
-        private long totalInputRecords;
-        private long totalOutputRecords;
-        private int includedPipelineCount;
-        private int missingPipelineCount;
-        private int unhealthyPipelineCount;
-    }
 }
-
