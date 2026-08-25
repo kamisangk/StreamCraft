@@ -13,40 +13,48 @@ import java.util.Map;
 public class RuntimeGraphPlanner {
 
     public Plan plan(PipelineDefinition definition) {
-        Map<String, PipelineNode> nodeById = new LinkedHashMap<>();
-        Map<NodePortKey, List<PipelineEdge>> outgoingByPort = new LinkedHashMap<>();
-        Map<NodeInputKey, List<PipelineEdge>> incomingByPort = new LinkedHashMap<>();
-        Map<String, Integer> indegree = new LinkedHashMap<>();
-        Map<String, List<PipelineEdge>> outgoingByNode = new LinkedHashMap<>();
+        GraphIndexes graph = indexNodes(definition.nodes());
+        indexEdges(definition.edges(), graph);
+        List<String> topologicalNodeIds = topologicalSort(graph);
+        return freezePlan(graph, topologicalNodeIds);
+    }
 
-        for (PipelineNode node : definition.nodes()) {
-            nodeById.put(node.id(), node);
-            indegree.put(node.id(), 0);
-            outgoingByNode.put(node.id(), new ArrayList<>());
+    private GraphIndexes indexNodes(List<PipelineNode> nodes) {
+        GraphIndexes graph = new GraphIndexes();
+        for (PipelineNode node : nodes) {
+            graph.nodeById.put(node.id(), node);
+            graph.nodeIdsInDefinition.add(node.id());
+            graph.indegree.put(node.id(), 0);
+            graph.outgoingByNode.put(node.id(), new ArrayList<>());
         }
+        return graph;
+    }
 
-        for (PipelineEdge edge : definition.edges()) {
-            requireKnownNode(edge, edge.sourceNodeId(), nodeById, "source");
-            requireKnownNode(edge, edge.targetNodeId(), nodeById, "target");
+    private void indexEdges(List<PipelineEdge> edges, GraphIndexes graph) {
+        for (PipelineEdge edge : edges) {
+            requireKnownNode(edge, edge.sourceNodeId(), graph.nodeById, "source");
+            requireKnownNode(edge, edge.targetNodeId(), graph.nodeById, "target");
             requirePort(edge.sourcePortId(), edge, "sourcePortId");
             requirePort(edge.targetPortId(), edge, "targetPortId");
 
-            outgoingByPort.computeIfAbsent(
+            graph.outgoingByPort.computeIfAbsent(
                     new NodePortKey(edge.sourceNodeId(), edge.sourcePortId()),
                     ignored -> new ArrayList<>())
                     .add(edge);
-            incomingByPort.computeIfAbsent(
+            graph.incomingByPort.computeIfAbsent(
                     new NodeInputKey(edge.targetNodeId(), edge.targetPortId()),
                     ignored -> new ArrayList<>())
                     .add(edge);
-            outgoingByNode.get(edge.sourceNodeId()).add(edge);
-            indegree.put(edge.targetNodeId(), indegree.get(edge.targetNodeId()) + 1);
+            graph.outgoingByNode.get(edge.sourceNodeId()).add(edge);
+            graph.indegree.put(edge.targetNodeId(), graph.indegree.get(edge.targetNodeId()) + 1);
         }
+    }
 
+    private List<String> topologicalSort(GraphIndexes graph) {
         ArrayDeque<String> queue = new ArrayDeque<>();
-        for (PipelineNode node : definition.nodes()) {
-            if (indegree.getOrDefault(node.id(), 0) == 0) {
-                queue.addLast(node.id());
+        for (String nodeId : graph.nodeIdsInDefinition) {
+            if (graph.indegree.getOrDefault(nodeId, 0) == 0) {
+                queue.addLast(nodeId);
             }
         }
 
@@ -54,23 +62,26 @@ public class RuntimeGraphPlanner {
         while (!queue.isEmpty()) {
             String nodeId = queue.removeFirst();
             topologicalNodeIds.add(nodeId);
-            for (PipelineEdge edge : outgoingByNode.getOrDefault(nodeId, List.of())) {
-                int nextIndegree = indegree.get(edge.targetNodeId()) - 1;
-                indegree.put(edge.targetNodeId(), nextIndegree);
+            for (PipelineEdge edge : graph.outgoingByNode.getOrDefault(nodeId, List.of())) {
+                int nextIndegree = graph.indegree.get(edge.targetNodeId()) - 1;
+                graph.indegree.put(edge.targetNodeId(), nextIndegree);
                 if (nextIndegree == 0) {
                     queue.addLast(edge.targetNodeId());
                 }
             }
         }
 
-        if (topologicalNodeIds.size() != nodeById.size()) {
+        if (topologicalNodeIds.size() != graph.nodeById.size()) {
             throw new IllegalArgumentException("Pipeline must be a DAG without cycles.");
         }
+        return topologicalNodeIds;
+    }
 
+    private Plan freezePlan(GraphIndexes graph, List<String> topologicalNodeIds) {
         return new Plan(
-                Collections.unmodifiableMap(new LinkedHashMap<>(nodeById)),
-                immutableEdgeMap(outgoingByPort),
-                immutableInputMap(incomingByPort),
+                Collections.unmodifiableMap(new LinkedHashMap<>(graph.nodeById)),
+                immutableEdgeMap(graph.outgoingByPort),
+                immutableInputMap(graph.incomingByPort),
                 List.copyOf(topologicalNodeIds));
     }
 
@@ -110,6 +121,16 @@ public class RuntimeGraphPlanner {
 
     private String edgeId(PipelineEdge edge) {
         return edge.id() == null || edge.id().isBlank() ? "<unnamed>" : edge.id();
+    }
+
+    private static final class GraphIndexes {
+
+        private final Map<String, PipelineNode> nodeById = new LinkedHashMap<>();
+        private final Map<NodePortKey, List<PipelineEdge>> outgoingByPort = new LinkedHashMap<>();
+        private final Map<NodeInputKey, List<PipelineEdge>> incomingByPort = new LinkedHashMap<>();
+        private final Map<String, Integer> indegree = new LinkedHashMap<>();
+        private final Map<String, List<PipelineEdge>> outgoingByNode = new LinkedHashMap<>();
+        private final List<String> nodeIdsInDefinition = new ArrayList<>();
     }
 
     public record Plan(
