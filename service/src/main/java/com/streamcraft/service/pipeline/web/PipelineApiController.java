@@ -47,14 +47,14 @@ public class PipelineApiController {
 
     @GetMapping
     public List<PipelineSummaryResponse> list() {
-        return pipelineRuntimeQueryService.list().stream()
+        return pipelineRuntimeQueryService.listRuntimeStatusSnapshots().stream()
                 .map(PipelineSummaryResponse::from)
                 .toList();
     }
 
     @GetMapping("/{id}")
     public PipelineDetailResponse get(@PathVariable Long id) {
-        return PipelineDetailResponse.from(pipelineRuntimeQueryService.get(id));
+        return PipelineDetailResponse.from(pipelineRuntimeQueryService.getRuntimeStatusSnapshot(id));
     }
 
     @GetMapping("/{id}/definition")

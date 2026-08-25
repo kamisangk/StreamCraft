@@ -152,7 +152,12 @@ public class GlobalTaskMonitorService {
                 runtimeView.nodeCount(),
                 metricsAvailable,
                 metricsUnavailableReason,
-                pipeline.getUpdatedAt());
+                pipeline.getUpdatedAt(),
+                runtimeView.metricsCollectionStatus(),
+                runtimeView.runtimeStatusAvailability(),
+                runtimeView.runtimeStatusAvailable(),
+                runtimeView.runtimeStatusSource(),
+                runtimeView.runtimeStatusUnavailableReason());
 
         return new MonitorCard(monitorStatus, taskCard);
     }

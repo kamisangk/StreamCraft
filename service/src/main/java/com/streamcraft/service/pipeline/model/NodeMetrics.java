@@ -8,6 +8,8 @@ public class NodeMetrics {
     private Long outputRecords;
     private Double inputRate;
     private Double outputRate;
+    private RuntimeDataAvailability collectionStatus = RuntimeDataAvailability.NOT_REQUESTED;
+    private String unavailableReason;
 
     public NodeMetrics() {
     }
@@ -17,6 +19,35 @@ public class NodeMetrics {
         this.nodeName = nodeName;
         this.inputRecords = inputRecords;
         this.outputRecords = outputRecords;
+        this.collectionStatus = inputRecords == null && outputRecords == null
+                ? RuntimeDataAvailability.NO_DATA
+                : RuntimeDataAvailability.AVAILABLE;
+    }
+
+    public static NodeMetrics unavailable(String nodeId, String nodeName, String reason) {
+        NodeMetrics metrics = new NodeMetrics(nodeId, nodeName, null, null);
+        metrics.collectionStatus = RuntimeDataAvailability.UNAVAILABLE;
+        metrics.unavailableReason = reason;
+        return metrics;
+    }
+
+    public static NodeMetrics noData(String nodeId, String nodeName, String reason) {
+        NodeMetrics metrics = new NodeMetrics(nodeId, nodeName, null, null);
+        metrics.collectionStatus = RuntimeDataAvailability.NO_DATA;
+        metrics.unavailableReason = reason;
+        return metrics;
+    }
+
+    public static NodeMetrics partial(
+            String nodeId,
+            String nodeName,
+            Long inputRecords,
+            Long outputRecords,
+            String reason) {
+        NodeMetrics metrics = new NodeMetrics(nodeId, nodeName, inputRecords, outputRecords);
+        metrics.collectionStatus = RuntimeDataAvailability.PARTIAL;
+        metrics.unavailableReason = reason;
+        return metrics;
     }
 
     public String getNodeId() {
@@ -65,5 +96,21 @@ public class NodeMetrics {
 
     public void setOutputRate(Double outputRate) {
         this.outputRate = outputRate;
+    }
+
+    public RuntimeDataAvailability getCollectionStatus() {
+        return collectionStatus;
+    }
+
+    public void setCollectionStatus(RuntimeDataAvailability collectionStatus) {
+        this.collectionStatus = collectionStatus;
+    }
+
+    public String getUnavailableReason() {
+        return unavailableReason;
+    }
+
+    public void setUnavailableReason(String unavailableReason) {
+        this.unavailableReason = unavailableReason;
     }
 }

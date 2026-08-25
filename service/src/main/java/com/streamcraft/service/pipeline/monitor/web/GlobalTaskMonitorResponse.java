@@ -41,7 +41,47 @@ public record GlobalTaskMonitorResponse(
             int nodeCount,
             boolean metricsAvailable,
             String metricsUnavailableReason,
-            Instant updatedAt) {
+            Instant updatedAt,
+            String metricsCollectionStatus,
+            String runtimeStatusAvailability,
+            boolean runtimeStatusAvailable,
+            String runtimeStatusSource,
+            String runtimeStatusUnavailableReason) {
+
+        public TaskCard(
+                Long pipelineId,
+                String pipelineName,
+                String runStatus,
+                String monitorStatus,
+                String runtimeTargetLabel,
+                String jobId,
+                Long durationMillis,
+                Long totalInputRecords,
+                Long totalOutputRecords,
+                int nodeCount,
+                boolean metricsAvailable,
+                String metricsUnavailableReason,
+                Instant updatedAt) {
+            this(
+                    pipelineId,
+                    pipelineName,
+                    runStatus,
+                    monitorStatus,
+                    runtimeTargetLabel,
+                    jobId,
+                    durationMillis,
+                    totalInputRecords,
+                    totalOutputRecords,
+                    nodeCount,
+                    metricsAvailable,
+                    metricsUnavailableReason,
+                    updatedAt,
+                    metricsAvailable ? "AVAILABLE" : "NOT_REQUESTED",
+                    "NOT_REQUESTED",
+                    false,
+                    null,
+                    null);
+        }
     }
 
     public record RuntimeSnapshot(

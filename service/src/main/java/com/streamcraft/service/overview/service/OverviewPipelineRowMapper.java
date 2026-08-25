@@ -31,7 +31,12 @@ final class OverviewPipelineRowMapper {
                 runtimeView.durationMillis(),
                 runtimeView.metricsAvailable(),
                 metricsUnavailableReason(runtimeView),
-                pipeline.getUpdatedAt());
+                pipeline.getUpdatedAt(),
+                runtimeView.metricsCollectionStatus(),
+                runtimeView.runtimeStatusAvailability(),
+                runtimeView.runtimeStatusAvailable(),
+                runtimeView.runtimeStatusSource(),
+                runtimeView.runtimeStatusUnavailableReason());
     }
 
     private String metricsUnavailableReason(PipelineRuntimeView runtimeView) {

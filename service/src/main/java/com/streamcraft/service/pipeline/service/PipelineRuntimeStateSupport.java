@@ -5,6 +5,7 @@ import com.streamcraft.service.pipeline.client.FlinkMetricsClient;
 import com.streamcraft.service.pipeline.model.Pipeline;
 import com.streamcraft.service.pipeline.model.PipelineMetrics;
 import com.streamcraft.service.pipeline.model.PipelineRunStatus;
+import com.streamcraft.service.pipeline.model.RuntimeDataAvailability;
 import com.streamcraft.service.runtime.model.FlinkRuntimeTarget;
 import com.streamcraft.service.runtime.service.FlinkRuntimeTargetService;
 import java.io.IOException;
@@ -73,10 +74,21 @@ public class PipelineRuntimeStateSupport {
     PipelineRuntimeSnapshot buildRuntimeSnapshot(
             Pipeline pipeline,
             FlinkRuntimeTarget runtimeTarget) {
+        PipelineRuntimeStatusSnapshot statusSnapshot = buildRuntimeStatusSnapshot(pipeline, runtimeTarget);
+        PipelineMetrics metrics = resolveMetricsIfEligible(statusSnapshot.pipeline(), runtimeTarget);
+        return new PipelineRuntimeSnapshot(
+                statusSnapshot.pipeline(),
+                metrics,
+                statusSnapshot.statusResolution());
+    }
+
+    PipelineRuntimeStatusSnapshot buildRuntimeStatusSnapshot(
+            Pipeline pipeline,
+            FlinkRuntimeTarget runtimeTarget) {
         Pipeline pipelineSnapshot = copyPipeline(pipeline);
-        pipelineSnapshot.setLastRunStatus(resolveRuntimeStatus(pipeline, runtimeTarget));
-        PipelineMetrics metrics = resolveMetricsIfEligible(pipelineSnapshot, runtimeTarget);
-        return new PipelineRuntimeSnapshot(pipelineSnapshot, metrics);
+        PipelineRuntimeStatusResolution statusResolution = resolveRuntimeStatusResolution(pipeline, runtimeTarget);
+        pipelineSnapshot.setLastRunStatus(statusResolution.status());
+        return new PipelineRuntimeStatusSnapshot(pipelineSnapshot, statusResolution);
     }
 
     PipelineRunStatus resolveRuntimeStatus(Pipeline pipeline) {
@@ -86,10 +98,16 @@ public class PipelineRuntimeStateSupport {
     PipelineRunStatus resolveRuntimeStatus(
             Pipeline pipeline,
             FlinkRuntimeTarget runtimeTarget) {
+        return resolveRuntimeStatusResolution(pipeline, runtimeTarget).status();
+    }
+
+    PipelineRuntimeStatusResolution resolveRuntimeStatusResolution(
+            Pipeline pipeline,
+            FlinkRuntimeTarget runtimeTarget) {
         if (!hasResolvableRunningJob(pipeline)
                 || runtimeTarget == null
                 || !hasText(runtimeTarget.getJobManagerUrl())) {
-            return pipeline.getLastRunStatus();
+            return PipelineRuntimeStatusResolution.notRequested(pipeline.getLastRunStatus());
         }
 
         try {
@@ -97,17 +115,25 @@ public class PipelineRuntimeStateSupport {
                     runtimeTarget.getJobManagerUrl(),
                     pipeline.getLastJobId());
             if (liveStatus == null) {
-                return pipeline.getLastRunStatus();
+                return PipelineRuntimeStatusResolution.storedFallback(
+                        pipeline.getLastRunStatus(),
+                        RuntimeDataAvailability.NO_DATA,
+                        "JOB_STATUS_EMPTY");
             }
-            return liveStatus == PipelineRunStatus.RUNNING
+            PipelineRunStatus resolvedStatus = liveStatus == PipelineRunStatus.RUNNING
                     ? PipelineRunStatus.RUNNING
                     : PipelineRunStatus.FAILED;
+            return PipelineRuntimeStatusResolution.fromFlink(resolvedStatus);
         } catch (HttpClientErrorException exception) {
             return exception.getStatusCode() == HttpStatus.NOT_FOUND
-                    ? PipelineRunStatus.FAILED
-                    : pipeline.getLastRunStatus();
+                    ? PipelineRuntimeStatusResolution.missingJob()
+                    : PipelineRuntimeStatusResolution.storedFallback(
+                            pipeline.getLastRunStatus(),
+                            "JOB_STATUS_QUERY_FAILED");
         } catch (RuntimeException exception) {
-            return pipeline.getLastRunStatus();
+            return PipelineRuntimeStatusResolution.storedFallback(
+                    pipeline.getLastRunStatus(),
+                    "JOB_STATUS_QUERY_FAILED");
         }
     }
 
@@ -125,7 +151,7 @@ public class PipelineRuntimeStateSupport {
         try {
             return resolveMetrics(pipeline, runtimeTarget);
         } catch (RuntimeException exception) {
-            return null;
+            return PipelineMetrics.unavailable(pipeline.getLastJobId(), "JOB_METRICS_QUERY_FAILED");
         }
     }
 
