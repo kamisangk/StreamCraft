@@ -29,8 +29,35 @@ public final class RuntimePipelineValidationSupport {
     public static final String STREAM_JOIN_OPERATOR = "STREAM_JOIN";
 
     private static final Set<String> SUPPORTED_RUNTIME_TYPES = Set.of(SOURCE_TYPE, TRANSFORM_TYPE, SINK_TYPE);
+    private static final Set<String> SUPPORTED_TRANSFORM_OPERATORS = Set.of(
+            "PUT",
+            "PRUNE",
+            "RENAME",
+            "DESERIALIZE",
+            "SERIALIZE",
+            "FILTER",
+            "GROK",
+            "CAST",
+            "EVAL",
+            "AGGREGATE",
+            "DEDUPLICATE",
+            "LOOKUP_ENRICH",
+            "LOOKUP_JOIN",
+            "STREAM_JOIN",
+            "FLATTEN",
+            "EXPLODE",
+            "DATA_QUALITY",
+            "TIME_DERIVE",
+            "MASK_HASH",
+            "CASE_WHEN",
+            "ROUTE",
+            "CUSTOM_CODE");
 
     private RuntimePipelineValidationSupport() {
+    }
+
+    public static Set<String> supportedTransformOperators() {
+        return SUPPORTED_TRANSFORM_OPERATORS;
     }
 
     public static void validateRuntimeNode(RuntimeNodeDescriptor node, Set<String> supportedTransformOperators) {
