@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streamcraft.service.pipeline.model.NodeMetrics;
 import com.streamcraft.service.pipeline.model.PipelineMetrics;
 import com.streamcraft.service.pipeline.model.PipelineRunStatus;
+import com.streamcraft.service.pipeline.model.RuntimeDataAvailability;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 public class FlinkMetricsClient {
@@ -29,6 +31,8 @@ public class FlinkMetricsClient {
     public PipelineRunStatus getJobStatus(String flinkRestUrl, String jobId) {
         try {
             return mapFlinkStateToRunStatus(fetchJobNode(flinkRestUrl, jobId).path("state").asText());
+        } catch (HttpClientErrorException exception) {
+            throw exception;
         } catch (Exception exception) {
             throw new RuntimeException("Failed to fetch Flink job status: " + exception.getMessage(), exception);
         }
@@ -71,11 +75,43 @@ public class FlinkMetricsClient {
                     NodeMetrics nodeMetrics = getNodeMetrics(flinkRestUrl, jobId, vertexId, nodeId, nodeNames.get(nodeId));
                     nodeMetricsList.add(nodeMetrics);
                 } else {
-                    nodeMetricsList.add(new NodeMetrics(nodeId, nodeNames.get(nodeId), 0L, 0L));
+                    nodeMetricsList.add(NodeMetrics.noData(
+                            nodeId,
+                            nodeNames.get(nodeId),
+                            "NODE_VERTEX_NOT_FOUND"));
                 }
             }
 
             metrics.setNodeMetrics(nodeMetricsList);
+            int unavailableNodeCount = (int) nodeMetricsList.stream()
+                    .filter(nodeMetrics -> nodeMetrics.getCollectionStatus() != RuntimeDataAvailability.AVAILABLE)
+                    .count();
+            metrics.setUnavailableNodeCount(unavailableNodeCount);
+            if (nodeMetricsList.isEmpty()) {
+                metrics.setCollectionStatus(RuntimeDataAvailability.NO_DATA);
+                metrics.setUnavailableReason("NODE_METRICS_NOT_REQUESTED");
+            } else if (unavailableNodeCount == 0) {
+                metrics.setCollectionStatus(RuntimeDataAvailability.AVAILABLE);
+                metrics.setUnavailableReason(null);
+            } else if (unavailableNodeCount == nodeMetricsList.size()) {
+                boolean hasQueryFailure = nodeMetricsList.stream()
+                        .anyMatch(nodeMetrics -> nodeMetrics.getCollectionStatus() == RuntimeDataAvailability.UNAVAILABLE);
+                boolean hasPartialData = nodeMetricsList.stream()
+                        .anyMatch(nodeMetrics -> nodeMetrics.getCollectionStatus() == RuntimeDataAvailability.PARTIAL);
+                if (hasQueryFailure) {
+                    metrics.setCollectionStatus(RuntimeDataAvailability.UNAVAILABLE);
+                    metrics.setUnavailableReason("NODE_METRICS_UNAVAILABLE");
+                } else if (hasPartialData) {
+                    metrics.setCollectionStatus(RuntimeDataAvailability.PARTIAL);
+                    metrics.setUnavailableReason("NODE_METRICS_NOT_COMPLETE");
+                } else {
+                    metrics.setCollectionStatus(RuntimeDataAvailability.NO_DATA);
+                    metrics.setUnavailableReason("NODE_METRICS_NOT_FOUND");
+                }
+            } else if (unavailableNodeCount > 0) {
+                metrics.setCollectionStatus(RuntimeDataAvailability.PARTIAL);
+                metrics.setUnavailableReason("NODE_METRICS_PARTIALLY_UNAVAILABLE");
+            }
         } catch (Exception exception) {
             throw new RuntimeException("Failed to fetch Flink metrics: " + exception.getMessage(), exception);
         }
@@ -108,7 +144,7 @@ public class FlinkMetricsClient {
             }
 
             if (inputMetricIds.isEmpty() && outputMetricIds.isEmpty()) {
-                return new NodeMetrics(nodeId, nodeName, 0L, 0L);
+                return NodeMetrics.noData(nodeId, nodeName, "NODE_METRICS_NOT_EXPOSED");
             }
 
             List<String> requestedMetricIds = new ArrayList<>(inputMetricIds);
@@ -121,35 +157,57 @@ public class FlinkMetricsClient {
             String metricValuesResponse = restTemplate.getForObject(metricValuesUrl, String.class);
             JsonNode metricValuesNode = objectMapper.readTree(metricValuesResponse);
 
-            long inputRecords = sumMetricValues(metricValuesNode, inputMetricIds);
-            long outputRecords = sumMetricValues(metricValuesNode, outputMetricIds);
+            Long inputRecords = inputMetricIds.isEmpty()
+                    ? null
+                    : sumMetricValues(metricValuesNode, inputMetricIds);
+            Long outputRecords = outputMetricIds.isEmpty()
+                    ? null
+                    : sumMetricValues(metricValuesNode, outputMetricIds);
+
+            if (inputRecords == null || outputRecords == null) {
+                return NodeMetrics.partial(
+                        nodeId,
+                        nodeName,
+                        inputRecords,
+                        outputRecords,
+                        "NODE_METRICS_PARTIALLY_EXPOSED");
+            }
 
             return new NodeMetrics(nodeId, nodeName, inputRecords, outputRecords);
         } catch (Exception exception) {
-            return new NodeMetrics(nodeId, nodeName, 0L, 0L);
+            return NodeMetrics.unavailable(nodeId, nodeName, "NODE_METRICS_QUERY_FAILED");
         }
     }
 
     private long sumMetricValues(JsonNode metricValuesNode, List<String> metricIds) {
         Set<String> targetIds = new HashSet<>(metricIds);
+        Set<String> foundIds = new HashSet<>();
         long total = 0L;
         for (JsonNode metric : metricValuesNode) {
             String id = metric.path("id").asText();
             if (targetIds.contains(id)) {
-                total += parseMetricValue(metric.path("value").asText("0"));
+                total += parseMetricValue(metric.path("value"));
+                foundIds.add(id);
             }
+        }
+        if (foundIds.size() != targetIds.size()) {
+            throw new IllegalStateException("Metric value response did not contain every requested metric.");
         }
         return total;
     }
 
-    private long parseMetricValue(String rawValue) {
+    private long parseMetricValue(JsonNode valueNode) {
+        if (valueNode == null || valueNode.isMissingNode() || valueNode.isNull()) {
+            throw new IllegalStateException("Metric value is missing.");
+        }
+        String rawValue = valueNode.asText();
         if (rawValue == null || rawValue.isBlank()) {
-            return 0L;
+            throw new IllegalStateException("Metric value is blank.");
         }
         try {
             return Long.parseLong(rawValue);
         } catch (NumberFormatException exception) {
-            return 0L;
+            throw new IllegalStateException("Metric value is not a whole number.", exception);
         }
     }
 

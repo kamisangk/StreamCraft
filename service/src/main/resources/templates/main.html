@@ -399,15 +399,45 @@
         });
     }
 
-    function buildUnavailableCopy(card) {
+    function metricsCollectionStatus(card) {
         const safeCard = card && typeof card === 'object' ? card : {};
-        if (safeCard.metricsUnavailableReason) {
-            return safeCard.metricsUnavailableReason;
+        const collectionStatus = String(safeCard.metricsCollectionStatus || '').toUpperCase();
+        if (['AVAILABLE', 'PARTIAL', 'NO_DATA', 'UNAVAILABLE', 'NOT_REQUESTED'].includes(collectionStatus)) {
+            return collectionStatus;
         }
-        if (safeCard.metricsAvailable) {
-            return t('main.metrics.available', 'Available');
+        return safeCard.metricsAvailable ? 'AVAILABLE' : 'UNAVAILABLE';
+    }
+
+    function metricsStatusCopy(card, collectionStatus) {
+        const safeCard = card && typeof card === 'object' ? card : {};
+        switch (collectionStatus) {
+            case 'AVAILABLE':
+                return t('main.metrics.available', 'Available');
+            case 'PARTIAL':
+                return t('main.metrics.partial', 'Partially available');
+            case 'NO_DATA':
+                return t('main.metrics.noData', 'No realtime data');
+            case 'NOT_REQUESTED':
+                return t('main.metrics.notRequested', 'Metrics not requested');
+            case 'UNAVAILABLE':
+            default:
+                return safeCard.metricsUnavailableReason || t('main.metrics.unavailable', 'Metrics temporarily unavailable');
         }
-        return t('main.metrics.unavailable', 'Metrics temporarily unavailable');
+    }
+
+    function metricsStatusClass(collectionStatus) {
+        switch (collectionStatus) {
+            case 'AVAILABLE':
+                return 'text-emerald-600 dark:text-emerald-200';
+            case 'UNAVAILABLE':
+                return 'text-red-600 dark:text-red-200';
+            case 'PARTIAL':
+                return 'text-amber-700 dark:text-amber-200';
+            case 'NO_DATA':
+            case 'NOT_REQUESTED':
+            default:
+                return 'text-slate-500 dark:text-slate-400';
+        }
     }
 
     function renderCards(cards = []) {
@@ -426,10 +456,12 @@
             const statusKey = (safeCard.monitorStatus || 'STOPPED').toUpperCase();
             const meta = monitorStatusMeta[statusKey] ?? monitorStatusMeta.STOPPED;
             const metricsAvailable = !!safeCard.metricsAvailable;
+            const collectionStatus = metricsCollectionStatus(safeCard);
+            const collectionStatusClass = metricsStatusClass(collectionStatus);
             const inputRecords = metricsAvailable ? formatCompactCount(safeCard.totalInputRecords) : t('main.notProvided', 'Not provided');
             const outputRecords = metricsAvailable ? formatCompactCount(safeCard.totalOutputRecords) : t('main.notProvided', 'Not provided');
             const duration = metricsAvailable ? formatDuration(safeCard.durationMillis) : t('main.notProvided', 'Not provided');
-            const unavailableCopy = buildUnavailableCopy(safeCard);
+            const collectionStatusCopy = metricsStatusCopy(safeCard, collectionStatus);
             const updatedAt = formatMonitorTimestamp(safeCard.updatedAt);
             const safePipelineId = Number.isFinite(safeCard.pipelineId) ? safeCard.pipelineId : null;
             const safeNameRaw = safeCard.pipelineName || (safePipelineId !== null ? `Pipeline-${safePipelineId}` : t('main.notProvided', 'Not provided'));
@@ -456,7 +488,7 @@
                         <div class="flex justify-between"><span>${t('main.records.output', 'Output')}</span><span class="text-slate-700 dark:text-slate-300">${outputRecords}</span></div>
                         <div class="flex justify-between"><span>${t('main.records.runtime', 'Runtime')}</span><span class="text-slate-700 dark:text-slate-300">${duration}</span></div>
                         <div class="flex justify-between"><span>${t('main.records.nodes', 'Nodes')}</span><span class="text-slate-700 dark:text-slate-300">${Number.isFinite(safeCard.nodeCount) ? safeCard.nodeCount : '--'}</span></div>
-                        <div class="flex justify-between"><span>${t('main.records.status', 'Metrics status')}</span><span class="${metricsAvailable ? 'text-emerald-600 dark:text-emerald-200' : 'text-amber-700 dark:text-amber-200'}">${metricsAvailable ? t('main.metrics.available', 'Available') : safeUnavailableCopy}</span></div>
+                        <div class="flex justify-between"><span>${t('main.records.status', 'Metrics status')}</span><span class="${collectionStatusClass}">${collectionStatusCopy}</span></div>
                         <div class="flex justify-between"><span>${t('main.records.updatedAt', 'Updated at')}</span><span class="text-slate-700 dark:text-slate-300">${updatedAt}</span></div>
                         <div class="flex justify-between"><span>${t('main.records.runtimeTarget', 'Runtime target')}</span><span class="text-slate-700 dark:text-slate-300">${safeRuntimeTarget}</span></div>
                         <div class="flex justify-between"><span>${t('main.records.jobId', 'Job ID')}</span><span class="text-slate-700 dark:text-slate-300">${safeJobId}</span></div>

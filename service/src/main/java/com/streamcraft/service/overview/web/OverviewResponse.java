@@ -47,6 +47,40 @@ public record OverviewResponse(
             Long durationMillis,
             boolean metricsAvailable,
             String metricsUnavailableReason,
-            Instant updatedAt) {
+            Instant updatedAt,
+            String metricsCollectionStatus,
+            String runtimeStatusAvailability,
+            boolean runtimeStatusAvailable,
+            String runtimeStatusSource,
+            String runtimeStatusUnavailableReason) {
+
+        public PipelineRow(
+                Long pipelineId,
+                String pipelineName,
+                List<String> sourceLabels,
+                List<String> sinkLabels,
+                String runStatus,
+                String runtimeTargetLabel,
+                Long durationMillis,
+                boolean metricsAvailable,
+                String metricsUnavailableReason,
+                Instant updatedAt) {
+            this(
+                    pipelineId,
+                    pipelineName,
+                    sourceLabels,
+                    sinkLabels,
+                    runStatus,
+                    runtimeTargetLabel,
+                    durationMillis,
+                    metricsAvailable,
+                    metricsUnavailableReason,
+                    updatedAt,
+                    metricsAvailable ? "AVAILABLE" : "NOT_REQUESTED",
+                    "NOT_REQUESTED",
+                    false,
+                    null,
+                    null);
+        }
     }
 }

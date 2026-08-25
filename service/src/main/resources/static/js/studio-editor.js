@@ -3,6 +3,13 @@ const PAGE_MODE_EDITOR = "editor";
 const PAGE_MODE_MONITOR = "monitor";
 const MONITOR_REFRESH_INTERVAL_MS = 5000;
 const MONITOR_REFRESH_TIMEOUT_MS = 4500;
+const MONITOR_METRIC_STATUS = Object.freeze({
+    AVAILABLE: "AVAILABLE",
+    PARTIAL: "PARTIAL",
+    NO_DATA: "NO_DATA",
+    UNAVAILABLE: "UNAVAILABLE",
+    NOT_REQUESTED: "NOT_REQUESTED"
+});
 const NODE_WIDTH = 236;
 const NODE_HEIGHT = 120;
 const CANVAS_NODE_PADDING = 24;
@@ -508,7 +515,8 @@ const state = {
     monitorRefreshInFlight: false,
     monitorRefreshRequestId: 0,
     monitorMetricsByNodeId: new Map(),
-    previousMonitorTotalsByNodeId: new Map()
+    previousMonitorTotalsByNodeId: new Map(),
+    monitorCollectionStatus: MONITOR_METRIC_STATUS.NOT_REQUESTED
 };
 
 function isEditorMode() {
@@ -764,6 +772,81 @@ function normalizeRunStatus(status) {
     return HEADER_STATUS_META[value] ? value : "UNKNOWN";
 }
 
+function normalizeMetricCollectionStatus(value, fallback) {
+    const normalized = typeof value === "string" ? value.trim().toUpperCase() : "";
+    switch (normalized) {
+        case MONITOR_METRIC_STATUS.AVAILABLE:
+        case MONITOR_METRIC_STATUS.PARTIAL:
+        case MONITOR_METRIC_STATUS.NO_DATA:
+        case MONITOR_METRIC_STATUS.UNAVAILABLE:
+        case MONITOR_METRIC_STATUS.NOT_REQUESTED:
+            return normalized;
+        default:
+            return fallback || MONITOR_METRIC_STATUS.AVAILABLE;
+    }
+}
+
+function parseMetricNumber(value) {
+    if (value === null || value === undefined) {
+        return null;
+    }
+    if (typeof value === "number") {
+        return Number.isFinite(value) ? value : null;
+    }
+    if (typeof value !== "string" || value.trim() === "") {
+        return null;
+    }
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : null;
+}
+
+function monitorMetricStatusTone(status) {
+    switch (status) {
+        case MONITOR_METRIC_STATUS.UNAVAILABLE:
+            return "error";
+        case MONITOR_METRIC_STATUS.PARTIAL:
+            return "warning";
+        case MONITOR_METRIC_STATUS.NO_DATA:
+        case MONITOR_METRIC_STATUS.NOT_REQUESTED:
+            return "muted";
+        default:
+            return "info";
+    }
+}
+
+function monitorMetricStatusText(status, metrics) {
+    switch (status) {
+        case MONITOR_METRIC_STATUS.PARTIAL:
+            return t("studio.monitor.metrics.partial", "Metrics partially available");
+        case MONITOR_METRIC_STATUS.NO_DATA:
+            return t("studio.monitor.metrics.empty", "No realtime metrics");
+        case MONITOR_METRIC_STATUS.UNAVAILABLE:
+            return t("studio.monitor.metrics.errorPreserved", "Metrics fetch failed. The current DAG view is preserved.");
+        case MONITOR_METRIC_STATUS.NOT_REQUESTED:
+            return t("studio.monitor.metrics.notRequested", "Metrics not requested");
+        case MONITOR_METRIC_STATUS.AVAILABLE:
+        default:
+            return metrics?.status
+                ? t("studio.monitor.runStatus", "Run status: {0}", [metrics.status])
+                : t("studio.monitor.metrics.updated", "Metrics updated");
+    }
+}
+
+function preserveUnavailableMonitorMetric(previous, entry, statusText) {
+    const preserved = previous ? { ...previous } : {};
+    return {
+        ...preserved,
+        inputRecords: parseMetricNumber(preserved.inputRecords),
+        outputRecords: parseMetricNumber(preserved.outputRecords),
+        inputRate: parseMetricNumber(preserved.inputRate),
+        outputRate: parseMetricNumber(preserved.outputRate),
+        collectionStatus: MONITOR_METRIC_STATUS.UNAVAILABLE,
+        unavailableReason: entry?.unavailableReason || preserved.unavailableReason || null,
+        statusTone: "error",
+        statusText
+    };
+}
+
 function escapeHtml(value) {
     return String(value ?? "")
         .replace(/&/g, "&amp;")
@@ -774,8 +857,8 @@ function escapeHtml(value) {
 }
 
 function formatMetricCount(value) {
-    const numericValue = Number(value);
-    if (!Number.isFinite(numericValue)) {
+    const numericValue = parseMetricNumber(value);
+    if (numericValue === null) {
         return "--";
     }
     if (Math.abs(numericValue) >= 1000000000) {
@@ -791,17 +874,17 @@ function formatMetricCount(value) {
 }
 
 function formatMetricRate(value) {
-    const numericValue = Number(value);
-    if (!Number.isFinite(numericValue)) {
+    const numericValue = parseMetricNumber(value);
+    if (numericValue === null) {
         return "--";
     }
     return `${formatMetricCount(Number(numericValue.toFixed(2)))}/s`;
 }
 
 function calculateRate(currentValue, previousValue, intervalSeconds) {
-    const current = Number(currentValue);
-    const previous = Number(previousValue);
-    if (!Number.isFinite(current) || !Number.isFinite(previous) || current < previous || intervalSeconds <= 0) {
+    const current = parseMetricNumber(currentValue);
+    const previous = parseMetricNumber(previousValue);
+    if (current === null || previous === null || !Number.isFinite(intervalSeconds) || current < previous || intervalSeconds <= 0) {
         return null;
     }
     return (current - previous) / intervalSeconds;
@@ -3675,10 +3758,14 @@ function renderNodeHtml(node) {
     const outputCount = formatMetricCount(displayedOutputRecords);
     const inputRate = formatMetricRate(metrics?.inputRate);
     const outputRate = formatMetricRate(displayedOutputRate);
-    const monitorStatusText = metrics?.statusText || (metrics?.statusTone === "error" ? t("studio.monitor.metrics.error", "Metrics fetch failed") : t("studio.monitor.metrics.empty", "No realtime metrics"));
-    const monitorStatusToneClass = metrics?.statusTone === "error"
+    const displayedMetricStatus = metrics?.collectionStatus || state.monitorCollectionStatus;
+    const monitorStatusText = metrics?.statusText || monitorMetricStatusText(displayedMetricStatus, metrics);
+    const monitorStatusTone = metrics?.statusTone || monitorMetricStatusTone(displayedMetricStatus);
+    const monitorStatusToneClass = metrics?.statusTone === "error" || monitorStatusTone === "error"
         ? "text-red-600 dark:text-red-300"
-        : "text-slate-500 dark:text-slate-400";
+        : metrics?.statusTone === "warning" || monitorStatusTone === "warning"
+            ? "text-amber-600 dark:text-amber-300"
+            : "text-slate-500 dark:text-slate-400";
     const escapedMonitorStatusText = escapeHtml(monitorStatusText);
     const monitorBlock = isMonitorMode()
         ? `
@@ -6619,38 +6706,126 @@ function updateMonitorLastRefresh(timestamp) {
 function applyMonitorMetrics(metrics) {
     const sampledAt = Date.now();
     const previousTotals = state.previousMonitorTotalsByNodeId;
+    const previousMetrics = state.monitorMetricsByNodeId;
     const nextTotals = new Map();
     const nextMetrics = new Map();
+    const hasMetricsPayload = metrics !== null && typeof metrics === "object";
+    const pipelineStatus = hasMetricsPayload
+        ? normalizeMetricCollectionStatus(metrics.collectionStatus, MONITOR_METRIC_STATUS.AVAILABLE)
+        : MONITOR_METRIC_STATUS.NOT_REQUESTED;
+    const entries = Array.isArray(metrics?.nodeMetrics) ? metrics.nodeMetrics : [];
+    const entriesByNodeId = new Map();
+    entries.forEach(entry => {
+        const nodeId = entry?.nodeId === null || entry?.nodeId === undefined
+            ? ""
+            : String(entry.nodeId).trim();
+        if (nodeId) {
+            entriesByNodeId.set(nodeId, entry);
+        }
+    });
     const intervalSeconds = state.monitorLastSampleAt ? (sampledAt - state.monitorLastSampleAt) / 1000 : 0;
 
-    (metrics?.nodeMetrics || []).forEach(entry => {
-        const nodeId = String(entry?.nodeId || "");
-        if (!nodeId) {
+    if (pipelineStatus === MONITOR_METRIC_STATUS.UNAVAILABLE) {
+        const unavailableNodeIds = new Set([
+            ...previousMetrics.keys(),
+            ...state.nodes.map(node => String(node?.id || "")).filter(Boolean),
+            ...entriesByNodeId.keys()
+        ]);
+        const statusText = monitorMetricStatusText(pipelineStatus, metrics);
+        unavailableNodeIds.forEach(nodeId => {
+            const entry = entriesByNodeId.get(nodeId);
+            const entryWithReason = metrics?.unavailableReason && !entry?.unavailableReason
+                ? { ...(entry || {}), unavailableReason: metrics.unavailableReason }
+                : entry;
+            nextMetrics.set(
+                nodeId,
+                preserveUnavailableMonitorMetric(previousMetrics.get(nodeId), entryWithReason, statusText)
+            );
+        });
+
+        state.monitorMetricsByNodeId = nextMetrics;
+        state.previousMonitorTotalsByNodeId = new Map();
+        state.monitorCollectionStatus = pipelineStatus;
+        state.lastRunStatus = metrics?.status || state.lastRunStatus;
+        state.lastMonitorRefreshAt = sampledAt;
+        state.monitorLastSampleAt = null;
+        updateMonitorLastRefresh(state.lastMonitorRefreshAt);
+        renderStudio();
+        return;
+    }
+
+    const nodeIds = new Set([
+        ...state.nodes.map(node => String(node?.id || "")).filter(Boolean),
+        ...entriesByNodeId.keys()
+    ]);
+    nodeIds.forEach(nodeId => {
+        const entry = entriesByNodeId.get(nodeId);
+        const hasExplicitNodeStatus = entry
+            && Object.prototype.hasOwnProperty.call(entry, "collectionStatus")
+            && entry.collectionStatus !== null
+            && entry.collectionStatus !== undefined;
+        const fallbackNodeStatus = entry
+            ? pipelineStatus
+            : (pipelineStatus === MONITOR_METRIC_STATUS.AVAILABLE || pipelineStatus === MONITOR_METRIC_STATUS.PARTIAL
+                ? MONITOR_METRIC_STATUS.NO_DATA
+                : pipelineStatus);
+        let nodeStatus = normalizeMetricCollectionStatus(
+            hasExplicitNodeStatus ? entry.collectionStatus : fallbackNodeStatus,
+            fallbackNodeStatus
+        );
+
+        if (nodeStatus === MONITOR_METRIC_STATUS.UNAVAILABLE) {
+            const statusText = monitorMetricStatusText(nodeStatus, metrics);
+            nextMetrics.set(
+                nodeId,
+                preserveUnavailableMonitorMetric(previousMetrics.get(nodeId), entry, statusText)
+            );
             return;
         }
 
-        const inputRecords = Number(entry?.inputRecords);
-        const outputRecords = Number(entry?.outputRecords);
+        let inputRecords = parseMetricNumber(entry?.inputRecords);
+        let outputRecords = parseMetricNumber(entry?.outputRecords);
+        if (nodeStatus === MONITOR_METRIC_STATUS.AVAILABLE
+                && (inputRecords === null || outputRecords === null)) {
+            nodeStatus = MONITOR_METRIC_STATUS.UNAVAILABLE;
+        }
+        const statusText = monitorMetricStatusText(nodeStatus, metrics);
+        if (nodeStatus === MONITOR_METRIC_STATUS.UNAVAILABLE) {
+            nextMetrics.set(
+                nodeId,
+                preserveUnavailableMonitorMetric(previousMetrics.get(nodeId), entry, statusText)
+            );
+            return;
+        }
+        if (nodeStatus === MONITOR_METRIC_STATUS.NO_DATA
+                || nodeStatus === MONITOR_METRIC_STATUS.NOT_REQUESTED) {
+            inputRecords = null;
+            outputRecords = null;
+        }
+
         const previous = previousTotals.get(nodeId);
         const inputRate = calculateRate(inputRecords, previous?.inputRecords, intervalSeconds);
         const outputRate = calculateRate(outputRecords, previous?.outputRecords, intervalSeconds);
-        const statusText = metrics?.status
-            ? t("studio.monitor.runStatus", "Run status: {0}", [metrics.status])
-            : t("studio.monitor.metrics.updated", "Metrics updated");
-
-        nextTotals.set(nodeId, { inputRecords, outputRecords });
-        nextMetrics.set(nodeId, {
+        const nodeMetric = {
             inputRecords,
             outputRecords,
             inputRate,
             outputRate,
-            statusTone: "info",
+            collectionStatus: nodeStatus,
+            unavailableReason: entry?.unavailableReason || null,
+            statusTone: monitorMetricStatusTone(nodeStatus),
             statusText
-        });
+        };
+
+        nextMetrics.set(nodeId, nodeMetric);
+        if (inputRecords !== null || outputRecords !== null) {
+            nextTotals.set(nodeId, { inputRecords, outputRecords });
+        }
     });
 
     state.monitorMetricsByNodeId = nextMetrics;
     state.previousMonitorTotalsByNodeId = nextTotals;
+    state.monitorCollectionStatus = pipelineStatus;
     state.lastRunStatus = metrics?.status || state.lastRunStatus;
     state.lastMonitorRefreshAt = sampledAt;
     state.monitorLastSampleAt = sampledAt;
@@ -6693,11 +6868,17 @@ async function refreshMonitorMetrics() {
             return;
         }
 
-        const failedMetricsByNodeId = new Map();
+        const failedMetricsByNodeId = new Map(state.monitorMetricsByNodeId);
         state.nodes.forEach(node => {
-            const previous = state.monitorMetricsByNodeId.get(node.id) || {};
+            const previous = failedMetricsByNodeId.get(node.id) || {};
             failedMetricsByNodeId.set(node.id, {
                 ...previous,
+                inputRecords: parseMetricNumber(previous.inputRecords),
+                outputRecords: parseMetricNumber(previous.outputRecords),
+                inputRate: parseMetricNumber(previous.inputRate),
+                outputRate: parseMetricNumber(previous.outputRate),
+                collectionStatus: MONITOR_METRIC_STATUS.UNAVAILABLE,
+                unavailableReason: "METRICS_REQUEST_FAILED",
                 statusTone: "error",
                 statusText: t("studio.monitor.metrics.error", "Metrics fetch failed")
             });
@@ -6705,6 +6886,7 @@ async function refreshMonitorMetrics() {
 
         state.monitorMetricsByNodeId = failedMetricsByNodeId;
         state.previousMonitorTotalsByNodeId = new Map();
+        state.monitorCollectionStatus = MONITOR_METRIC_STATUS.UNAVAILABLE;
         state.monitorLastSampleAt = null;
         updateMonitorLastRefresh(state.lastMonitorRefreshAt);
         renderStudio();

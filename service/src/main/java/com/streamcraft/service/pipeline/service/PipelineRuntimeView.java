@@ -4,6 +4,7 @@ import com.streamcraft.service.runtime.model.RuntimeTargetStatus;
 import com.streamcraft.service.runtime.model.FlinkRuntimeTarget;
 import com.streamcraft.service.pipeline.model.Pipeline;
 import com.streamcraft.service.pipeline.model.PipelineRunStatus;
+import com.streamcraft.service.pipeline.model.RuntimeDataAvailability;
 
 public record PipelineRuntimeView(
         PipelineRuntimeSnapshot snapshot,
@@ -39,6 +40,26 @@ public record PipelineRuntimeView(
 
     public boolean metricsAvailable() {
         return snapshot.metricsAvailable();
+    }
+
+    public String metricsCollectionStatus() {
+        return snapshot.metricsCollectionStatus().name();
+    }
+
+    public boolean runtimeStatusAvailable() {
+        return snapshot.runtimeStatusAvailable();
+    }
+
+    public String runtimeStatusAvailability() {
+        return snapshot.runtimeStatusAvailability().name();
+    }
+
+    public String runtimeStatusSource() {
+        return snapshot.runtimeStatusSource();
+    }
+
+    public String runtimeStatusUnavailableReason() {
+        return snapshot.runtimeStatusUnavailableReason();
     }
 
     public String runtimeTargetLabel() {

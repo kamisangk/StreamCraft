@@ -59,8 +59,26 @@ public class PipelineRuntimeQueryService {
         return snapshots;
     }
 
+    public List<PipelineRuntimeStatusSnapshot> listRuntimeStatusSnapshots() {
+        List<Pipeline> storedPipelines = repository.findAllByOrderByUpdatedAtDesc();
+        FlinkRuntimeTarget runtimeTarget = runtimeStateSupport.findRuntimeTarget();
+
+        List<PipelineRuntimeStatusSnapshot> snapshots = new ArrayList<>();
+        for (Pipeline pipeline : storedPipelines) {
+            snapshots.add(runtimeStateSupport.buildRuntimeStatusSnapshot(pipeline, runtimeTarget));
+        }
+        return snapshots;
+    }
+
     public Pipeline get(Long id) {
         return runtimeStateSupport.withResolvedRuntimeStatus(getStored(id));
+    }
+
+    public PipelineRuntimeStatusSnapshot getRuntimeStatusSnapshot(Long id) {
+        Pipeline pipeline = getStored(id);
+        return runtimeStateSupport.buildRuntimeStatusSnapshot(
+                pipeline,
+                runtimeStateSupport.findRuntimeTarget());
     }
 
     public PipelineMetrics getMetrics(Long id) {
