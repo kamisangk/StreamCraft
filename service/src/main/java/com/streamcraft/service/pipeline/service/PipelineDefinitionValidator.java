@@ -22,29 +22,6 @@ public class PipelineDefinitionValidator {
     private static final String SOURCE_TYPE = RuntimePipelineValidationSupport.SOURCE_TYPE;
     private static final String TRANSFORM_TYPE = RuntimePipelineValidationSupport.TRANSFORM_TYPE;
     private static final String SINK_TYPE = RuntimePipelineValidationSupport.SINK_TYPE;
-    private static final Set<String> SUPPORTED_TRANSFORM_OPERATORS = Set.of(
-            "PUT",
-            "PRUNE",
-            "RENAME",
-            "DESERIALIZE",
-            "SERIALIZE",
-            "FILTER",
-            "GROK",
-            "CAST",
-            "EVAL",
-            "AGGREGATE",
-            "DEDUPLICATE",
-            "LOOKUP_ENRICH",
-            "LOOKUP_JOIN",
-            "STREAM_JOIN",
-            "FLATTEN",
-            "EXPLODE",
-            "DATA_QUALITY",
-            "TIME_DERIVE",
-            "MASK_HASH",
-            "CASE_WHEN",
-            "ROUTE",
-            "CUSTOM_CODE");
 
     private final ObjectMapper objectMapper;
     private final UiMessageService messages;
@@ -181,7 +158,8 @@ public class PipelineDefinitionValidator {
     }
 
     private void validateRuntimeNode(RuntimePipelineValidationSupport.RuntimeNodeDescriptor node, JsonNode config) {
-        RuntimePipelineValidationSupport.validateRuntimeNode(node, SUPPORTED_TRANSFORM_OPERATORS);
+        RuntimePipelineValidationSupport.validateRuntimeNode(
+                node, RuntimePipelineValidationSupport.supportedTransformOperators());
         validateRuntimeTransformConfig(node.operator(), config);
     }
 

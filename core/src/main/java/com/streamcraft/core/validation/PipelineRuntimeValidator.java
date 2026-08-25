@@ -7,7 +7,6 @@ import com.streamcraft.core.model.PipelineNode;
 import com.streamcraft.core.model.PipelineNodeType;
 import com.streamcraft.core.model.PipelineOperator;
 import com.streamcraft.core.runtime.ExecutionMode;
-import com.streamcraft.core.runtime.transform.TransformOperatorFactory;
 import com.streamcraft.shared.validation.PipelineNodeConfigValidationSupport;
 import com.streamcraft.shared.validation.RuntimePipelineValidationSupport;
 import java.util.HashMap;
@@ -15,22 +14,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class PipelineRuntimeValidator {
 
-    private static final Set<PipelineOperator> SUPPORTED_TRANSFORM_OPERATORS =
-            TransformOperatorFactory.supportedOperators();
-    private static final Set<String> SUPPORTED_TRANSFORM_OPERATOR_NAMES = supportedTransformOperatorNames();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
-    private static Set<String> supportedTransformOperatorNames() {
-        Set<String> names = SUPPORTED_TRANSFORM_OPERATORS.stream()
-                .map(Enum::name)
-                .collect(Collectors.toCollection(HashSet::new));
-        names.add(PipelineOperator.AGGREGATE.name());
-        return Set.copyOf(names);
-    }
 
     public void validate(PipelineDefinition definition) {
         validate(definition, ExecutionMode.RUN);
@@ -108,7 +95,7 @@ public class PipelineRuntimeValidator {
                         node.id(),
                         nodeType.name(),
                         operator.name()),
-                SUPPORTED_TRANSFORM_OPERATOR_NAMES);
+                RuntimePipelineValidationSupport.supportedTransformOperators());
     }
 
     private void validateSource(PipelineNode node, ExecutionMode executionMode) {

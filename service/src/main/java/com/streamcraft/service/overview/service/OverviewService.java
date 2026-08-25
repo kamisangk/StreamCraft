@@ -37,25 +37,25 @@ public class OverviewService {
                 pipelineRuntimeSnapshots,
                 runtimeTarget,
                 statistics);
-        OverviewPipelineStatistics.Snapshot snapshot = statistics.snapshot();
+        OverviewPipelineStatistics.OverviewStatisticsSnapshot statisticsSnapshot = statistics.toSnapshot();
 
-        OverviewResponse.RuntimeSnapshot runtimeSnapshot = new OverviewResponse.RuntimeSnapshot(
-                snapshot.totalInputRecords(),
-                snapshot.totalOutputRecords(),
-                snapshot.includedPipelineCount(),
-                snapshot.missingPipelineCount());
+        OverviewResponse.RuntimeSnapshot overviewRuntimeSnapshot = new OverviewResponse.RuntimeSnapshot(
+                statisticsSnapshot.totalInputRecords(),
+                statisticsSnapshot.totalOutputRecords(),
+                statisticsSnapshot.includedPipelineCount(),
+                statisticsSnapshot.missingPipelineCount());
         OverviewResponse.Summary summary = new OverviewResponse.Summary(
                 totalRuntimeTargets(runtimeTarget),
                 connectedRuntimeTargets(runtimeTarget),
-                snapshot.totalPipelineCount(),
-                snapshot.runningPipelineCount(),
-                snapshot.stoppedPipelineCount(),
-                snapshot.unhealthyPipelineCount(),
-                snapshot.latestSubmittedAt());
+                statisticsSnapshot.totalPipelineCount(),
+                statisticsSnapshot.runningPipelineCount(),
+                statisticsSnapshot.stoppedPipelineCount(),
+                statisticsSnapshot.unhealthyPipelineCount(),
+                statisticsSnapshot.latestSubmittedAt());
 
         return new OverviewResponse(
                 summary,
-                runtimeSnapshot,
+                overviewRuntimeSnapshot,
                 runtimeTargetCapacities(runtimeTarget),
                 pipelineRows);
     }
@@ -65,8 +65,8 @@ public class OverviewService {
             FlinkRuntimeTarget runtimeTarget,
             OverviewPipelineStatistics statistics) {
         List<OverviewResponse.PipelineRow> pipelineRows = new ArrayList<>();
-        for (PipelineRuntimeSnapshot pipelineRuntimeSnapshot : pipelineRuntimeSnapshots) {
-            PipelineRuntimeView runtimeView = PipelineRuntimeView.of(pipelineRuntimeSnapshot, runtimeTarget);
+        for (PipelineRuntimeSnapshot pipelineSnapshot : pipelineRuntimeSnapshots) {
+            PipelineRuntimeView runtimeView = PipelineRuntimeView.of(pipelineSnapshot, runtimeTarget);
             statistics.include(runtimeView);
             pipelineRows.add(pipelineRowMapper.toResponse(runtimeView));
         }

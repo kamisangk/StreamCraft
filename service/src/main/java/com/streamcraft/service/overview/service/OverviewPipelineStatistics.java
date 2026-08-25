@@ -35,8 +35,8 @@ final class OverviewPipelineStatistics {
         }
     }
 
-    Snapshot snapshot() {
-        return new Snapshot(
+    OverviewStatisticsSnapshot toSnapshot() {
+        return new OverviewStatisticsSnapshot(
                 totalInputRecords,
                 totalOutputRecords,
                 includedPipelineCount,
@@ -65,7 +65,7 @@ final class OverviewPipelineStatistics {
         }
     }
 
-    record Snapshot(
+    record OverviewStatisticsSnapshot(
             long totalInputRecords,
             long totalOutputRecords,
             int includedPipelineCount,
