@@ -1,6 +1,7 @@
 package com.streamcraft.service.flink.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.streamcraft.service.flink.FlinkParallelismResolver;
 import com.streamcraft.service.pipeline.client.PreviewFlinkJobResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -62,7 +63,7 @@ public class LocalCorePreviewClient implements CorePreviewClient {
             command.add("--preview-output-file");
             command.add(outputFile.toString());
             command.add("--parallelism");
-            command.add(String.valueOf(request.parallelism() == null || request.parallelism() < 1 ? 1 : request.parallelism()));
+            command.add(String.valueOf(FlinkParallelismResolver.resolve(request.parallelism())));
 
             LocalCoreProcessClient.ProcessExecutionResult result = processRunner.execute(command, timeoutSeconds);
             if (result.exitCode() != 0) {

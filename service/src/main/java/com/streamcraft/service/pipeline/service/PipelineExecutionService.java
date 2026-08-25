@@ -78,11 +78,8 @@ public class PipelineExecutionService {
         definitionService.validateForRun(pipeline.getDefinitionJson());
         FlinkRuntimeTarget runtimeTarget = runtimeStateSupport.requireRuntimeTarget();
 
-        SubmitFlinkJobResponse response = flinkJobGateway.submit(new SubmitFlinkJobRequest(
-                runtimeTarget.getJobManagerUrl(),
-                buildDefinitionUrl(id),
-                request != null && request.testMode() != null ? request.testMode() : runtimeProperties.testMode(),
-                request != null && request.parallelism() != null ? request.parallelism() : runtimeProperties.parallelism()));
+        SubmitFlinkJobResponse response = flinkJobGateway.submit(
+                buildSubmitRequest(id, request, runtimeTarget));
 
         pipeline.setLastRunStatus(PipelineRunStatus.RUNNING);
         pipeline.setLastRunMessage(response.message());
@@ -142,6 +139,29 @@ public class PipelineExecutionService {
                 ? baseUrl.substring(0, baseUrl.length() - 1)
                 : baseUrl;
         return normalizedBaseUrl + "/api/pipelines/" + id + "/definition";
+    }
+
+    private SubmitFlinkJobRequest buildSubmitRequest(
+            Long id,
+            RunPipelineRequest request,
+            FlinkRuntimeTarget runtimeTarget) {
+        return new SubmitFlinkJobRequest(
+                runtimeTarget.getJobManagerUrl(),
+                buildDefinitionUrl(id),
+                resolveTestMode(request),
+                resolveParallelism(request));
+    }
+
+    private boolean resolveTestMode(RunPipelineRequest request) {
+        return request != null && request.testMode() != null
+                ? request.testMode()
+                : runtimeProperties.testMode();
+    }
+
+    private int resolveParallelism(RunPipelineRequest request) {
+        return request != null && request.parallelism() != null
+                ? request.parallelism()
+                : runtimeProperties.parallelism();
     }
 
     private PipelinePreviewExecutionResult toPreviewExecutionResult(

@@ -1,5 +1,6 @@
 package com.streamcraft.service.flink.client;
 
+import com.streamcraft.service.flink.FlinkParallelismResolver;
 import com.streamcraft.service.pipeline.client.SubmitFlinkJobResponse;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -58,7 +59,7 @@ public class LocalCoreProcessClient implements CoreSubmissionClient {
         command.add("--cluster-base-url");
         command.add(request.clusterBaseUrl());
         command.add("--parallelism");
-        command.add(String.valueOf(request.parallelism() == null || request.parallelism() < 1 ? 1 : request.parallelism()));
+        command.add(String.valueOf(FlinkParallelismResolver.resolve(request.parallelism())));
         command.add("--submit-only");
         command.add("true");
         command.add("--ship-jar");

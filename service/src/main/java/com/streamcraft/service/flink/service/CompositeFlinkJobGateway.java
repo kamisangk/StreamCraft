@@ -1,5 +1,6 @@
 package com.streamcraft.service.flink.service;
 
+import com.streamcraft.service.flink.FlinkParallelismResolver;
 import com.streamcraft.service.flink.client.CorePreviewClient;
 import com.streamcraft.service.flink.client.CorePreviewRequest;
 import com.streamcraft.service.flink.client.CoreSubmissionClient;
@@ -38,7 +39,7 @@ public class CompositeFlinkJobGateway implements FlinkJobGateway {
 
     @Override
     public SubmitFlinkJobResponse submit(SubmitFlinkJobRequest request) {
-        int parallelism = request.parallelism() == null || request.parallelism() < 1 ? 1 : request.parallelism();
+        int parallelism = FlinkParallelismResolver.resolve(request.parallelism());
         return coreSubmissionClient.submit(new CoreSubmitRequest(
                 request.clusterBaseUrl(),
                 flinkGatewayProperties.getCoreJarPath(),
@@ -50,7 +51,7 @@ public class CompositeFlinkJobGateway implements FlinkJobGateway {
 
     @Override
     public PreviewFlinkJobResponse preview(PreviewFlinkJobRequest request) {
-        int parallelism = request.parallelism() == null || request.parallelism() < 1 ? 1 : request.parallelism();
+        int parallelism = FlinkParallelismResolver.resolve(request.parallelism());
         return corePreviewClient.preview(new CorePreviewRequest(
                 flinkGatewayProperties.getCoreJarPath(),
                 request.definitionJson(),
