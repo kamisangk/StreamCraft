@@ -28,24 +28,35 @@
             </div>
         </section>
 
-        <section id="pipeline-monitor-loading" class="min-h-80 flex items-center justify-center">
-            <div class="text-center">
-                <div class="inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                <p class="mt-4 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500" th:text="#{main.loading}">Loading...</p>
+        <section id="pipeline-monitor-loading" class="sc-loading-state min-h-80 flex items-center justify-center px-5 py-10" role="status" aria-live="polite" aria-busy="true">
+            <div class="w-full max-w-3xl">
+                <div class="mb-5 flex items-center gap-3">
+                    <span class="sc-topbar-signal" aria-hidden="true"></span>
+                    <p class="text-sm font-medium text-slate-700 dark:text-slate-300" th:text="#{main.loading}">Loading...</p>
+                </div>
+                <div class="grid gap-3 sm:grid-cols-3">
+                    <div class="sc-skeleton-line h-20 w-full animate-pulse"></div>
+                    <div class="sc-skeleton-line h-20 w-full animate-pulse"></div>
+                    <div class="sc-skeleton-line h-20 w-full animate-pulse"></div>
+                </div>
+                <div class="mt-5 space-y-3">
+                    <div class="sc-skeleton-line sc-skeleton-line-wide animate-pulse"></div>
+                    <div class="sc-skeleton-line sc-skeleton-line-short animate-pulse"></div>
+                </div>
             </div>
         </section>
 
-        <section id="pipeline-monitor-error" class="hidden">
-            <div class="sc-card-strong border-red-200 bg-red-50 p-5 text-center dark:border-red-500/30 dark:bg-red-500/10 sm:p-6">
-                <i data-lucide="triangle-alert" class="mx-auto mb-3 h-6 w-6 text-red-600 dark:text-red-300" aria-hidden="true"></i>
+        <section id="pipeline-monitor-error" class="hidden" role="alert" aria-live="assertive">
+            <div class="sc-card-strong sc-monitor-error border-red-200 bg-red-50 p-5 text-center dark:border-red-500/30 dark:bg-red-500/10 sm:p-6">
+                <i data-lucide="triangle-alert" class="mx-auto mb-3 h-6 w-6 text-red-600 dark:text-red-200" aria-hidden="true"></i>
                 <h3 class="text-lg font-semibold text-red-600 dark:text-red-200" th:text="#{main.error.title}">Loading failed</h3>
                 <p id="pipeline-monitor-error-message" class="mt-2 text-sm text-slate-700 dark:text-slate-300" th:text="#{main.error.retry}">Please try again later.</p>
             </div>
         </section>
 
-        <section id="pipeline-monitor-content" class="hidden space-y-6">
+        <section id="pipeline-monitor-content" class="hidden space-y-6" aria-live="polite" aria-busy="false">
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 sm:grid-cols-2 lg:gap-5">
-                <article class="sc-summary-card flex min-w-0 items-center overflow-hidden xl:col-span-1">
+                <article class="sc-summary-card sc-monitor-metric flex min-w-0 items-center overflow-hidden xl:col-span-1" data-summary-tone="health">
                     <div class="relative mr-4 h-20 w-20 flex-shrink-0 sm:mr-5">
                         <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                             <path class="text-slate-700 dark:text-slate-300" stroke-width="3" stroke="currentColor" fill="none"
@@ -87,7 +98,7 @@
                     </div>
                 </article>
 
-                <article class="sc-summary-card flex min-w-0 items-center gap-4 overflow-hidden xl:col-span-1 sm:gap-5">
+                <article class="sc-summary-card sc-monitor-metric flex min-w-0 items-center gap-4 overflow-hidden xl:col-span-1 sm:gap-5" data-summary-tone="capacity">
                     <div class="relative h-20 w-20 flex-shrink-0">
                         <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36" aria-hidden="true">
                             <path class="text-slate-200 dark:text-slate-800" stroke-width="3" stroke="currentColor" fill="none"
@@ -112,16 +123,16 @@
                     </div>
                 </article>
 
-                <article id="pipeline-monitor-realtime-card" class="sc-summary-card xl:col-span-2 flex flex-col justify-between">
+                <article id="pipeline-monitor-realtime-card" class="sc-summary-card xl:col-span-2 flex flex-col justify-between" data-summary-tone="realtime">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <h3 class="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm font-medium mr-2" th:text="#{main.realtime.title}">Realtime trend</h3>
                         <div id="pipeline-monitor-realtime-legend" class="flex flex-shrink-0 items-center justify-end gap-3 text-[10px] font-medium">
                             <span id="pipeline-monitor-realtime-legend-input" class="inline-flex items-center gap-1 text-blue-600">
-                                <span class="h-1.5 w-1.5 rounded-full bg-blue-400"></span>
+                                <span class="sc-status-swatch bg-blue-400"></span>
                                 <span>IN: <span id="pipeline-monitor-total-input" class="font-semibold text-slate-800 dark:text-slate-200">0</span></span>
                             </span>
                             <span id="pipeline-monitor-realtime-legend-output" class="inline-flex items-center gap-1 text-cyan-600">
-                                <span class="h-1.5 w-1.5 rounded-full bg-cyan-400"></span>
+                                <span class="sc-status-swatch bg-cyan-400"></span>
                                 <span>OUT: <span id="pipeline-monitor-total-output" class="font-semibold text-slate-800 dark:text-slate-200">0</span></span>
                             </span>
                         </div>
@@ -156,7 +167,7 @@
                     <i data-lucide="layout-grid" class="sc-icon sc-icon-sm text-slate-400 dark:text-slate-500" aria-hidden="true"></i>
                 </header>
                 <div class="flex-1 overflow-y-auto">
-                    <div id="pipeline-monitor-cards" class="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-3"></div>
+                    <div id="pipeline-monitor-cards" class="sc-monitor-card-grid grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-3"></div>
                 </div>
             </section>
         </section>
@@ -208,9 +219,17 @@
     };
 
     function showMonitorState(state) {
-        monitorLoading.classList.toggle('hidden', state !== 'loading');
-        monitorError.classList.toggle('hidden', state !== 'error');
-        monitorContent.classList.toggle('hidden', state !== 'content');
+        const isLoading = state === 'loading';
+        const isError = state === 'error';
+        const isContent = state === 'content';
+        monitorLoading.classList.toggle('hidden', !isLoading);
+        monitorError.classList.toggle('hidden', !isError);
+        monitorContent.classList.toggle('hidden', !isContent);
+        monitorLoading.setAttribute('aria-hidden', String(!isLoading));
+        monitorError.setAttribute('aria-hidden', String(!isError));
+        monitorContent.setAttribute('aria-hidden', String(!isContent));
+        monitorLoading.setAttribute('aria-busy', String(isLoading));
+        monitorContent.setAttribute('aria-busy', String(isLoading));
     }
 
     function formatMonitorTimestamp(timestamp) {
@@ -399,7 +418,7 @@
 
             const legend = document.createElement('span');
             legend.className = `${meta.textClass} flex items-center`;
-            legend.innerHTML = `<span class="w-2 h-2 rounded-full ${meta.dotClass} mr-1.5"></span>${meta.label} (${count} ${t('main.status.shareSeparator', '/')} ${ratio}%)`;
+            legend.innerHTML = `<span class="sc-status-swatch ${meta.dotClass} mr-1.5"></span>${meta.label} (${count} ${t('main.status.shareSeparator', '/')} ${ratio}%)`;
             monitorStatusLegend.appendChild(legend);
         });
     }
@@ -449,7 +468,7 @@
         const safeCards = Array.isArray(cards) ? cards : [];
         if (safeCards.length === 0) {
             monitorCards.innerHTML = `
-                <article class="col-span-full sc-empty-state p-8 text-center text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
+                <article class="col-span-full sc-empty-state p-8 text-center text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500" role="status">
                     ${t('main.cards.empty', 'No task cards to display right now.')}
                 </article>
             `;
@@ -480,24 +499,24 @@
             const linkHref = safePipelineId !== null ? `/pipelines/${safePipelineId}/monitor` : '#';
 
             return `
-                <article class="sc-card-interactive sc-card-strong overflow-hidden flex flex-col border ${meta.cardClass}">
-                    <header class="px-4 py-3 flex items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800">
+                <article class="sc-monitor-card sc-card-interactive sc-card-strong overflow-hidden flex flex-col border ${meta.cardClass}">
+                    <header class="px-4 py-3 flex items-center justify-between gap-3 border-b border-[var(--sc-border-soft)]">
                         <div class="min-w-0">
                             <h4 class="font-semibold text-slate-900 dark:text-slate-100 truncate">${safeName}</h4>
                             <p class="text-[10px] text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase tracking-[0.18em]">${meta.label}</p>
                         </div>
-                        <a href="${linkHref}" class="text-xs text-blue-600 dark:text-blue-300">${t('main.cards.view', 'View')}</a>
+                        <a href="${linkHref}" class="sc-monitor-card-link shrink-0 px-2" aria-label="${t('main.cards.view', 'View')} ${safeName}">${t('main.cards.view', 'View')}</a>
                     </header>
                     <div class="p-4 space-y-3 text-sm">
-                        <div class="flex justify-between"><span>${t('main.records.input', 'Input')}</span><span class="text-slate-700 dark:text-slate-300">${inputRecords}</span></div>
-                        <div class="flex justify-between"><span>${t('main.records.output', 'Output')}</span><span class="text-slate-700 dark:text-slate-300">${outputRecords}</span></div>
-                        <div class="flex justify-between"><span>${t('main.records.runtime', 'Runtime')}</span><span class="text-slate-700 dark:text-slate-300">${duration}</span></div>
-                        <div class="flex justify-between"><span>${t('main.records.nodes', 'Nodes')}</span><span class="text-slate-700 dark:text-slate-300">${Number.isFinite(safeCard.nodeCount) ? safeCard.nodeCount : '--'}</span></div>
-                        <div class="flex justify-between"><span>${t('main.records.status', 'Metrics status')}</span><span class="${collectionStatusClass}">${collectionStatusCopy}</span></div>
-                        <div class="flex justify-between"><span>${t('main.records.updatedAt', 'Updated at')}</span><span class="text-slate-700 dark:text-slate-300">${updatedAt}</span></div>
-                        <div class="flex justify-between"><span>${t('main.records.runtimeTarget', 'Runtime target')}</span><span class="text-slate-700 dark:text-slate-300">${safeRuntimeTarget}</span></div>
-                        <div class="flex justify-between"><span>${t('main.records.jobId', 'Job ID')}</span><span class="text-slate-700 dark:text-slate-300">${safeJobId}</span></div>
-                        <div class="flex justify-between"><span>${t('main.records.runStatus', 'Run status')}</span><span class="text-slate-700 dark:text-slate-300">${safeRunStatus}</span></div>
+                        <div class="flex items-start justify-between gap-4"><span class="sc-muted">${t('main.records.input', 'Input')}</span><span class="sc-monitor-card-value text-slate-700 dark:text-slate-300">${inputRecords}</span></div>
+                        <div class="flex items-start justify-between gap-4"><span class="sc-muted">${t('main.records.output', 'Output')}</span><span class="sc-monitor-card-value text-slate-700 dark:text-slate-300">${outputRecords}</span></div>
+                        <div class="flex items-start justify-between gap-4"><span class="sc-muted">${t('main.records.runtime', 'Runtime')}</span><span class="sc-monitor-card-value text-slate-700 dark:text-slate-300">${duration}</span></div>
+                        <div class="flex items-start justify-between gap-4"><span class="sc-muted">${t('main.records.nodes', 'Nodes')}</span><span class="sc-monitor-card-value text-slate-700 dark:text-slate-300">${Number.isFinite(safeCard.nodeCount) ? safeCard.nodeCount : '--'}</span></div>
+                        <div class="flex items-start justify-between gap-4"><span class="sc-muted">${t('main.records.status', 'Metrics status')}</span><span class="sc-monitor-card-value ${collectionStatusClass}">${collectionStatusCopy}</span></div>
+                        <div class="flex items-start justify-between gap-4"><span class="sc-muted">${t('main.records.updatedAt', 'Updated at')}</span><span class="sc-monitor-card-value text-slate-700 dark:text-slate-300">${updatedAt}</span></div>
+                        <div class="flex items-start justify-between gap-4"><span class="sc-muted">${t('main.records.runtimeTarget', 'Runtime target')}</span><span class="sc-monitor-card-value text-slate-700 dark:text-slate-300">${safeRuntimeTarget}</span></div>
+                        <div class="flex items-start justify-between gap-4"><span class="sc-muted">${t('main.records.jobId', 'Job ID')}</span><span class="sc-monitor-card-value text-slate-700 dark:text-slate-300">${safeJobId}</span></div>
+                        <div class="flex items-start justify-between gap-4"><span class="sc-muted">${t('main.records.runStatus', 'Run status')}</span><span class="sc-monitor-card-value text-slate-700 dark:text-slate-300">${safeRunStatus}</span></div>
                     </div>
                 </article>
             `;
@@ -833,6 +852,7 @@
         }
         monitorRequestInFlight = true;
         monitorRefreshButton.disabled = true;
+        monitorRefreshButton.setAttribute('aria-busy', 'true');
         monitorRefreshButton.classList.add('opacity-70', 'cursor-not-allowed');
 
         if (monitorContent.classList.contains('hidden')) {
@@ -883,6 +903,7 @@
         } finally {
             monitorRequestInFlight = false;
             monitorRefreshButton.disabled = false;
+            monitorRefreshButton.setAttribute('aria-busy', 'false');
             monitorRefreshButton.classList.remove('opacity-70', 'cursor-not-allowed');
         }
     }

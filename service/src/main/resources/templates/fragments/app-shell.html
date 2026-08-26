@@ -762,6 +762,82 @@
             background: var(--sc-danger);
         }
 
+        .sc-loading-state {
+            border: 1px solid var(--sc-border-soft);
+            border-radius: 12px;
+            background: color-mix(in srgb, var(--sc-surface) 72%, var(--sc-card-strong) 28%);
+        }
+
+        .sc-skeleton-line {
+            height: 10px;
+            border-radius: 4px;
+            background: var(--sc-border);
+        }
+
+        .sc-skeleton-line-wide {
+            width: min(100%, 420px);
+        }
+
+        .sc-skeleton-line-short {
+            width: min(72%, 240px);
+        }
+
+        .sc-monitor-error {
+            border-color: color-mix(in srgb, var(--sc-danger) 32%, var(--sc-border) 68%);
+        }
+
+        .sc-monitor-metric {
+            position: relative;
+        }
+
+        .sc-monitor-metric-label {
+            color: var(--sc-muted);
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1.35;
+        }
+
+        .sc-monitor-card-grid {
+            align-items: stretch;
+        }
+
+        .sc-monitor-card {
+            min-width: 0;
+        }
+
+        .sc-monitor-card-value {
+            min-width: 0;
+            max-width: 62%;
+            overflow-wrap: anywhere;
+            text-align: right;
+        }
+
+        .sc-monitor-card-link {
+            display: inline-flex;
+            min-height: 36px;
+            align-items: center;
+            border-radius: 7px;
+            color: var(--sc-accent);
+            font-size: 12px;
+            font-weight: 600;
+            text-underline-offset: 3px;
+            transition: background-color 0.18s ease, color 0.18s ease;
+        }
+
+        .sc-monitor-card-link:hover {
+            background: var(--sc-accent-soft);
+            color: var(--sc-text);
+            text-decoration: underline;
+        }
+
+        .sc-status-swatch {
+            display: inline-block;
+            width: 14px;
+            height: 3px;
+            flex: 0 0 auto;
+            border-radius: 1px;
+        }
+
         @media (max-width: 767px) {
             .sc-data-table th:first-child,
             .sc-data-table td:first-child {
