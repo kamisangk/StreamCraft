@@ -20,9 +20,9 @@
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <p id="pipeline-monitor-last-refresh" class="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 font-mono" th:text="#{main.lastUpdated.placeholder}">Last updated: --</p>
                     <button id="pipeline-monitor-refresh" type="button"
-                            class="sc-btn-secondary inline-flex items-center gap-1.5 px-3 py-1.5 text-xs"
-                            th:text="#{main.refresh}">
-                        Refresh
+                            class="sc-btn-secondary inline-flex min-h-10 items-center gap-1.5 px-3 text-xs">
+                        <i data-lucide="refresh-cw" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                        <span th:text="#{main.refresh}"></span>
                     </button>
                 </div>
             </div>
@@ -36,16 +36,17 @@
         </section>
 
         <section id="pipeline-monitor-error" class="hidden">
-            <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-                <h3 class="text-lg font-semibold text-red-600" th:text="#{main.error.title}">Loading failed</h3>
+            <div class="sc-card-strong border-red-200 bg-red-50 p-5 text-center dark:border-red-500/30 dark:bg-red-500/10 sm:p-6">
+                <i data-lucide="triangle-alert" class="mx-auto mb-3 h-6 w-6 text-red-600 dark:text-red-300" aria-hidden="true"></i>
+                <h3 class="text-lg font-semibold text-red-600 dark:text-red-200" th:text="#{main.error.title}">Loading failed</h3>
                 <p id="pipeline-monitor-error-message" class="mt-2 text-sm text-slate-700 dark:text-slate-300" th:text="#{main.error.retry}">Please try again later.</p>
             </div>
         </section>
 
         <section id="pipeline-monitor-content" class="hidden space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
-                <article class="sc-summary-card xl:col-span-1 flex items-center overflow-hidden">
-                    <div class="relative w-20 h-20 mr-6 flex-shrink-0">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 sm:grid-cols-2 lg:gap-5">
+                <article class="sc-summary-card flex min-w-0 items-center overflow-hidden xl:col-span-1">
+                    <div class="relative mr-4 h-20 w-20 flex-shrink-0 sm:mr-5">
                         <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                             <path class="text-slate-700 dark:text-slate-300" stroke-width="3" stroke="currentColor" fill="none"
                                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
@@ -68,7 +69,7 @@
                 </article>
 
                 <article class="sc-summary-card md:col-span-2 xl:col-span-1 flex items-center gap-6 overflow-hidden">
-                    <div class="relative w-24 h-24 flex-shrink-0">
+                    <div class="relative h-24 w-24 flex-shrink-0">
                         <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36" aria-hidden="true">
                             <path class="text-slate-200 dark:text-slate-800" stroke-width="3" stroke="currentColor" fill="none"
                                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
@@ -86,8 +87,8 @@
                     </div>
                 </article>
 
-                <article class="sc-summary-card xl:col-span-1 flex items-center gap-5 overflow-hidden">
-                    <div class="relative w-20 h-20 flex-shrink-0">
+                <article class="sc-summary-card flex min-w-0 items-center gap-4 overflow-hidden xl:col-span-1 sm:gap-5">
+                    <div class="relative h-20 w-20 flex-shrink-0">
                         <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36" aria-hidden="true">
                             <path class="text-slate-200 dark:text-slate-800" stroke-width="3" stroke="currentColor" fill="none"
                                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
@@ -126,7 +127,7 @@
                         </div>
                     </div>
 
-                    <div id="pipeline-monitor-realtime-plot" class="sc-panel-muted relative mt-4 flex-1 overflow-hidden px-2 py-3 min-h-[120px]">
+                    <div id="pipeline-monitor-realtime-plot" class="sc-panel-muted relative mt-4 min-h-[140px] flex-1 overflow-hidden px-2 py-3 sm:min-h-[160px]">
                         <div id="pipeline-monitor-realtime-y-axis" class="pointer-events-none absolute left-2 top-4 bottom-10 w-8 text-[9px] uppercase text-slate-400 dark:text-slate-500 whitespace-nowrap">
                             <span th:text="#{main.recordsLabel}">Records</span>
                         </div>
@@ -146,12 +147,16 @@
                 </article>
             </div>
 
-            <section data-collection-panel="monitor-cards" class="sc-card-strong overflow-hidden flex flex-col">
-                <header class="sc-surface px-5 py-4 border-b-0 rounded-none">
-                    <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200" th:text="#{main.cards.title}">Task cards</h3>
+            <section data-collection-panel="monitor-cards" class="sc-card-strong flex flex-col overflow-hidden">
+                <header class="sc-surface flex items-center justify-between rounded-none border-b-0 px-4 py-4 sm:px-5">
+                    <div>
+                        <p class="sc-subtle-label" th:text="#{main.hero.label}">Operations</p>
+                        <h3 class="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-200" th:text="#{main.cards.title}">Task cards</h3>
+                    </div>
+                    <i data-lucide="layout-grid" class="sc-icon sc-icon-sm text-slate-400 dark:text-slate-500" aria-hidden="true"></i>
                 </header>
                 <div class="flex-1 overflow-y-auto">
-                    <div id="pipeline-monitor-cards" class="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+                    <div id="pipeline-monitor-cards" class="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-3"></div>
                 </div>
             </section>
         </section>
