@@ -25,6 +25,10 @@ function t(key, fallback, params) {
     return window.StreamCraftI18n?.t?.(key, fallback, params) ?? fallback ?? key;
 }
 
+function refreshStudioIcons() {
+    window.StreamCraftIcons?.refresh();
+}
+
 const HEADER_STATUS_META = {
     NEW: {
         label: t("studio.status.new", "Unsaved"),
@@ -953,6 +957,7 @@ function renderSourceSampleInputs(sampleData) {
         }
         container.appendChild(fragment);
     });
+    refreshStudioIcons();
 }
 
 function normalizeRenameMappings(mapping) {
@@ -1140,6 +1145,7 @@ function renderLookupEnrichEntries(entries) {
         }
         container.appendChild(fragment);
     });
+    refreshStudioIcons();
 }
 
 function collectLookupEnrichEntries() {
@@ -1299,6 +1305,7 @@ function renderLookupJoinEntries(entries) {
         }
         container.appendChild(fragment);
     });
+    refreshStudioIcons();
 }
 
 function collectLookupJoinEntryRows() {
@@ -1455,6 +1462,7 @@ function renderDataQualityRules(rules) {
         updateDataQualityRuleUI(fragment.querySelector("[data-role='data-quality-rule-item']"));
         container.appendChild(fragment);
     });
+    refreshStudioIcons();
 }
 
 function collectDataQualityRules() {
@@ -1562,6 +1570,7 @@ function renderTimeDeriveItems(derivations) {
         container.appendChild(fragment);
         updateTimeDeriveDerivationUI(container.lastElementChild);
     });
+    refreshStudioIcons();
 }
 
 function collectTimeDeriveItems() {
@@ -1647,6 +1656,7 @@ function renderPruneFieldRows(rows) {
         }
         container.appendChild(fragment);
     });
+    refreshStudioIcons();
 }
 
 function appendRenameMappingInput(sourceField = "", targetField = "") {
@@ -1686,6 +1696,7 @@ function renderRenameMappingRows(rows) {
         }
         container.appendChild(fragment);
     });
+    refreshStudioIcons();
 }
 
 function normalizeAggregateItems(aggregations) {
@@ -1792,6 +1803,7 @@ function renderAggregateRows(rows) {
         container.appendChild(fragment);
         updateAggregateItemVisibility(container.lastElementChild);
     });
+    refreshStudioIcons();
 }
 
 function normalizePreviewOutputRecords(records) {
@@ -1899,6 +1911,7 @@ function renderRouteItems(routes) {
         }
         container.appendChild(fragment);
     });
+    refreshStudioIcons();
 }
 
 function collectRouteItems() {
@@ -2031,6 +2044,7 @@ function renderMaskHashRules(rules) {
         container.appendChild(fragment);
         updateMaskHashActionUI(container.lastElementChild);
     });
+    refreshStudioIcons();
 }
 
 function collectMaskHashRules() {
@@ -2159,6 +2173,7 @@ function renderCaseWhenItems(cases) {
         container.appendChild(fragment);
         updateCaseWhenValueModeUI(container.lastElementChild);
     });
+    refreshStudioIcons();
 }
 
 function collectCaseWhenItems() {

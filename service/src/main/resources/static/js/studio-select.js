@@ -123,9 +123,7 @@
                     <span class="studio-select-trigger-label"></span>
                     <span class="studio-select-trigger-description"></span>
                 </div>
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
+                <i data-lucide="chevron-down" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
             `;
 
             this.menu = document.createElement("div");
@@ -147,6 +145,7 @@
             this.shell.appendChild(this.trigger);
             this.shell.appendChild(this.menu);
             this.select.insertAdjacentElement("afterend", this.shell);
+            window.StreamCraftIcons?.refresh();
         }
 
         bind() {
