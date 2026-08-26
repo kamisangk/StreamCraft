@@ -3,7 +3,7 @@
 <head th:replace="~{fragments/app-shell :: commonHead(#{studio.documentTitle})}">
     <title>Pipeline Studio - StreamCraft</title>
 </head>
-<body class="sc-shell-page h-screen w-screen flex flex-col overflow-hidden" data-studio-shell="editor">
+<body class="sc-shell-page min-h-[100dvh] w-screen flex flex-col overflow-hidden" data-studio-shell="editor">
 <div id="studio-bootstrap"
      class="hidden"
      data-page-mode="editor"
@@ -17,13 +17,33 @@
     .studio-shell-grid {
         display: grid;
         grid-template-columns: minmax(0, 1fr);
-        gap: 16px;
-        padding: 16px;
+        grid-template-rows: minmax(360px, 46dvh) minmax(0, 1fr);
+        gap: 12px;
+        padding: 12px;
         background: var(--sc-surface);
+        overflow-y: auto;
     }
-    @media (min-width: 768px) {
+    @media (min-width: 768px) and (max-width: 1023px) {
         .studio-shell-grid {
-            grid-template-columns: 272px minmax(0, 1fr) 388px;
+            grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+            grid-template-rows: minmax(0, 1fr);
+            gap: 14px;
+            padding: 14px;
+            overflow: hidden;
+        }
+    }
+    @media (min-width: 1024px) {
+        .studio-shell-grid {
+            grid-template-columns: minmax(220px, 248px) minmax(0, 1fr) minmax(320px, 360px);
+            grid-template-rows: minmax(0, 1fr);
+            gap: 16px;
+            padding: 16px;
+            overflow: hidden;
+        }
+    }
+    @media (min-width: 1440px) {
+        .studio-shell-grid {
+            grid-template-columns: 260px minmax(0, 1fr) 388px;
         }
     }
     .dark .studio-shell-grid {
@@ -31,6 +51,7 @@
     }
     .studio-workbench-header {
         background: var(--sc-bg);
+        box-shadow: 0 1px 0 var(--sc-border-soft);
     }
     .dark .studio-workbench-header {
         background: var(--sc-bg);
@@ -38,7 +59,7 @@
     .studio-rail {
         min-width: 0;
         border: 1px solid var(--sc-border);
-        border-radius: 12px;
+        border-radius: 10px;
         background: var(--sc-card-strong);
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     }
@@ -48,7 +69,11 @@
         box-shadow: none;
     }
     .studio-rail-header {
-        padding: 16px 18px;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
         border-bottom: 1px solid var(--sc-border);
         background: var(--sc-surface);
     }
@@ -57,26 +82,58 @@
         background: var(--sc-surface);
     }
     .studio-rail-body {
-        padding: 18px;
+        padding: 16px;
+    }
+    .studio-rail-mark {
+        width: 30px;
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        border: 1px solid var(--sc-border);
+        border-radius: 8px;
+        background: var(--sc-card-strong);
+        color: var(--sc-muted);
     }
     .studio-operator-group {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 8px;
+    }
+    .studio-operator-group-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 2px;
+        color: var(--sc-muted);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .14em;
+        line-height: 1;
+        text-transform: uppercase;
     }
     .studio-operator-item {
-        padding: 12px 14px;
+        min-height: 42px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
         border: 1px solid var(--sc-border);
-        border-radius: 12px;
+        border-radius: 8px;
         background: var(--sc-bg);
         color: var(--sc-text);
         font-size: 12px;
         font-weight: 600;
-        transition: border-color .18s ease, background-color .18s ease;
+        transition: border-color .18s ease, background-color .18s ease, color .18s ease;
     }
     .studio-operator-item:hover {
-        border-color: var(--sc-text);
+        border-color: var(--sc-accent);
         background: var(--sc-surface);
+        color: var(--sc-accent);
+    }
+    .studio-operator-item:active {
+        background: var(--sc-accent-soft);
     }
     .dark .studio-operator-item {
         border-color: var(--sc-border);
@@ -101,7 +158,7 @@
         box-shadow: none;
     }
     .studio-stage {
-        border-radius: 16px;
+        border-radius: 10px;
         border: 1px solid var(--sc-border-soft);
         overflow: hidden;
     }
@@ -118,23 +175,30 @@
         background-image: radial-gradient(rgba(163, 163, 163, 0.28) 1px, transparent 1px);
     }
     .dark .node-port {
-        border-color: #171717;
+        border-color: var(--sc-card-strong);
     }
     .node-port {
         position: absolute;
         top: 50%;
         transform: translateY(-50%);
-        width: 12px;
-        height: 12px;
+        width: 14px;
+        height: 14px;
         border-radius: 999px;
-        background: var(--sc-muted-soft);
-        border: 2px solid var(--sc-bg);
+        background: var(--sc-accent);
+        border: 3px solid var(--sc-card-strong);
+        box-shadow: 0 0 0 1px var(--sc-border);
+        transition: background-color .18s ease, box-shadow .18s ease, transform .18s ease;
+    }
+    .node-port:hover {
+        background: var(--sc-primary);
+        box-shadow: 0 0 0 3px var(--sc-accent-soft);
+        transform: translateY(-50%) scale(1.12);
     }
     .port-left {
-        left: -6px;
+        left: -7px;
     }
     .port-right {
-        right: -6px;
+        right: -7px;
     }
     .port-stack {
         position: absolute;
@@ -155,8 +219,8 @@
     .port-stack .port-left {
         left: auto;
     }
-    .port-right-stack { right: -6px; align-items: flex-end; }
-    .port-left-stack { left: -6px; align-items: flex-start; }
+    .port-right-stack { right: -7px; align-items: flex-end; }
+    .port-left-stack { left: -7px; align-items: flex-start; }
     .port-stack-item {
         display: flex;
         justify-content: flex-end;
@@ -167,9 +231,16 @@
         gap: 6px;
     }
     .port-label {
-        font-size: 10px;
+        padding: 3px 5px;
+        border: 1px solid var(--sc-border);
+        border-radius: 5px;
+        background: var(--sc-card-strong);
+        font-family: 'Fira Code', monospace;
+        font-size: 9px;
+        font-weight: 600;
         line-height: 1;
         color: var(--sc-muted);
+        white-space: nowrap;
     }
     .dark .port-label {
         color: var(--sc-muted);
@@ -183,12 +254,37 @@
     .draggable-node {
         position: absolute;
         width: 236px;
-        transition: box-shadow .2s ease, border-color .2s ease;
+        overflow: visible;
+        transition: box-shadow .2s ease, border-color .2s ease, transform .2s ease;
     }
     .draggable-node.node-active {
-        border-color: var(--sc-text);
-        box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.08);
+        border-color: var(--sc-accent);
+        box-shadow: 0 0 0 3px var(--sc-accent-soft), var(--sc-shadow-soft);
         z-index: 30;
+    }
+    .studio-node-header {
+        min-height: 44px;
+        border-bottom: 1px solid var(--sc-border);
+        background: var(--sc-surface);
+    }
+    .studio-node-badge {
+        width: 24px;
+        height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        border: 1px solid currentColor;
+        border-radius: 7px;
+    }
+    .studio-node-body {
+        background: var(--sc-card-strong);
+    }
+    .studio-node-metric {
+        border: 1px solid var(--sc-border);
+        border-radius: 6px;
+        background: var(--sc-surface);
+        padding: 8px;
     }
     .property-panel {
         display: none;
@@ -203,12 +299,12 @@
     }
     .studio-inspector-section {
         border: 1px solid var(--sc-border);
-        border-radius: 12px;
-        background: var(--sc-bg);
+        border-radius: 10px;
+        background: var(--sc-card-strong);
     }
     .dark .studio-inspector-section {
         border-color: var(--sc-border);
-        background: var(--sc-bg);
+        background: var(--sc-card-strong);
     }
     .studio-inspector-note {
         background: var(--sc-surface);
@@ -479,10 +575,29 @@
     .aggregate-item-action {
         flex: 0 0 36px;
     }
+    .studio-actionbar {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        min-width: 0;
+    }
+    .studio-actionbar .sc-btn-primary,
+    .studio-actionbar .sc-btn-secondary {
+        flex: 0 0 auto;
+    }
+    @media (max-width: 767px) {
+        .studio-actionbar {
+            width: 100%;
+            justify-content: flex-start;
+            overflow-x: auto;
+            padding-bottom: 2px;
+        }
+    }
 </style>
 
 <header data-studio-header="workbench" class="studio-workbench-header border-b border-[var(--sc-border)] px-4 lg:px-6 py-3 shrink-0">
-    <div class="flex items-center justify-between gap-4">
+    <div class="flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-4 min-w-0">
             <a th:href="@{/pipelines}" class="sc-btn-icon shrink-0" th:aria-label="#{studio.backToList}" aria-label="Back to pipeline list">
                 <i data-lucide="arrow-left" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
@@ -495,26 +610,45 @@
                 <p class="mt-1 text-sm text-[var(--sc-muted)] truncate" th:text="#{studio.subtitle}">Drag operators into the canvas, arrange the DAG, then save and run.</p>
             </div>
         </div>
-        <div class="flex items-center gap-3 shrink-0">
+        <div data-studio-actionbar class="studio-actionbar shrink-0">
             <button id="theme-toggle" type="button" class="sc-btn-icon" th:aria-label="#{topbar.themeToggle}" aria-label="Toggle theme">
                 <i id="theme-toggle-light-icon" data-lucide="sun" class="hidden sc-icon" aria-hidden="true"></i>
                 <i id="theme-toggle-dark-icon" data-lucide="moon" class="hidden sc-icon" aria-hidden="true"></i>
             </button>
             <span class="hidden md:block text-xs text-[var(--sc-muted)]" th:text="${displayName}">admin</span>
-            <button id="save-pipeline-button" type="button" class="sc-btn-secondary px-4 py-2 text-xs" th:text="#{studio.action.save}">Save pipeline</button>
-            <button id="run-pipeline-button" type="button" class="sc-btn-primary px-4 py-2 text-xs" th:text="#{studio.action.run}">Run</button>
-            <button id="preview-pipeline-button" type="button" class="sc-btn-secondary px-4 py-2 text-xs" th:text="#{studio.action.preview}">Test</button>
-            <button id="stop-pipeline-button" type="button" class="hidden sc-btn-secondary px-4 py-2 text-xs" th:text="#{studio.action.stop}">Stop</button>
+            <button id="save-pipeline-button" type="button" class="sc-btn-secondary px-3 lg:px-4 py-2 text-xs">
+                <i data-lucide="save" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                <span th:text="#{studio.action.save}">Save pipeline</span>
+            </button>
+            <button id="run-pipeline-button" type="button" class="sc-btn-primary px-3 lg:px-4 py-2 text-xs">
+                <i data-lucide="play" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                <span th:text="#{studio.action.run}">Run</span>
+            </button>
+            <button id="preview-pipeline-button" type="button" class="sc-btn-secondary px-3 lg:px-4 py-2 text-xs">
+                <i data-lucide="flask-conical" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                <span th:text="#{studio.action.preview}">Test</span>
+            </button>
+            <button id="stop-pipeline-button" type="button" class="hidden sc-btn-secondary px-3 lg:px-4 py-2 text-xs">
+                <i data-lucide="square" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                <span th:text="#{studio.action.stop}">Stop</span>
+            </button>
         </div>
     </div>
 </header>
 
 <div class="flex-1 min-h-0 overflow-hidden">
     <div class="studio-shell-grid h-full min-h-0" data-studio-shell="editor">
-        <aside id="operator-palette" data-studio-panel="palette" data-studio-rail="palette" class="studio-rail min-h-0 hidden md:flex flex-col overflow-hidden">
+        <aside id="operator-palette" data-studio-panel="palette" data-studio-rail="palette" class="studio-rail min-h-0 hidden lg:flex flex-col overflow-hidden">
             <div class="studio-rail-header">
-                <div class="sc-subtle-label">Palette</div>
-                <h2 class="text-sm font-semibold text-[var(--sc-text)] mt-2" th:text="#{studio.palette.title}">Operator palette</h2>
+                <div class="flex items-start gap-3 min-w-0">
+                    <span class="studio-rail-mark" aria-hidden="true">
+                        <i data-lucide="panel-left" class="sc-icon sc-icon-sm"></i>
+                    </span>
+                    <div class="min-w-0">
+                        <div class="sc-subtle-label">Palette</div>
+                        <h2 class="text-sm font-semibold text-[var(--sc-text)] mt-1 truncate" th:text="#{studio.palette.title}">Operator palette</h2>
+                    </div>
+                </div>
             </div>
             <div class="studio-rail-body flex-1 overflow-y-auto sc-scroll space-y-6">
                 <div class="studio-operator-group">
@@ -671,8 +805,15 @@
 
         <aside data-studio-panel="inspector" data-studio-select-root data-studio-rail="inspector" class="studio-rail min-h-0 flex flex-col overflow-hidden">
             <div class="studio-rail-header">
-                <div class="sc-subtle-label">Properties</div>
-                <h2 class="text-sm font-semibold text-[var(--sc-text)] mt-2" th:text="#{studio.inspector.title}">Pipeline and node configuration</h2>
+                <div class="flex items-start gap-3 min-w-0">
+                    <span class="studio-rail-mark" aria-hidden="true">
+                        <i data-lucide="sliders-horizontal" class="sc-icon sc-icon-sm"></i>
+                    </span>
+                    <div class="min-w-0">
+                        <div class="sc-subtle-label">Properties</div>
+                        <h2 class="text-sm font-semibold text-[var(--sc-text)] mt-1" th:text="#{studio.inspector.title}">Pipeline and node configuration</h2>
+                    </div>
+                </div>
             </div>
             <div class="studio-rail-body flex-1 overflow-y-auto sc-scroll">
                 <div class="studio-inspector-stack">
