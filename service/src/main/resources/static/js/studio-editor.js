@@ -3695,20 +3695,20 @@ function renderHeader() {
 function nodeTone(type) {
     if (type === "SOURCE") {
         return {
-            badge: "S",
+            icon: "database",
             badgeClass: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300",
             tagClass: "text-blue-700 dark:text-blue-300"
         };
     }
     if (type === "SINK") {
         return {
-            badge: "K",
+            icon: "arrow-down-to-line",
             badgeClass: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300",
             tagClass: "text-emerald-700 dark:text-emerald-300"
         };
     }
     return {
-        badge: "T",
+        icon: "wand-sparkles",
         badgeClass: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300",
         tagClass: "text-amber-700 dark:text-amber-300"
     };
@@ -3746,8 +3746,8 @@ function clampCanvasNodePosition(node, x, y) {
 
 function renderNodeHtml(node) {
     const tone = nodeTone(node.type);
-    const inputPorts = inputPortsForNode(node);
-    const outputPorts = outputPortsForNode(node);
+    const inputPorts = inputPortsForNode(node).map(port => ({ ...port, label: port.id }));
+    const outputPorts = outputPortsForNode(node).map(port => ({ ...port, label: port.id }));
     const isSelected = state.selectedNodeId === node.id;
     const left = Number(node.ui?.x ?? 120);
     const top = Number(node.ui?.y ?? 120);
@@ -3820,6 +3820,7 @@ function renderNodeHtml(node) {
             <div class="port-stack port-right-stack">
                 ${outputPorts.map(port => `
                     <div class="port-stack-item">
+                        <span class="port-label port-label-right" title="${escapeHtml(port.label)}">${escapeHtml(port.label)}</span>
                         <div class="node-port port-right"
                              data-port-direction="output"
                              data-port-id="${port.id}"
@@ -3836,18 +3837,20 @@ function renderNodeHtml(node) {
         `).join("");
 
     return `
-        <div class="draggable-node ${isSelected ? "node-active" : ""} bg-white dark:bg-neutral-900/95 border border-slate-300 dark:border-neutral-700 rounded-lg shadow-xl"
+        <div class="draggable-node studio-node-card ${isSelected ? "node-active" : ""} bg-white dark:bg-neutral-900/95 border border-slate-300 dark:border-neutral-700 rounded-lg shadow-xl"
              data-node-id="${node.id}"
              style="left:${left}px;top:${top}px;">
             ${inputPortsMarkup}
             ${outputPortsMarkup}
-            <div class="drag-handle h-10 bg-slate-50 dark:bg-neutral-900 border-b border-slate-200 dark:border-neutral-700 rounded-t-lg flex items-center px-3">
-                <span class="w-5 h-5 rounded flex items-center justify-center text-xs mr-2 font-bold ${tone.badgeClass}">${tone.badge}</span>
-                <span class="text-sm font-medium text-slate-900 dark:text-neutral-100 flex-1 truncate">${escapeHtml(nodeDisplayTitle(node))}</span>
+            <div class="drag-handle studio-node-header bg-slate-50 dark:bg-neutral-900 border-b border-slate-200 dark:border-neutral-700 rounded-t-lg flex items-center px-3">
+                <span class="studio-node-badge ${tone.badgeClass}" aria-hidden="true">
+                    <i data-lucide="${tone.icon}" class="sc-icon sc-icon-sm"></i>
+                </span>
+                <span class="text-slate-900 dark:text-neutral-100 flex-1 truncate studio-node-title ml-2 min-w-0 text-sm font-semibold">${escapeHtml(nodeDisplayTitle(node))}</span>
             </div>
-            <div class="p-3">
-                <div class="text-[10px] font-mono ${tone.tagClass}">${node.operator}</div>
-                <div class="text-[11px] text-slate-500 dark:text-neutral-400 mt-2">${node.type}</div>
+            <div class="studio-node-body p-3">
+                <div class="font-mono text-[10px] ${tone.tagClass}">${escapeHtml(node.operator)}</div>
+                <div class="text-[11px] text-slate-500 dark:text-neutral-400 mt-2 studio-node-type">${escapeHtml(node.type)}</div>
                 ${monitorBlock}
             </div>
         </div>
@@ -3901,6 +3904,7 @@ function renderNodes() {
 
     layer.innerHTML = state.nodes.map(renderNodeHtml).join("");
     bindNodeInteractions();
+    window.StreamCraftIcons?.refresh();
 }
 
 function renderNodeContextMenu() {
@@ -3916,34 +3920,29 @@ function renderNodeContextMenu() {
     const menu = existingMenu || document.createElement("div");
     menu.id = "node-context-menu";
     menu.className = [
+        "studio-context-menu",
         "absolute",
-        "z-50",
-        "min-w-[128px]",
-        "rounded-xl",
-        "border",
-        "border-slate-700",
-        "bg-slate-950/95",
-        "p-1.5",
-        "shadow-2xl",
-        "shadow-slate-950/40",
-        "backdrop-blur"
+        "z-50"
     ].join(" ");
     menu.innerHTML = `
         <button type="button"
                 data-node-context-action="copy"
-                class="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-slate-800 hover:text-white">
-            ${t("studio.action.copy", "Copy")}
+                class="studio-context-action">
+            <i data-lucide="copy" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+            <span>${t("studio.action.copy", "Copy")}</span>
         </button>
         <button type="button"
                 data-node-context-action="delete"
-                class="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-red-300 transition-colors hover:bg-red-500/10 hover:text-red-200">
-            ${t("studio.action.delete", "Delete")}
+                class="studio-context-action studio-context-action-danger">
+            <i data-lucide="trash-2" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+            <span>${t("studio.action.delete", "Delete")}</span>
         </button>
     `;
 
     if (!existingMenu) {
         container.appendChild(menu);
     }
+    window.StreamCraftIcons?.refresh();
 
     const padding = 12;
     const maxX = Math.max(padding, container.clientWidth - menu.offsetWidth - padding);
@@ -4035,8 +4034,8 @@ function renderEdgePath(edge) {
         return "";
     }
 
-    const stroke = state.selectedEdgeId === edge.id ? "#f59e0b" : "#3b82f6";
-    return `<path data-edge-id="${edge.id}" d="${geometry.path}" fill="none" stroke="${stroke}" stroke-width="2.5" class="cursor-pointer" style="pointer-events: stroke;"></path>`;
+    const selectedClass = state.selectedEdgeId === edge.id ? "studio-edge-path-selected" : "";
+    return `<path data-edge-id="${edge.id}" d="${geometry.path}" fill="none" stroke="#3b82f6" stroke-width="2.5" class="studio-edge-path ${selectedClass} cursor-pointer" style="pointer-events: stroke;"></path>`;
 }
 
 function bindEdgeInteractions() {
@@ -4060,7 +4059,7 @@ function renderEdges() {
     }
 
     layer.classList.toggle("pointer-events-none", !isEditorMode());
-    layer.innerHTML = `${state.edges.map(renderEdgePath).join("")}<path id="temp-connection-path" fill="none" stroke="#60a5fa" stroke-width="2.5" class="opacity-0"></path>`;
+    layer.innerHTML = `${state.edges.map(renderEdgePath).join("")}<path id="temp-connection-path" fill="none" stroke="#60a5fa" stroke-width="2.5" class="studio-edge-preview opacity-0"></path>`;
     bindEdgeInteractions();
 }
 

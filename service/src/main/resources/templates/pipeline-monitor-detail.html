@@ -50,9 +50,25 @@
     .node-port { position: absolute; top: 50%; transform: translateY(-50%); width: 12px; height: 12px; border-radius: 999px; background: var(--sc-accent); border: 2px solid var(--sc-bg); box-shadow: 0 0 0 3px var(--sc-accent-soft); }
     .port-left { left: -6px; }
     .port-right { right: -6px; }
+    .port-stack { position: absolute; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 16px; }
+    .port-stack .node-port { position: static; top: auto; transform: none; }
+    .port-stack .port-right, .port-stack .port-left { right: auto; left: auto; }
+    .port-right-stack { right: -6px; align-items: flex-end; }
+    .port-left-stack { left: -6px; align-items: flex-start; }
+    .port-stack-item { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+    .port-stack-item-left { justify-content: flex-start; }
+    .port-label { max-width: 96px; overflow: hidden; padding: 3px 5px; border: 1px solid var(--sc-border); border-radius: 5px; background: var(--sc-card-strong); color: var(--sc-muted); font-family: 'Fira Code', monospace; font-size: 9px; font-weight: 600; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
     .drag-handle { cursor: grab; }
     .drag-handle:active { cursor: grabbing; }
     .draggable-node { position: absolute; width: 236px; transition: box-shadow .2s ease, border-color .2s ease; }
+    .studio-node-card { border-color: var(--sc-border); background: var(--sc-card-strong); box-shadow: var(--sc-shadow-soft); }
+    .studio-node-header { min-height: 44px; background: var(--sc-surface); border-color: var(--sc-border); }
+    .studio-node-badge { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; border: 1px solid currentColor; border-radius: 7px; }
+    .studio-node-body { min-height: 74px; background: var(--sc-card-strong); }
+    .studio-node-type { color: var(--sc-muted); font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+    .studio-edge-path { stroke-linecap: round; stroke-linejoin: round; opacity: .72; }
+    .studio-edge-path-selected { stroke: var(--sc-warning); opacity: 1; stroke-width: 3.5; }
+    .studio-edge-preview { stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 7 5; }
     .draggable-node.node-active { border-color: var(--sc-accent); box-shadow: 0 0 0 3px var(--sc-accent-soft), 0 16px 32px rgba(13,23,40,.18); z-index: 30; }
 </style>
 

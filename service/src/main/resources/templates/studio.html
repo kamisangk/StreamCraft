@@ -187,6 +187,7 @@
         background: var(--sc-accent);
         border: 3px solid var(--sc-card-strong);
         box-shadow: 0 0 0 1px var(--sc-border);
+        cursor: crosshair;
         transition: background-color .18s ease, box-shadow .18s ease, transform .18s ease;
     }
     .node-port:hover {
@@ -219,8 +220,8 @@
     .port-stack .port-left {
         left: auto;
     }
-    .port-right-stack { right: -7px; align-items: flex-end; }
-    .port-left-stack { left: -7px; align-items: flex-start; }
+    .port-right-stack { right: -6px; align-items: flex-end; }
+    .port-left-stack { left: -6px; align-items: flex-start; }
     .port-stack-item {
         display: flex;
         justify-content: flex-end;
@@ -230,7 +231,14 @@
         align-items: center;
         gap: 6px;
     }
+    .port-stack-item-right {
+        justify-content: flex-end;
+        align-items: center;
+        gap: 6px;
+    }
     .port-label {
+        max-width: 96px;
+        overflow: hidden;
         padding: 3px 5px;
         border: 1px solid var(--sc-border);
         border-radius: 5px;
@@ -240,6 +248,7 @@
         font-weight: 600;
         line-height: 1;
         color: var(--sc-muted);
+        text-overflow: ellipsis;
         white-space: nowrap;
     }
     .dark .port-label {
@@ -257,6 +266,12 @@
         overflow: visible;
         transition: box-shadow .2s ease, border-color .2s ease, transform .2s ease;
     }
+    .studio-node-card {
+        border: 1px solid var(--sc-border);
+        border-radius: 10px;
+        background: var(--sc-card-strong);
+        box-shadow: var(--sc-shadow-soft);
+    }
     .draggable-node.node-active {
         border-color: var(--sc-accent);
         box-shadow: 0 0 0 3px var(--sc-accent-soft), var(--sc-shadow-soft);
@@ -264,7 +279,9 @@
     }
     .studio-node-header {
         min-height: 44px;
+        padding: 0 12px;
         border-bottom: 1px solid var(--sc-border);
+        border-radius: 9px 9px 0 0;
         background: var(--sc-surface);
     }
     .studio-node-badge {
@@ -278,7 +295,70 @@
         border-radius: 7px;
     }
     .studio-node-body {
+        min-height: 74px;
         background: var(--sc-card-strong);
+        border-radius: 0 0 9px 9px;
+    }
+    .studio-node-type {
+        color: var(--sc-muted);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+    .studio-context-menu {
+        min-width: 164px;
+        padding: 5px;
+        border: 1px solid var(--sc-border);
+        border-radius: 9px;
+        background: var(--sc-card-strong);
+        box-shadow: var(--sc-shadow);
+    }
+    .studio-context-action {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        gap: 9px;
+        min-height: 36px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        color: var(--sc-text-body);
+        font-size: 12px;
+        text-align: left;
+        transition: background-color .18s ease, color .18s ease;
+    }
+    .studio-context-action:hover {
+        background: var(--sc-surface);
+        color: var(--sc-text);
+    }
+    .studio-context-action-danger {
+        color: var(--sc-danger);
+    }
+    .studio-context-action-danger:hover {
+        background: rgba(216, 59, 76, .1);
+        color: var(--sc-danger);
+    }
+    .studio-edge-path {
+        stroke: var(--sc-accent);
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        opacity: .68;
+        transition: opacity .18s ease, stroke .18s ease, stroke-width .18s ease;
+    }
+    .studio-edge-path:hover {
+        opacity: 1;
+        stroke-width: 3.5;
+    }
+    .studio-edge-path-selected {
+        stroke: var(--sc-warning);
+        opacity: 1;
+        stroke-width: 3.5;
+    }
+    .studio-edge-preview {
+        stroke: var(--sc-accent);
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-dasharray: 7 5;
     }
     .studio-node-metric {
         border: 1px solid var(--sc-border);
