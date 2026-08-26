@@ -19,31 +19,46 @@
                 <p class="sc-page-lead"></p>
             </div>
             <a data-create-pipeline-link th:href="@{/studio}" class="sc-btn-primary px-4 py-2 text-sm inline-flex items-center">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                <i data-lucide="plus" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
                 <span th:text="#{pipelines.action.create}">New pipeline</span>
             </a>
         </section>
 
-        <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="sc-summary-card">
-                <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2" th:text="#{pipelines.summary.total}">Total pipelines</p>
-                <div class="text-3xl font-semibold text-slate-900 dark:text-slate-100" id="summary-total">0</div>
+        <section class="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:gap-5">
+            <div class="sc-summary-card flex items-start justify-between gap-4">
+                <div class="mt-2 text-slate-900 dark:text-slate-100">
+                    <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2" th:text="#{pipelines.summary.total}">Total pipelines</p>
+                    <div class="text-3xl font-semibold" id="summary-total">0</div>
+                </div>
+                <span class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500 dark:border-neutral-700 dark:bg-neutral-800/70 dark:text-neutral-300">
+                    <i data-lucide="workflow" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                </span>
 
             </div>
-            <div class="sc-summary-card">
-                <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2" th:text="#{pipelines.summary.running}">Running</p>
-                <div class="text-3xl font-semibold text-emerald-600" id="summary-running">0</div>
+            <div class="sc-summary-card flex items-start justify-between gap-4">
+                <div class="mt-2 text-emerald-600">
+                    <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2" th:text="#{pipelines.summary.running}">Running</p>
+                    <div class="text-3xl font-semibold" id="summary-running">0</div>
+                </div>
+                <span class="flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
+                    <i data-lucide="play-circle" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                </span>
 
             </div>
-            <div class="sc-summary-card">
-                <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2" th:text="#{pipelines.summary.stopped}">Stopped</p>
-                <div class="text-3xl font-semibold text-amber-600" id="summary-stopped">0</div>
+            <div class="sc-summary-card flex items-start justify-between gap-4">
+                <div class="mt-2 text-amber-600">
+                    <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2" th:text="#{pipelines.summary.stopped}">Stopped</p>
+                    <div class="text-3xl font-semibold" id="summary-stopped">0</div>
+                </div>
+                <span class="flex h-9 w-9 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 text-amber-600 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                    <i data-lucide="pause-circle" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                </span>
 
             </div>
         </section>
 
         <section class="sc-filter-bar">
-            <div class="flex flex-col lg:flex-row lg:items-center gap-4">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-end">
                 <div class="flex-1">
                     <label for="pipeline-search" class="sc-form-label" th:text="#{pipelines.search.label}">Search pipelines</label>
                     <input id="pipeline-search" type="text" class="sc-input" th:placeholder="#{pipelines.search.placeholder}" placeholder="Search pipelines">
@@ -61,11 +76,13 @@
         </section>
 
         <section data-collection-panel="pipeline-list" class="sc-table-wrap">
-            <div class="sc-panel-muted px-6 py-4 border-b-0 rounded-none flex items-center justify-between">
+            <div class="sc-panel-muted flex items-center justify-between rounded-none border-b-0 px-4 py-4 sm:px-6">
                 <div>
-                    <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100" th:text="#{pipelines.list.title}">Pipelines</h2>
+                    <p class="sc-subtle-label" th:text="#{pipelines.hero.label}">Workspace</p>
+                    <h2 class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100" th:text="#{pipelines.list.title}">Pipelines</h2>
 
                 </div>
+                <i data-lucide="list-filter" class="sc-icon sc-icon-sm text-slate-400 dark:text-slate-500" aria-hidden="true"></i>
             </div>
             <div id="pipeline-table" class="overflow-x-auto"></div>
         </section>
@@ -192,10 +209,12 @@
         const isBusy = busyPipelineIds.has(item.id);
         const isRunning = isRunningPipeline(item);
         const deleteDisabled = isBusy || isRunning;
-        const runButton = `<button type="button" class="${isRunning ? "stop-button" : "run-button"} ${actionButtonClasses(isBusy, isRunning ? "stop" : "run")}" data-pipeline-id="${item.id}" ${isBusy ? "disabled" : ""}>${isRunning ? t("pipelines.action.stop", "Stop") : t("pipelines.action.run", "Run")}</button>`;
-        const deleteButton = `<button type="button" class="delete-button ${actionButtonClasses(isBusy, "delete", deleteDisabled)}" data-pipeline-id="${item.id}" ${deleteDisabled ? "disabled" : ""} ${isRunning ? `title="${escapeHtml(t("pipelines.delete.disabledRunning", "Stop the pipeline before deleting"))}"` : ""}>${t("pipelines.action.delete", "Delete")}</button>`;
+        const actionClass = "inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500";
+        const runIcon = isRunning ? "square" : "play";
+        const runButton = `<button type="button" class="${isRunning ? "stop-button" : "run-button"} ${actionClass} ${actionButtonClasses(isBusy, isRunning ? "stop" : "run")}" data-pipeline-id="${item.id}" ${isBusy ? "disabled" : ""}><i data-lucide="${runIcon}" class="sc-icon sc-icon-sm pointer-events-none" aria-hidden="true"></i><span class="pointer-events-none">${isRunning ? t("pipelines.action.stop", "Stop") : t("pipelines.action.run", "Run")}</span></button>`;
+        const deleteButton = `<button type="button" class="delete-button ${actionClass} ${actionButtonClasses(isBusy, "delete", deleteDisabled)}" data-pipeline-id="${item.id}" ${deleteDisabled ? "disabled" : ""} ${isRunning ? `title="${escapeHtml(t("pipelines.delete.disabledRunning", "Stop the pipeline before deleting"))}"` : ""}><i data-lucide="trash-2" class="sc-icon sc-icon-sm pointer-events-none" aria-hidden="true"></i><span class="pointer-events-none">${t("pipelines.action.delete", "Delete")}</span></button>`;
         const monitorLink = isRunning
-                ? `<a href="/pipelines/${item.id}/monitor" class="text-slate-900 hover:text-slate-600 dark:text-slate-100 dark:hover:text-slate-300">${t("pipelines.action.monitor", "Monitor")}</a>`
+                ? `<a href="/pipelines/${item.id}/monitor" class="inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-slate-900 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:text-slate-100 dark:hover:bg-neutral-800 dark:hover:text-slate-300"><i data-lucide="activity" class="sc-icon sc-icon-sm pointer-events-none" aria-hidden="true"></i><span>${t("pipelines.action.monitor", "Monitor")}</span></a>`
                 : "";
         return `${runButton}${deleteButton}${monitorLink}`;
     }
@@ -207,17 +226,19 @@
         const container = document.getElementById("pipeline-table");
         if (pipelines.length === 0) {
             container.innerHTML = `
-                <div class="sc-empty-state px-6 py-16 text-center">
-                    <div class="mx-auto w-14 h-14 rounded-lg bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300 flex items-center justify-center mb-4">
-                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                <div class="sc-empty-state px-5 py-14 text-center sm:px-6 sm:py-16">
+                    <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+                        <i data-lucide="workflow" class="sc-icon-lg" aria-hidden="true"></i>
                     </div>
                     <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">${t("pipelines.empty.title", "No pipelines yet")}</h3>
                     <p class="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-6">${t("pipelines.empty.description", "Create a Kafka Source to Kafka Sink draft first.")}</p>
                     <a href="/studio" class="sc-btn-primary inline-flex items-center px-4 py-2 text-sm">
+                        <i data-lucide="plus" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
                         ${t("pipelines.action.create", "New pipeline")}
                     </a>
                 </div>
             `;
+            window.StreamCraftIcons?.refresh();
             return;
         }
 
@@ -228,26 +249,26 @@
 
             return `
                 <tr class="hover:bg-slate-100 dark:hover:bg-neutral-800/80 dark:bg-neutral-900/40 transition-colors">
-                    <td class="px-6 py-4 text-center">
-                        <div class="font-semibold text-slate-900 dark:text-slate-100 text-center">${escapeHtml(item.name)}</div>
-                        <div class="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-1 text-center">${escapeHtml(item.description || t("pipelines.description.empty", "No description"))}</div>
+                    <td class="px-4 py-4 text-left sm:px-6">
+                        <div class="max-w-[24rem] truncate font-semibold text-slate-900 dark:text-slate-100 text-center">${escapeHtml(item.name)}</div>
+                        <div class="mt-1 max-w-[24rem] truncate text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">${escapeHtml(item.description || t("pipelines.description.empty", "No description"))}</div>
                     </td>
-                    <td class="px-6 py-4 text-center">
+                    <td class="px-4 py-4 text-left sm:px-6">
                         <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-neutral-800/70 text-slate-700 dark:text-neutral-300 border border-slate-200 dark:border-neutral-600">
                             ${t("pipelines.saved", "Saved")}
                         </span>
                     </td>
-                    <td class="px-6 py-4 text-center">
+                    <td class="px-4 py-4 text-left sm:px-6">
                         <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${runStatusClass}">
                             ${escapeHtml(runStatusLabel)}
                         </span>
                     </td>
-                    <td class="px-6 py-4 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 text-center">${escapeHtml(formatTime(item.updatedAt))}</td>
-                    <td class="px-6 py-4 text-center">
-                        <div class="inline-flex items-center justify-center gap-3 text-sm">
-                            <a href="/studio/${item.id}" class="text-slate-900 hover:text-slate-600 dark:text-slate-100 dark:hover:text-slate-300">${t("pipelines.action.edit", "Edit")}</a>
+                    <td class="px-4 py-4 text-left text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 sm:px-6">${escapeHtml(formatTime(item.updatedAt))}</td>
+                    <td class="px-4 py-4 text-left sm:px-6">
+                        <div class="inline-flex flex-wrap items-center gap-1 text-sm">
+                            <a href="/studio/${item.id}" class="inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-slate-900 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:text-slate-100 dark:hover:bg-neutral-800 dark:hover:text-slate-300"><i data-lucide="pencil" class="sc-icon sc-icon-sm pointer-events-none" aria-hidden="true"></i><span>${t("pipelines.action.edit", "Edit")}</span></a>
                             ${buildActionButtons(item)}
-                            <a href="/api/pipelines/${item.id}/definition" target="_blank" class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100">${t("pipelines.action.viewDsl", "View DSL")}</a>
+                            <a href="/api/pipelines/${item.id}/definition" target="_blank" class="inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-neutral-800 dark:hover:text-slate-100"><i data-lucide="file-code-2" class="sc-icon sc-icon-sm pointer-events-none" aria-hidden="true"></i><span>${t("pipelines.action.viewDsl", "View DSL")}</span></a>
                         </div>
                     </td>
                 </tr>
@@ -255,7 +276,7 @@
         }).join("");
 
         container.innerHTML = `
-            <table class="w-full text-left border-collapse whitespace-nowrap">
+            <table class="min-w-[760px] w-full border-collapse text-left whitespace-nowrap">
                 <thead>
                     <tr class="sc-panel-muted text-xs font-medium text-slate-500 dark:text-slate-400">
                         <th class="px-6 py-4 border-b border-slate-300 dark:border-slate-700 text-center">${t("pipelines.table.pipeline", "Pipeline")}</th>
@@ -268,6 +289,7 @@
                 <tbody class="divide-y divide-slate-200 dark:divide-neutral-800/70 text-sm">${rows}</tbody>
             </table>
         `;
+        window.StreamCraftIcons?.refresh();
     }
 
     async function parseError(response, fallbackMessage) {
