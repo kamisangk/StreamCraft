@@ -10,7 +10,7 @@ StreamCraft/
   service/     Spring Boot Web 应用、REST API、Thymeleaf 页面和静态前端资源
   streamcraft-dist/
                二进制发行包模块，包含 assembly 描述、启动脚本、配置文件和空 data/logs 目录
-  docs/        设计文档和实施计划
+  .docs/       架构、接口和算子文档
 ```
 
 根目录 `pom.xml` 负责构建 `core`、`service` 和 `streamcraft-dist`。发行包模块通过 `streamcraft-dist/src/main/assembly/bin.xml` 组装可部署包。共享校验和连接器配置解析代码位于 `core/src/shared/java`，会同时编译进运行时和服务模块。
@@ -77,8 +77,8 @@ mvn clean package -DskipTests
 预期打包产物：
 
 ```text
-streamcraft-dist/target/streamcraft-0.0.1-SNAPSHOT-bin.tar.gz
-streamcraft-dist/target/streamcraft-0.0.1-SNAPSHOT-bin.zip
+streamcraft-dist/target/streamcraft-0.2.0-bin.tar.gz
+streamcraft-dist/target/streamcraft-0.2.0-bin.zip
 ```
 
 运行 core 测试：
@@ -127,9 +127,10 @@ streamcraft-<version>-bin/
 | 配置项 | 默认值 | 说明 |
 |---|---|---|
 | `server.port` | `8080` | HTTP 端口 |
+| `SERVER_PORT` | `8080` | 可通过环境变量覆盖 HTTP 端口 |
 | `streamcraft.datasource.type` | `sqlite` | 数据库类型：`sqlite` 或 `mysql` |
 | `spring.datasource.url` | `jdbc:sqlite:streamcraft-service.db` | 数据库连接 URL |
-| `spring.jpa.hibernate.ddl-auto` | `update` |  |
+| `spring.jpa.hibernate.ddl-auto` | `validate` | 由 Flyway 管理数据库结构，Hibernate 只校验结构 |
 | `spring.datasource.hikari.maximum-pool-size` | `1` | 数据库连接池大小 |
 | `streamcraft.auth.remember-me-validity-seconds` | `1209600` | 记住登录状态 Cookie 的有效期，单位秒 |
 | `streamcraft.internal.token` | `streamcraft-local-internal-token` | 受保护内部服务调用的 token |
@@ -141,6 +142,12 @@ streamcraft-<version>-bin/
 | `streamcraft.runtime-target.validation-interval` | `5000` | 运行目标健康检查间隔，单位毫秒 |
 | `streamcraft.pipeline.runtime.service-base-url` | `http://localhost:8080` | Flink 作业访问 Service 时使用的基础 URL |
 | `streamcraft.pipeline.runtime.parallelism` | `1` | 默认pipeline并行度 |
+
+数据库结构由 Flyway 迁移管理。首次启动新数据库时会执行初始结构迁移；已有数据库会先建立 baseline，再执行后续迁移。升级前请备份数据库。
+
+流水线边使用语义端口：普通 Source、Transform 和 Sink 使用 `records`；Filter 使用 `matched` / `rejected`；Data Quality 使用 `clean` / `dirty`；Stream Join 使用 `left` / `right`；Route 输出端口由路由配置决定。旧版本已保存的端口标识会在 Flyway 迁移中转换。
+
+Windows 发行包可以直接执行 `bin\start-service.bat`。`JAVA_OPTS` 可选，用于传递 JVM 参数；留空时也可以正常启动。完整变更记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 使用 MySQL 时设置数据库类型和连接地址：
 

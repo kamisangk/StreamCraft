@@ -19,5 +19,5 @@ if not "%JAVA_HOME%"=="" set "JAVA_BIN=%JAVA_HOME%\bin\java"
 set "APP_ARGS=--spring.config.additional-location=%STREAMCRAFT_CONF_DIR%\"
 if not "%SPRING_PROFILES_ACTIVE%"=="" set "APP_ARGS=%APP_ARGS% --spring.profiles.active=%SPRING_PROFILES_ACTIVE%"
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p = Start-Process -FilePath '%JAVA_BIN%' -ArgumentList @('%JAVA_OPTS%','-cp','%STREAMCRAFT_SERVICE_CLASSPATH%','%STREAMCRAFT_SERVICE_MAIN_CLASS%','%APP_ARGS%') -RedirectStandardOutput '%STREAMCRAFT_LOG_DIR%\streamcraft-service.out' -RedirectStandardError '%STREAMCRAFT_LOG_DIR%\streamcraft-service.err' -WindowStyle Hidden -PassThru; Set-Content -Path '%STREAMCRAFT_PID_FILE%' -Value $p.Id"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$argumentList = @(); if (-not [string]::IsNullOrWhiteSpace($env:JAVA_OPTS)) { $argumentList += $env:JAVA_OPTS }; $argumentList += @('-cp', $env:STREAMCRAFT_SERVICE_CLASSPATH, $env:STREAMCRAFT_SERVICE_MAIN_CLASS, $env:APP_ARGS); $p = Start-Process -FilePath $env:JAVA_BIN -ArgumentList $argumentList -RedirectStandardOutput ($env:STREAMCRAFT_LOG_DIR + '\streamcraft-service.out') -RedirectStandardError ($env:STREAMCRAFT_LOG_DIR + '\streamcraft-service.err') -WindowStyle Hidden -PassThru; Set-Content -Path $env:STREAMCRAFT_PID_FILE -Value $p.Id"
 echo StreamCraft service started.

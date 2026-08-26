@@ -34,6 +34,12 @@
             <destName>README.md</destName>
             <fileMode>0644</fileMode>
         </file>
+        <file>
+            <source>${project.parent.basedir}/CHANGELOG.md</source>
+            <outputDirectory>/docs</outputDirectory>
+            <destName>CHANGELOG.md</destName>
+            <fileMode>0644</fileMode>
+        </file>
     </files>
 
     <fileSets>
