@@ -485,9 +485,7 @@
     <div class="flex items-center justify-between gap-4">
         <div class="flex items-center gap-4 min-w-0">
             <a th:href="@{/pipelines}" class="sc-btn-icon shrink-0" th:aria-label="#{studio.backToList}" aria-label="Back to pipeline list">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                </svg>
+                <i data-lucide="arrow-left" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
             </a>
             <div class="min-w-0">
                 <div class="flex items-center gap-3 min-w-0">
@@ -499,17 +497,8 @@
         </div>
         <div class="flex items-center gap-3 shrink-0">
             <button id="theme-toggle" type="button" class="sc-btn-icon" th:aria-label="#{topbar.themeToggle}" aria-label="Toggle theme">
-                <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <circle cx="10" cy="10" r="3.25" stroke="currentColor" stroke-width="1.5"></circle>
-                    <path d="M10 2.5V4.25M10 15.75V17.5M17.5 10H15.75M4.25 10H2.5M15.303 4.697l-1.237 1.237M15.303 15.303l-1.237-1.237M5.934 14.066l-1.237 1.237M5.934 5.934 4.697 4.697"
-                          stroke="currentColor"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"></path>
-                </svg>
-                <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
-                </svg>
+                <i id="theme-toggle-light-icon" data-lucide="sun" class="hidden sc-icon" aria-hidden="true"></i>
+                <i id="theme-toggle-dark-icon" data-lucide="moon" class="hidden sc-icon" aria-hidden="true"></i>
             </button>
             <span class="hidden md:block text-xs text-[var(--sc-muted)]" th:text="${displayName}">admin</span>
             <button id="save-pipeline-button" type="button" class="sc-btn-secondary px-4 py-2 text-xs" th:text="#{studio.action.save}">Save pipeline</button>
@@ -743,9 +732,7 @@
                             <div class="flex items-center gap-2">
                                 <span id="selected-node-tag" class="sc-pill">NONE</span>
                                 <button id="close-node-inspector-button" type="button" class="sc-btn-icon" th:aria-label="#{studio.node.close}" aria-label="Close node configuration">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 6l12 12M18 6L6 18"></path>
-                                    </svg>
+                                    <i data-lucide="x" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
                                 </button>
                             </div>
                         </div>

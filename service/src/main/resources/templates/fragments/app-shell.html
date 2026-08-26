@@ -6,6 +6,7 @@
     <title th:text="${documentTitle} + ' - StreamCraft'">StreamCraft</title>
     <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}" href="/favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -23,54 +24,60 @@
         window.STREAMCRAFT_MESSAGES = /*[[${streamCraftMessages}]]*/ {};
     </script>
     <script th:src="@{/js/i18n.js}" src="/js/i18n.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Fira+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --sc-bg: #ffffff;
-            --sc-surface: #f8f9fa;
-            --sc-card: #f5f5f5;
+            --sc-bg: #f3f6fa;
+            --sc-surface: #eaf0f6;
+            --sc-card: #f7f9fc;
             --sc-card-strong: #ffffff;
-            --sc-border: #e5e7eb;
-            --sc-border-soft: #f3f4f6;
-            --sc-text: #111111;
-            --sc-text-body: #374151;
-            --sc-muted: #6b7280;
-            --sc-muted-soft: #898989;
-            --sc-primary: #111111;
+            --sc-border: #d6e0eb;
+            --sc-border-soft: #e6edf4;
+            --sc-text: #0d1728;
+            --sc-text-body: #314158;
+            --sc-muted: #6b7c92;
+            --sc-muted-soft: #91a0b3;
+            --sc-primary: #0d1728;
             --sc-primary-foreground: #ffffff;
             --sc-secondary: #ffffff;
-            --sc-secondary-foreground: #111111;
-            --sc-sidebar: #fbfbfb;
-            --sc-sidebar-foreground: #111111;
-            --sc-accent: #3b82f6;
-            --sc-success: #10b981;
-            --sc-warning: #f59e0b;
-            --sc-danger: #ef4444;
-            --sc-shadow: 0 4px 12px rgba(17, 24, 39, 0.06);
+            --sc-secondary-foreground: #0d1728;
+            --sc-sidebar: #e8eef5;
+            --sc-sidebar-foreground: #0d1728;
+            --sc-sidebar-active: #d7e5f8;
+            --sc-accent: #2f6df6;
+            --sc-accent-soft: rgba(47, 109, 246, 0.13);
+            --sc-success: #0b9f6e;
+            --sc-warning: #bf7a00;
+            --sc-danger: #d83b4c;
+            --sc-shadow: 0 12px 30px rgba(13, 23, 40, 0.07);
+            --sc-shadow-soft: 0 3px 12px rgba(13, 23, 40, 0.05);
         }
 
         html.dark {
-            --sc-bg: #111111;
-            --sc-surface: #171717;
-            --sc-card: #1d1d1d;
-            --sc-card-strong: #151515;
-            --sc-border: #2f2f2f;
-            --sc-border-soft: #262626;
-            --sc-text: #fafafa;
-            --sc-text-body: #d1d5db;
-            --sc-muted: #a3a3a3;
-            --sc-muted-soft: #737373;
-            --sc-primary: #fafafa;
-            --sc-primary-foreground: #111111;
-            --sc-secondary: #191919;
-            --sc-secondary-foreground: #fafafa;
-            --sc-sidebar: #131313;
-            --sc-sidebar-foreground: #f5f5f5;
-            --sc-accent: #60a5fa;
-            --sc-success: #34d399;
-            --sc-warning: #f59e0b;
-            --sc-danger: #f87171;
-            --sc-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+            --sc-bg: #080d17;
+            --sc-surface: #0e1624;
+            --sc-card: #121c2d;
+            --sc-card-strong: #0d1522;
+            --sc-border: #24344d;
+            --sc-border-soft: #1a2940;
+            --sc-text: #f4f7fb;
+            --sc-text-body: #c6d1e1;
+            --sc-muted: #8494ab;
+            --sc-muted-soft: #60718a;
+            --sc-primary: #f4f7fb;
+            --sc-primary-foreground: #0b1220;
+            --sc-secondary: #111b2b;
+            --sc-secondary-foreground: #e8eef8;
+            --sc-sidebar: #0b1320;
+            --sc-sidebar-foreground: #e8eef8;
+            --sc-sidebar-active: #182842;
+            --sc-accent: #79a7ff;
+            --sc-accent-soft: rgba(121, 167, 255, 0.17);
+            --sc-success: #51d59a;
+            --sc-warning: #f3b34d;
+            --sc-danger: #ff7281;
+            --sc-shadow: 0 18px 46px rgba(0, 0, 0, 0.26);
+            --sc-shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.18);
         }
 
         html {
@@ -82,33 +89,62 @@
         }
 
         body {
-            font-family: 'Inter', sans-serif;
+            min-width: 320px;
+            font-family: 'Fira Sans', sans-serif;
             background: var(--sc-bg);
             color: var(--sc-text-body);
         }
 
         .sc-shell-page {
+            min-height: 100dvh;
             background: var(--sc-bg);
             color: var(--sc-text-body);
+        }
+
+        ::selection {
+            background: var(--sc-accent);
+            color: #ffffff;
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--sc-accent);
+            outline-offset: 3px;
+        }
+
+        .sc-icon {
+            width: 18px;
+            height: 18px;
+            flex: 0 0 auto;
+            stroke-width: 1.8;
+        }
+
+        .sc-icon-sm {
+            width: 16px;
+            height: 16px;
+        }
+
+        .sc-icon-lg {
+            width: 22px;
+            height: 22px;
         }
 
         .sc-surface {
             background: var(--sc-surface);
             border: 1px solid var(--sc-border);
-            border-radius: 8px;
+            border-radius: 10px;
         }
 
         .sc-card {
             background: var(--sc-card);
             border: 1px solid var(--sc-border);
-            border-radius: 8px;
-            box-shadow: var(--sc-shadow);
+            border-radius: 12px;
+            box-shadow: var(--sc-shadow-soft);
         }
 
         .sc-card-strong {
             background: var(--sc-card-strong);
             border: 1px solid var(--sc-border);
-            border-radius: 8px;
+            border-radius: 12px;
             box-shadow: var(--sc-shadow);
         }
 
@@ -127,24 +163,22 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            min-height: 40px;
+            min-height: 44px;
             padding: 10px 20px;
-            border-radius: 8px;
+            border-radius: 10px;
             border: 1px solid transparent;
             background: var(--sc-primary);
             color: var(--sc-primary-foreground);
             font-size: 14px;
             font-weight: 600;
             line-height: 1;
-            transition: background-color 0.18s ease, transform 0.18s ease;
+            transition: background-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
         }
 
         .sc-btn-primary:hover {
-            background: #242424;
-        }
-
-        html.dark .sc-btn-primary:hover {
-            background: #e5e7eb;
+            background: var(--sc-accent);
+            box-shadow: 0 10px 22px var(--sc-accent-soft);
+            transform: translateY(-1px);
         }
 
         .sc-btn-secondary {
@@ -152,20 +186,22 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            min-height: 40px;
+            min-height: 44px;
             padding: 10px 20px;
-            border-radius: 8px;
+            border-radius: 10px;
             border: 1px solid var(--sc-border);
             background: var(--sc-secondary);
             color: var(--sc-secondary-foreground);
             font-size: 14px;
             font-weight: 600;
             line-height: 1;
-            transition: background-color 0.18s ease, border-color 0.18s ease;
+            transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
         }
 
         .sc-btn-secondary:hover {
             background: var(--sc-surface);
+            border-color: var(--sc-muted-soft);
+            transform: translateY(-1px);
         }
 
         .sc-input {
@@ -173,7 +209,7 @@
             min-height: 40px;
             padding: 10px 14px;
             border: 1px solid var(--sc-border);
-            border-radius: 8px;
+            border-radius: 10px;
             background: var(--sc-card-strong);
             color: var(--sc-text);
             font-size: 14px;
@@ -187,11 +223,7 @@
         .sc-input:focus {
             outline: none;
             border-color: var(--sc-text);
-            box-shadow: 0 0 0 4px rgba(17, 17, 17, 0.08);
-        }
-
-        html.dark .sc-input:focus {
-            box-shadow: 0 0 0 4px rgba(250, 250, 250, 0.1);
+            box-shadow: 0 0 0 4px var(--sc-accent-soft);
         }
 
         .sc-pill {
@@ -209,6 +241,7 @@
         }
 
         .sc-shell-sidebar {
+            position: relative;
             background: var(--sc-sidebar);
             color: var(--sc-sidebar-foreground);
             border-right: 1px solid var(--sc-border);
@@ -225,22 +258,37 @@
             font-size: 14px;
             font-weight: 500;
             line-height: 1.4;
-            transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+            transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+        }
+
+        .sc-nav-link::before {
+            width: 3px;
+            height: 18px;
+            margin-left: -12px;
+            border-radius: 0 3px 3px 0;
+            background: transparent;
+            content: "";
         }
 
         .sc-nav-link:hover {
             background: var(--sc-card);
             color: var(--sc-text);
+            transform: translateX(2px);
         }
 
         .sc-nav-link-active {
-            background: var(--sc-primary);
-            color: var(--sc-primary-foreground);
+            background: var(--sc-sidebar-active);
+            color: var(--sc-text);
+            border-color: var(--sc-border);
+        }
+
+        .sc-nav-link-active::before {
+            background: var(--sc-accent);
         }
 
         .sc-nav-link-active:hover {
-            background: var(--sc-primary);
-            color: var(--sc-primary-foreground);
+            background: var(--sc-sidebar-active);
+            color: var(--sc-text);
         }
 
         .sc-shell-topbar {
@@ -256,8 +304,9 @@
         .sc-topbar-title {
             color: var(--sc-text);
             font-size: 18px;
-            font-weight: 600;
+            font-weight: 700;
             line-height: 1.3;
+            letter-spacing: -0.02em;
         }
 
         .sc-topbar-subtitle {
@@ -274,26 +323,30 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 36px;
-            height: 36px;
+            width: 44px;
+            height: 44px;
+            flex: 0 0 auto;
             border-radius: 9999px;
             border: 1px solid var(--sc-border);
             background: var(--sc-card-strong);
             color: var(--sc-text-body);
-            transition: background-color 0.18s ease, color 0.18s ease;
+            cursor: pointer;
+            transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
         }
 
         .sc-btn-icon:hover {
             background: var(--sc-card);
             color: var(--sc-text);
+            border-color: var(--sc-muted-soft);
+            transform: translateY(-1px);
         }
 
         .sc-language-select {
-            min-height: 36px;
+            min-height: 40px;
             max-width: 132px;
             padding: 0 32px 0 12px;
             border: 1px solid var(--sc-border);
-            border-radius: 8px;
+            border-radius: 10px;
             background: var(--sc-card-strong);
             color: var(--sc-text-body);
             font-size: 13px;
@@ -308,16 +361,30 @@
         }
 
         .sc-page-frame {
+            position: relative;
+            isolation: isolate;
             background: var(--sc-bg);
         }
 
+        .sc-page-frame::before {
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            background-image: linear-gradient(var(--sc-border-soft) 1px, transparent 1px), linear-gradient(90deg, var(--sc-border-soft) 1px, transparent 1px);
+            background-position: 24px 24px;
+            background-size: 72px 72px;
+            content: "";
+            opacity: 0.28;
+            pointer-events: none;
+        }
+
         .sc-page-content {
-            padding: 24px;
+            padding: 20px;
         }
 
         @media (min-width: 1024px) {
             .sc-page-content {
-                padding: 32px;
+                padding: 32px 36px 40px;
             }
         }
 
@@ -328,26 +395,32 @@
             justify-content: space-between;
             gap: 24px;
             padding: 28px;
-            background: var(--sc-card-strong);
+            background: color-mix(in srgb, var(--sc-card-strong) 92%, var(--sc-accent) 8%);
             border: 1px solid var(--sc-border);
-            border-radius: 16px;
+            border-radius: 14px;
             box-shadow: var(--sc-shadow);
+        }
+
+        @supports not (background: color-mix(in srgb, white 50%, black 50%)) {
+            .sc-page-hero {
+                background: var(--sc-card-strong);
+            }
         }
 
         .sc-page-heading {
             color: var(--sc-text);
-            font-size: clamp(28px, 3vw, 34px);
-            font-weight: 600;
-            line-height: 1.08;
-            letter-spacing: 0;
+            font-size: clamp(30px, 3vw, 42px);
+            font-weight: 700;
+            line-height: 1.02;
+            letter-spacing: -0.04em;
         }
 
         .sc-page-lead {
             max-width: 52rem;
             margin-top: 10px;
             color: var(--sc-muted);
-            font-size: 14px;
-            line-height: 1.6;
+            font-size: 15px;
+            line-height: 1.65;
         }
 
         .sc-page-lead:empty {
@@ -373,11 +446,14 @@
             border: 1px solid var(--sc-border);
             border-radius: 12px;
             box-shadow: var(--sc-shadow);
-            transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+            transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
         }
 
         .sc-card-interactive:hover {
             background: var(--sc-card);
+            border-color: var(--sc-muted-soft);
+            box-shadow: var(--sc-shadow);
+            transform: translateY(-2px);
         }
 
         .sc-filter-bar {
@@ -408,7 +484,7 @@
             font-size: 12px;
             font-weight: 600;
             line-height: 1.4;
-            letter-spacing: 0.24em;
+            letter-spacing: 0.18em;
             text-transform: uppercase;
         }
 
@@ -434,6 +510,11 @@
 
         .sc-link-action:hover {
             color: var(--sc-accent);
+        }
+
+        .sc-code {
+            font-family: 'Fira Code', monospace;
+            font-variant-numeric: tabular-nums;
         }
 
         .settings-password-card {
@@ -525,14 +606,13 @@
         .sc-status-note {
             border-radius: 12px;
             border: 1px solid rgba(59, 130, 246, 0.16);
-            background: rgba(59, 130, 246, 0.08);
-            color: #1d4ed8;
+            background: var(--sc-accent-soft);
+            color: var(--sc-accent);
         }
 
         html.dark .sc-status-note {
-            border-color: rgba(96, 165, 250, 0.2);
-            background: rgba(96, 165, 250, 0.12);
-            color: #bfdbfe;
+            border-color: rgba(121, 167, 255, 0.22);
+            color: #cfe0ff;
         }
 
         .sc-scroll {
@@ -554,22 +634,41 @@
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
+            background: var(--sc-muted-soft);
             border-radius: 999px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
+            background: var(--sc-muted);
         }
 
-        html.dark ::-webkit-scrollbar-thumb {
-            background: #525252;
-        }
-
-        html.dark ::-webkit-scrollbar-thumb:hover {
-            background: #737373;
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                scroll-behavior: auto !important;
+                transition-duration: 0.01ms !important;
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+            }
         }
     </style>
+    <script>
+        window.StreamCraftIcons = {
+            refresh() {
+                if (!window.lucide || typeof window.lucide.createIcons !== 'function') {
+                    return;
+                }
+
+                window.lucide.createIcons({
+                    attrs: {
+                        'aria-hidden': 'true',
+                        focusable: 'false'
+                    }
+                });
+            }
+        };
+    </script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const themeToggleBtn = document.getElementById('theme-toggle');
@@ -602,6 +701,7 @@
             });
 
             updateThemeUI();
+            window.StreamCraftIcons?.refresh();
         });
     </script>
     <script>
