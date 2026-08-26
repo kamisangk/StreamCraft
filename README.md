@@ -10,7 +10,7 @@ StreamCraft/
   service/     Spring Boot web application, REST APIs, Thymeleaf pages, and static frontend assets
   streamcraft-dist/
                Binary distribution module with assembly descriptor, scripts, config, and empty data/log directories
-  docs/        Design notes and implementation plans
+  .docs/       Architecture, API, and operator documentation
 ```
 
 The root `pom.xml` builds `core`, `service`, and `streamcraft-dist`. The distribution module uses `streamcraft-dist/src/main/assembly/bin.xml` to assemble the deployable package. Shared validation and connector parser code lives under `core/src/shared/java` and is compiled into both runtime and service modules.
@@ -77,8 +77,8 @@ mvn clean package -DskipTests
 Expected package artifacts:
 
 ```text
-streamcraft-dist/target/streamcraft-0.0.1-SNAPSHOT-bin.tar.gz
-streamcraft-dist/target/streamcraft-0.0.1-SNAPSHOT-bin.zip
+streamcraft-dist/target/streamcraft-0.2.0-bin.tar.gz
+streamcraft-dist/target/streamcraft-0.2.0-bin.zip
 ```
 
 Run the core test suite:
@@ -127,9 +127,10 @@ Common properties:
 | Property | Default | Description |
 |---|---|---|
 | `server.port` | `8080` | HTTP port |
+| `SERVER_PORT` | `8080` | Environment variable override for the HTTP port |
 | `streamcraft.datasource.type` | `sqlite` | Database type: `sqlite` or `mysql` |
 | `spring.datasource.url` | `jdbc:sqlite:streamcraft-service.db` | Database connection URL |
-| `spring.jpa.hibernate.ddl-auto` | `update` |  |
+| `spring.jpa.hibernate.ddl-auto` | `validate` | Flyway owns schema changes; Hibernate validates the schema only |
 | `spring.datasource.hikari.maximum-pool-size` | `1` | Database pool size |
 | `streamcraft.auth.remember-me-validity-seconds` | `1209600` | Remember-me cookie validity in seconds |
 | `streamcraft.internal.token` | `streamcraft-local-internal-token` | Token for protected internal service calls |
@@ -141,6 +142,12 @@ Common properties:
 | `streamcraft.runtime-target.validation-interval` | `5000` | Runtime target health-check interval in milliseconds |
 | `streamcraft.pipeline.runtime.service-base-url` | `http://localhost:8080` | Base URL used by Flink jobs to call the service |
 | `streamcraft.pipeline.runtime.parallelism` | `1` | Default pipeline parallelism |
+
+Flyway owns database schema migrations. A fresh database receives the initial schema migration; an existing database is baselined before later migrations run. Back up the database before upgrading.
+
+Pipeline edges use semantic ports: ordinary Sources, Transforms, and Sinks use `records`; Filter uses `matched` / `rejected`; Data Quality uses `clean` / `dirty`; Stream Join uses `left` / `right`; Route output ports are defined by its route configuration. Legacy persisted port identifiers are converted by the Flyway migration.
+
+The Windows distribution can be started with `bin\start-service.bat`. `JAVA_OPTS` is optional and may contain JVM options; an empty value is supported. See [CHANGELOG.md](CHANGELOG.md) for the complete `v0.2.0` release notes.
 
 Use MySQL by setting the datasource type and URL:
 
