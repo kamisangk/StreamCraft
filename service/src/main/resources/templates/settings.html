@@ -18,66 +18,95 @@
             </div>
         </section>
 
-        <section class="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] gap-6 max-w-5xl">
-            <div class="sc-card-strong settings-password-card overflow-hidden">
-                <div class="px-6 py-5 border-b border-[var(--sc-border)] bg-[var(--sc-surface)] flex items-center gap-3">
-                    <span class="sc-btn-icon pointer-events-none">
+        <section class="grid max-w-6xl grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+            <div class="sc-config-panel sc-card-strong settings-password-card">
+                <div class="sc-config-panel-header">
+                    <div class="flex min-w-0 items-center gap-4">
+                        <span class="sc-icon-frame" aria-hidden="true">
                         <i data-lucide="key-round" class="sc-icon" aria-hidden="true"></i>
-                    </span>
-                    <h3 class="sc-section-head" th:text="#{settings.password.title}">Password settings</h3>
+                        </span>
+                        <div class="min-w-0">
+                            <p class="sc-subtle-label" th:text="#{settings.hero.label}">Admin</p>
+                            <h3 class="sc-config-panel-title mt-2" th:text="#{settings.password.title}">Password settings</h3>
+                        </div>
+                    </div>
                 </div>
 
-                <form data-settings-password-form class="p-6 space-y-5">
-                <div id="settings-password-message"
-                     class="hidden rounded-lg border px-4 py-3 text-sm"
-                     role="status"
-                     aria-live="polite"></div>
+                <form data-settings-password-form class="sc-config-form space-y-5" aria-busy="false">
+                    <div id="settings-password-message"
+                         class="hidden sc-feedback-message border px-4 py-3 text-sm"
+                         role="status"
+                         aria-live="polite">
+                        <i id="settings-password-success-icon" data-lucide="check-circle-2" class="sc-feedback-message-icon hidden sc-icon sc-icon-sm text-[var(--sc-success)]" aria-hidden="true"></i>
+                        <i id="settings-password-error-icon" data-lucide="triangle-alert" class="sc-feedback-message-icon hidden sc-icon sc-icon-sm text-[var(--sc-danger)]" aria-hidden="true"></i>
+                        <span id="settings-password-message-text"></span>
+                    </div>
 
-                <div>
-                    <label for="currentPassword" class="sc-form-label" th:text="#{settings.password.current}">Current password</label>
-                    <input id="currentPassword"
-                           name="currentPassword"
-                           type="password"
-                           autocomplete="current-password"
-                           class="sc-input"
-                           required>
-                </div>
+                    <div class="sc-config-field">
+                        <label for="currentPassword" class="sc-form-label" th:text="#{settings.password.current}">Current password</label>
+                        <div class="sc-input-icon-wrap">
+                            <i data-lucide="key-round" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                            <input id="currentPassword"
+                                   name="currentPassword"
+                                   type="password"
+                                   autocomplete="current-password"
+                                   class="sc-input"
+                                   required>
+                        </div>
+                    </div>
 
-                <div>
-                    <label for="newPassword" class="sc-form-label" th:text="#{settings.password.new}">New password</label>
-                    <input id="newPassword"
-                           name="newPassword"
-                           type="password"
-                           autocomplete="new-password"
-                           class="sc-input"
-                           required>
-                </div>
+                    <div class="sc-config-field">
+                        <label for="newPassword" class="sc-form-label" th:text="#{settings.password.new}">New password</label>
+                        <div class="sc-input-icon-wrap">
+                            <i data-lucide="lock" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                            <input id="newPassword"
+                                   name="newPassword"
+                                   type="password"
+                                   autocomplete="new-password"
+                                   class="sc-input"
+                                   required>
+                        </div>
+                    </div>
 
-                <div>
-                    <label for="confirmPassword" class="sc-form-label" th:text="#{settings.password.confirm}">Confirm new password</label>
-                    <input id="confirmPassword"
-                           name="confirmPassword"
-                           type="password"
-                           autocomplete="new-password"
-                           class="sc-input"
-                           required>
-                </div>
+                    <div class="sc-config-field">
+                        <label for="confirmPassword" class="sc-form-label" th:text="#{settings.password.confirm}">Confirm new password</label>
+                        <div class="sc-input-icon-wrap">
+                            <i data-lucide="badge-check" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                            <input id="confirmPassword"
+                                   name="confirmPassword"
+                                   type="password"
+                                   autocomplete="new-password"
+                                   class="sc-input"
+                                   required>
+                        </div>
+                    </div>
 
-                <div class="flex justify-end pt-2">
-                    <button id="settings-password-submit"
-                            type="submit"
-                            class="sc-btn-primary">
-                        <i data-lucide="shield-check" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
-                        <span th:text="#{settings.password.save}">Save password</span>
-                    </button>
-                </div>
+                    <div class="sc-config-action-bar">
+                        <button id="settings-password-submit"
+                                type="submit"
+                                class="sc-btn-primary"
+                                aria-busy="false">
+                            <i data-lucide="shield-check" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                            <span th:text="#{settings.password.save}">Save password</span>
+                        </button>
+                    </div>
                 </form>
             </div>
 
-            <aside class="sc-panel-muted p-6 self-start">
-                <i data-lucide="lock-keyhole" class="sc-icon sc-icon-lg text-[var(--sc-accent)] mb-5" aria-hidden="true"></i>
-                <h3 class="sc-section-head mb-3" th:text="#{settings.password.title}">Password settings</h3>
-                <p class="text-sm leading-6 text-[var(--sc-muted)]" th:text="${pageSubtitle}">Manage global account settings.</p>
+            <aside class="sc-panel-muted sc-security-panel self-start p-6">
+                <div>
+                    <span class="sc-icon-frame" aria-hidden="true">
+                        <i data-lucide="lock-keyhole" class="sc-icon" aria-hidden="true"></i>
+                    </span>
+                    <div class="sc-security-panel-rule" aria-hidden="true"></div>
+                    <p class="sc-subtle-label" th:text="#{settings.hero.label}">Admin</p>
+                    <h3 class="sc-section-head mt-3" th:text="#{settings.password.title}">Password settings</h3>
+                    <p class="mt-3 text-sm leading-6 text-[var(--sc-muted)]" th:text="${pageSubtitle}">Manage global account settings.</p>
+                </div>
+                <div class="mt-8 flex items-center gap-3 text-[var(--sc-muted-soft)]" aria-hidden="true">
+                    <i data-lucide="fingerprint" class="sc-icon sc-icon-lg"></i>
+                    <span class="h-px flex-1 bg-[var(--sc-border)]"></span>
+                </div>
             </aside>
         </section>
     </div>
@@ -86,6 +115,9 @@
 <script th:inline="javascript">
     const settingsPasswordForm = document.querySelector('[data-settings-password-form]');
     const settingsPasswordMessage = document.getElementById('settings-password-message');
+    const settingsPasswordMessageText = document.getElementById('settings-password-message-text');
+    const settingsPasswordSuccessIcon = document.getElementById('settings-password-success-icon');
+    const settingsPasswordErrorIcon = document.getElementById('settings-password-error-icon');
     const settingsPasswordSubmit = document.getElementById('settings-password-submit');
     const settingsPasswordUrl = '/api/settings/password';
     const settingsCsrfHeader = /*[[${_csrf.headerName}]]*/ 'X-CSRF-TOKEN';
@@ -97,7 +129,7 @@
     const settingsBlankPasswordFallback = /*[[#{settings.password.blank}]]*/ 'Password fields must not be blank.';
 
     function showSettingsPasswordMessage(message, tone) {
-        settingsPasswordMessage.textContent = message;
+        settingsPasswordMessageText.textContent = message;
         settingsPasswordMessage.classList.remove(
             'hidden',
             'border-emerald-200',
@@ -107,6 +139,10 @@
             'bg-red-50',
             'text-red-700'
         );
+        settingsPasswordMessage.dataset.tone = tone;
+        settingsPasswordMessage.setAttribute('role', tone === 'success' ? 'status' : 'alert');
+        settingsPasswordSuccessIcon?.classList.toggle('hidden', tone !== 'success');
+        settingsPasswordErrorIcon?.classList.toggle('hidden', tone === 'success');
 
         if (tone === 'success') {
             settingsPasswordMessage.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
@@ -132,6 +168,8 @@
     settingsPasswordForm?.addEventListener('submit', async event => {
         event.preventDefault();
         settingsPasswordSubmit.disabled = true;
+        settingsPasswordSubmit.setAttribute('aria-busy', 'true');
+        settingsPasswordForm.setAttribute('aria-busy', 'true');
         settingsPasswordSubmit.classList.add('opacity-70', 'cursor-not-allowed');
 
         const formData = new FormData(settingsPasswordForm);
@@ -167,6 +205,8 @@
             showSettingsPasswordMessage(error.message || settingsErrorFallback, 'error');
         } finally {
             settingsPasswordSubmit.disabled = false;
+            settingsPasswordSubmit.setAttribute('aria-busy', 'false');
+            settingsPasswordForm.setAttribute('aria-busy', 'false');
             settingsPasswordSubmit.classList.remove('opacity-70', 'cursor-not-allowed');
         }
     });
