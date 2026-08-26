@@ -2,7 +2,8 @@
 <html th:lang="${currentLocaleTag}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <body>
 <header th:fragment="topbar(pageTitle, pageSubtitle)" data-shell-topbar class="sc-shell-topbar h-16 flex items-center justify-between px-6 lg:px-8 z-10 sticky top-0">
-    <div class="flex items-center gap-3 min-w-0">
+    <div class="sc-topbar-context flex items-center gap-3 min-w-0">
+        <span class="sc-topbar-signal" aria-hidden="true"></span>
         <div class="min-w-0">
             <h1 th:attr="data-page-title=${pageTitle}" class="sc-topbar-title truncate" th:text="${pageTitle}">[[#{page.placeholder.title}]]</h1>
             <p th:if="${pageSubtitle != null and !#strings.isEmpty(pageSubtitle)}"
@@ -11,23 +12,29 @@
         </div>
     </div>
 
-    <div class="flex items-center gap-3 lg:gap-4">
+    <div class="sc-topbar-actions flex items-center gap-3 lg:gap-4">
         <label for="topbar-language-select" class="sr-only" th:text="#{language.switcher.label}">Language</label>
-        <select id="topbar-language-select"
-                data-language-select
-                class="sc-language-select"
-                th:aria-label="#{language.switcher.label}"
-                aria-label="Language">
-            <option value="zh-CN" th:selected="${currentLocaleTag == 'zh-CN'}" th:text="#{language.zhCN}">简体中文</option>
-            <option value="en-US" th:selected="${currentLocaleTag == 'en-US'}" th:text="#{language.enUS}">English</option>
-        </select>
+        <div class="sc-language-control">
+            <i data-lucide="languages" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+            <select id="topbar-language-select"
+                    data-language-select
+                    class="sc-language-select"
+                    th:aria-label="#{language.switcher.label}"
+                    aria-label="Language">
+                <option value="zh-CN" th:selected="${currentLocaleTag == 'zh-CN'}" th:text="#{language.zhCN}">简体中文</option>
+                <option value="en-US" th:selected="${currentLocaleTag == 'en-US'}" th:text="#{language.enUS}">English</option>
+            </select>
+        </div>
 
-        <button id="theme-toggle" type="button" class="sc-btn-icon" th:aria-label="#{topbar.themeToggle}" aria-label="Toggle theme">
+        <button id="theme-toggle" type="button" class="sc-btn-icon" th:aria-label="#{topbar.themeToggle}" th:title="#{topbar.themeToggle}" aria-label="Toggle theme" title="Toggle theme">
             <i id="theme-toggle-light-icon" data-lucide="sun" class="hidden sc-icon" aria-hidden="true"></i>
             <i id="theme-toggle-dark-icon" data-lucide="moon" class="hidden sc-icon" aria-hidden="true"></i>
         </button>
 
-        <span class="hidden md:block text-sm font-medium text-[var(--sc-text-body)]" th:text="${displayName}">admin</span>
+        <span class="sc-user-chip hidden md:inline-flex">
+            <i data-lucide="circle-user-round" class="sc-icon sc-icon-sm text-[var(--sc-muted)]" aria-hidden="true"></i>
+            <span class="text-sm font-medium" th:text="${displayName}">admin</span>
+        </span>
 
         <form th:action="@{/logout}" method="post" class="inline-flex items-center">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">

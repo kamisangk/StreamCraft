@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html th:lang="${currentLocaleTag}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <body>
-<aside th:fragment="sidebar(activeNav)" data-shell-sidebar class="sc-shell-sidebar w-64 flex flex-col z-20 relative">
-    <div class="h-16 flex items-center px-6 border-b border-[var(--sc-border-soft)]">
-        <img th:src="@{/brand-logo.png}" src="/brand-logo.png" alt="StreamCraft"
-             class="h-9 w-9 rounded-xl object-cover ring-1 ring-black/5 mr-3">
-        <span class="text-lg font-semibold tracking-tight text-[var(--sc-text)]">StreamCraft</span>
+<aside th:fragment="sidebar(activeNav)" data-shell-sidebar class="sc-shell-sidebar flex flex-col z-20 relative">
+    <div class="sc-sidebar-brand h-16 flex items-center px-6 border-b border-[var(--sc-border-soft)]">
+        <span class="sc-brand-mark mr-3">
+            <img th:src="@{/brand-logo.png}" src="/brand-logo.png" alt="StreamCraft">
+        </span>
+        <span class="sc-brand-copy">StreamCraft</span>
     </div>
 
-    <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-1 sc-scroll">
+    <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-2 sc-scroll">
         <a th:href="@{/main}"
            data-nav-key="pipeline-monitor"
            th:attr="aria-current=${activeNav == 'pipeline-monitor'} ? 'page' : null"
