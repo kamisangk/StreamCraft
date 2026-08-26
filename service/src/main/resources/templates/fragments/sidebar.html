@@ -12,6 +12,8 @@
         <a th:href="@{/main}"
            data-nav-key="pipeline-monitor"
            th:attr="aria-current=${activeNav == 'pipeline-monitor'} ? 'page' : null"
+           th:title="#{nav.pipelineMonitor}"
+           title="Task Monitor"
            class="sc-nav-link"
            th:classappend="${activeNav == 'pipeline-monitor'} ? ' sc-nav-link-active' : ''">
             <i data-lucide="layout-dashboard" class="sc-icon sc-icon-sm shrink-0" aria-hidden="true"></i>
@@ -21,6 +23,8 @@
         <a th:href="@{/pipelines}"
            data-nav-key="pipelines"
            th:attr="aria-current=${activeNav == 'pipelines'} ? 'page' : null"
+           th:title="#{nav.pipelines}"
+           title="Pipelines"
            class="sc-nav-link"
            th:classappend="${activeNav == 'pipelines'} ? ' sc-nav-link-active' : ''">
             <i data-lucide="git-branch" class="sc-icon sc-icon-sm shrink-0" aria-hidden="true"></i>
@@ -30,6 +34,8 @@
         <a th:href="@{/runtime-target}"
            data-nav-key="runtime-target"
            th:attr="aria-current=${activeNav == 'runtime-target'} ? 'page' : null"
+           th:title="#{nav.runtimeTarget}"
+           title="Flink"
            class="sc-nav-link"
            th:classappend="${activeNav == 'runtime-target'} ? ' sc-nav-link-active' : ''">
             <i data-lucide="server" class="sc-icon sc-icon-sm shrink-0" aria-hidden="true"></i>
@@ -39,6 +45,8 @@
         <a th:href="@{/settings}"
            data-nav-key="settings"
            th:attr="aria-current=${activeNav == 'settings'} ? 'page' : null"
+           th:title="#{nav.settings}"
+           title="Settings"
            class="sc-nav-link"
            th:classappend="${activeNav == 'settings'} ? ' sc-nav-link-active' : ''">
             <i data-lucide="settings-2" class="sc-icon sc-icon-sm shrink-0" aria-hidden="true"></i>

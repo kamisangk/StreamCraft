@@ -3,8 +3,8 @@
 <head th:replace="~{fragments/app-shell :: commonHead(#{login.documentTitle})}">
     <title th:text="#{login.documentTitle} + ' - StreamCraft'">Login - StreamCraft</title>
 </head>
-<body class="sc-shell-page h-screen w-screen flex items-center justify-center overflow-hidden relative px-4">
-    <div data-login-language-switcher class="absolute top-5 right-5 z-20">
+<body class="sc-shell-page min-h-[100dvh] w-screen flex items-center justify-center overflow-auto relative px-4 py-8 sm:py-12">
+    <div data-login-language-switcher class="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
         <label for="login-language-select" class="sr-only" th:text="#{language.switcher.label}">Language</label>
         <select id="login-language-select"
                 data-language-select
@@ -15,30 +15,33 @@
             <option value="en-US" th:selected="${currentLocaleTag == 'en-US'}" th:text="#{language.enUS}">English</option>
         </select>
     </div>
-    <div class="relative w-full max-w-6xl flex sc-card-strong overflow-hidden min-h-[560px]">
-        <div class="hidden md:flex md:w-5/12 bg-[var(--sc-surface)] p-12 flex-col relative border-r border-[var(--sc-border)]">
-            <div class="absolute inset-0 opacity-30" style="background-image: radial-gradient(rgba(17,17,17,.10) 1px, transparent 1px); background-size: 24px 24px;"></div>
+    <div class="relative w-full max-w-6xl grid md:grid-cols-[0.9fr_1.1fr] sc-card-strong overflow-hidden min-h-[560px]">
+        <div class="hidden md:flex bg-[var(--sc-surface)] p-10 lg:p-14 flex-col relative border-r border-[var(--sc-border)] overflow-hidden">
+            <div class="absolute inset-0 opacity-40" style="background-image: linear-gradient(var(--sc-border) 1px, transparent 1px), linear-gradient(90deg, var(--sc-border) 1px, transparent 1px); background-size: 32px 32px;"></div>
+            <div class="absolute -right-24 -bottom-28 h-72 w-72 rounded-full border border-[var(--sc-accent)] opacity-20"></div>
+            <div class="absolute right-10 bottom-10 h-28 w-28 rounded-full border border-[var(--sc-accent)] opacity-20"></div>
 
-            <div class="relative z-10 mt-10">
-                <div class="flex items-center mb-12">
+            <div class="relative z-10 flex h-full flex-col">
+                <div class="flex items-center mb-16">
                     <img th:src="@{/brand-logo.png}" src="/brand-logo.png" alt="StreamCraft"
                          class="h-11 w-11 rounded-xl object-cover ring-1 ring-black/5 mr-3">
                     <span class="text-2xl font-bold tracking-tight text-[var(--sc-text)]">StreamCraft</span>
                 </div>
 
-                <h1 class="text-4xl font-bold tracking-tight text-[var(--sc-text)] leading-tight mb-6">
+                <h1 class="max-w-xl text-4xl lg:text-5xl font-bold tracking-tight text-[var(--sc-text)] leading-[1.02] mb-6">
                     <span th:text="#{login.hero.title.line1}">Build the next</span><br>
                     <span th:text="#{login.hero.title.line2}">real-time data pipeline</span>
                 </h1>
-                <p class="text-sm leading-7 text-[var(--sc-muted)]" th:text="#{login.hero.description}">
+                <p class="max-w-md text-sm leading-7 text-[var(--sc-muted)]" th:text="#{login.hero.description}">
                     A fast, modern, visual enterprise console for Flink stream-processing scheduling and orchestration.
                 </p>
+
             </div>
         </div>
 
-        <div class="w-full md:w-7/12 px-8 py-10 sm:px-12 md:px-16 flex flex-col justify-center bg-[var(--sc-card-strong)]">
-            <div class="mb-10">
-                <h2 class="text-3xl font-bold tracking-tight text-[var(--sc-text)] mb-2" th:text="#{login.title}">Welcome back</h2>
+        <div class="w-full px-7 py-12 sm:px-12 md:px-16 flex flex-col justify-center bg-[var(--sc-card-strong)]">
+            <div class="mb-10 max-w-md">
+                <h2 class="text-3xl lg:text-4xl font-bold tracking-tight text-[var(--sc-text)] mb-2" th:text="#{login.title}">Welcome back</h2>
                 <p class="text-sm text-[var(--sc-muted)]" th:text="#{login.subtitle}">Sign in to your StreamCraft workspace</p>
             </div>
 
@@ -68,8 +71,9 @@
                     <label for="remember" class="ml-2 text-sm text-[var(--sc-muted)] cursor-pointer" th:text="#{login.rememberMe}">Keep me signed in</label>
                 </div>
 
-                <button type="submit" class="sc-btn-primary w-full py-3 px-4 text-sm mt-4" th:text="#{login.submit}">
-                    Sign in
+                <button type="submit" class="sc-btn-primary w-full py-3 px-4 text-sm mt-4">
+                    <i data-lucide="arrow-right" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                    <span th:text="#{login.submit}">Sign in</span>
                 </button>
             </form>
         </div>
