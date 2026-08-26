@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html th:lang="${currentLocaleTag}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/app-shell :: commonHead(${pageTitle})}"></head>
-<body class="sc-shell-page h-screen w-screen flex overflow-hidden">
+<body class="sc-shell-page min-h-[100dvh] w-screen flex overflow-hidden">
 <th:block th:replace="~{fragments/sidebar :: sidebar(${activeNav})}"></th:block>
 <main class="sc-page-frame flex-1 flex flex-col min-w-0 relative overflow-hidden">
     <th:block th:replace="~{fragments/topbar :: topbar(${pageTitle}, ${pageSubtitle})}"></th:block>
@@ -16,37 +16,49 @@
             </div>
         </section>
 
-        <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="sc-summary-card">
-                <p class="text-slate-500 dark:text-slate-400 text-xs font-medium mb-1" th:text="#{runtimeTarget.summary.mode}">Runtime mode</p>
-                <h3 id="summary-runtime-mode" class="text-2xl font-semibold text-slate-900 dark:text-slate-100">-</h3>
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
+            <div class="sc-summary-card relative overflow-hidden">
+                <i data-lucide="network" class="sc-icon sc-icon-lg absolute right-5 top-5 text-[var(--sc-muted-soft)]" aria-hidden="true"></i>
+                <p class="text-[var(--sc-muted)] text-xs font-medium mb-3" th:text="#{runtimeTarget.summary.mode}">Runtime mode</p>
+                <h3 id="summary-runtime-mode" class="sc-code text-2xl font-semibold text-[var(--sc-text)]">-</h3>
             </div>
-            <div class="sc-summary-card">
-                <p class="text-slate-500 dark:text-slate-400 text-xs font-medium mb-1" th:text="#{runtimeTarget.summary.status}">Status</p>
+            <div class="sc-summary-card relative overflow-hidden">
+                <i data-lucide="activity" class="sc-icon sc-icon-lg absolute right-5 top-5 text-[var(--sc-muted-soft)]" aria-hidden="true"></i>
+                <p class="text-[var(--sc-muted)] text-xs font-medium mb-3" th:text="#{runtimeTarget.summary.status}">Status</p>
                 <h3 id="summary-runtime-status" class="text-2xl font-semibold text-amber-600" th:text="#{runtimeTarget.status.unknown}">Pending validation</h3>
             </div>
-            <div class="sc-summary-card">
-                <p class="text-slate-500 dark:text-slate-400 text-xs font-medium mb-1" th:text="#{runtimeTarget.summary.totalSlots}">Total slots</p>
-                <h3 id="summary-total-slots" class="text-2xl font-semibold text-slate-900 dark:text-slate-100">0 <span class="text-sm font-normal text-slate-500 dark:text-slate-400" th:text="#{runtimeTarget.summary.available}">available</span></h3>
+            <div class="sc-summary-card relative overflow-hidden">
+                <i data-lucide="cpu" class="sc-icon sc-icon-lg absolute right-5 top-5 text-[var(--sc-muted-soft)]" aria-hidden="true"></i>
+                <p class="text-[var(--sc-muted)] text-xs font-medium mb-3" th:text="#{runtimeTarget.summary.totalSlots}">Total slots</p>
+                <h3 id="summary-total-slots" class="sc-code text-2xl font-semibold text-[var(--sc-text)]">0 <span class="text-sm font-normal text-[var(--sc-muted)]" th:text="#{runtimeTarget.summary.available}">available</span></h3>
             </div>
         </section>
 
-        <section class="sc-card-strong p-6">
-            <div class="flex flex-col gap-2 border-b border-slate-200 dark:border-neutral-800 pb-5">
+        <section class="sc-card-strong overflow-hidden">
+            <div class="flex flex-col gap-2 border-b border-[var(--sc-border)] px-6 py-5 bg-[var(--sc-surface)]">
                 <p class="sc-subtle-label" th:text="#{runtimeTarget.add.title}">Runtime target</p>
-                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100" th:text="#{runtimeTarget.target.title}">Configure runtime target</h3>
-                <p class="text-sm text-slate-500 dark:text-slate-400" th:text="#{runtimeTarget.target.description}">Switching modes replaces the existing target configuration.</p>
+                <h3 class="text-lg font-semibold text-[var(--sc-text)]" th:text="#{runtimeTarget.target.title}">Configure runtime target</h3>
+                <p class="text-sm text-[var(--sc-muted)]" th:text="#{runtimeTarget.target.description}">Switching modes replaces the existing target configuration.</p>
             </div>
 
-            <form id="runtime-target-form" class="mt-6 space-y-6">
+            <form id="runtime-target-form" class="p-6 space-y-6">
                 <div id="standalone-target-panel" class="space-y-4">
                     <label for="target-job-manager-url" class="sc-form-label mb-1.5 ml-1" th:text="#{runtimeTarget.form.jobManagerUrl}">JobManager address</label>
-                    <input id="target-job-manager-url" type="text" class="sc-input font-mono" placeholder="http://127.0.0.1:8081">
+                    <div class="relative">
+                        <i data-lucide="link-2" class="sc-icon sc-icon-sm absolute left-4 top-1/2 -translate-y-1/2 text-[var(--sc-muted)]" aria-hidden="true"></i>
+                        <input id="target-job-manager-url" type="text" class="sc-input sc-code pl-11" placeholder="http://127.0.0.1:8081">
+                    </div>
                 </div>
 
-                <div class="flex justify-end gap-3 pt-2">
-                    <button id="reload-runtime-target" type="button" class="sc-btn-secondary px-4 py-2 rounded-lg text-sm" th:text="#{runtimeTarget.target.reload}">Reload</button>
-                    <button id="save-runtime-target" type="submit" class="sc-btn-primary px-4 py-2 rounded-lg text-sm font-medium" th:text="#{runtimeTarget.target.save}">Save runtime target</button>
+                <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
+                    <button id="reload-runtime-target" type="button" class="sc-btn-secondary px-4 py-2 text-sm">
+                        <i data-lucide="refresh-cw" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                        <span th:text="#{runtimeTarget.target.reload}">Reload</span>
+                    </button>
+                    <button id="save-runtime-target" type="submit" class="sc-btn-primary px-4 py-2 text-sm font-medium">
+                        <i data-lucide="save" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                        <span th:text="#{runtimeTarget.target.save}">Save runtime target</span>
+                    </button>
                 </div>
             </form>
         </section>
@@ -137,6 +149,7 @@
         statusElement.textContent = target.configured ? (statusLabels[status] || status) : t('runtimeTarget.target.unconfigured', 'Not configured');
         statusElement.className = `text-2xl font-semibold ${target.configured ? (statusClasses[status] || statusClasses.UNKNOWN) : 'text-slate-500 dark:text-slate-400'}`;
         byId('summary-total-slots').innerHTML = `${totalSlotsText} <span class="text-sm font-normal text-slate-500 dark:text-slate-400">${t('runtimeTarget.summary.available', 'available')} / ${availableSlotsText}</span>`;
+        window.StreamCraftIcons?.refresh();
     }
 
     function renderRuntimeTargetForm() {
