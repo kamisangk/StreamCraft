@@ -3,42 +3,46 @@
 <head th:replace="~{fragments/app-shell :: commonHead(#{monitorDetail.title})}">
     <title>Pipeline monitor - StreamCraft</title>
 </head>
-<body class="sc-shell-page min-h-[100dvh] w-screen flex flex-col overflow-hidden">
+<body class="sc-shell-page sc-monitor-page min-h-[100dvh] w-screen flex flex-col overflow-hidden">
 <div id="studio-bootstrap"
      class="hidden"
      data-page-mode="monitor"
      th:attr="data-pipeline-id=${pipelineId}">
 </div>
 
-<header data-monitor-shell="readonly" class="sc-card-strong rounded-none border-x-0 border-t-0 min-h-16 px-4 lg:px-6 py-3 flex items-center justify-between gap-4 shrink-0">
+<header data-monitor-shell="readonly" class="sc-monitor-topbar sc-card-strong rounded-none border-x-0 border-t-0 min-h-16 px-4 lg:px-6 py-3 flex items-center justify-between gap-4 shrink-0">
     <div class="flex items-center gap-4 min-w-0">
-        <a th:href="@{/main}" class="sc-btn-icon shrink-0" th:aria-label="#{monitorDetail.back}" aria-label="Back to main dashboard">
+        <a th:href="@{/main}" class="sc-btn-icon monitor-back-button shrink-0" th:aria-label="#{monitorDetail.back}" aria-label="Back to main dashboard">
             <i data-lucide="arrow-left" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
         </a>
-        <div class="min-w-0">
-            <div class="flex items-center gap-3 min-w-0">
-                <h1 id="studio-title" class="sc-section-head text-base lg:text-lg truncate" th:text="#{monitorDetail.title}">Pipeline monitor</h1>
-                <span id="studio-status" class="sc-pill" th:text="#{monitorDetail.status.loading}">Loading</span>
+        <div class="monitor-title-block min-w-0">
+            <div class="monitor-title-line flex items-center gap-3 min-w-0">
+                <span class="monitor-title-mark" aria-hidden="true"></span>
+                <h1 id="studio-title" class="sc-section-head monitor-title text-base lg:text-lg truncate" th:text="#{monitorDetail.title}">Pipeline monitor</h1>
+                <span id="studio-status" class="sc-pill monitor-status" th:text="#{monitorDetail.status.loading}">Loading</span>
             </div>
             <p class="sc-topbar-subtitle mt-1 truncate" th:text="#{monitorDetail.subtitle}">Readonly DAG canvas with live task state.</p>
         </div>
     </div>
-    <div data-monitor-toolbar="actions" class="flex items-center gap-2 sm:gap-3 shrink-0">
-        <div class="hidden sm:block sc-surface px-3 py-2 text-xs text-[var(--sc-muted)]">
-            <span class="sc-subtle-label text-[10px] tracking-[0.18em]" th:text="#{monitorDetail.refresh.label}">Refresh</span>
-            <div id="monitor-last-refresh" class="mt-1 sc-code text-xs text-[var(--sc-text-body)]" th:text="#{monitorDetail.lastRefresh.placeholder}">Last refresh: --</div>
+    <div data-monitor-toolbar="actions" class="monitor-toolbar flex items-center gap-2 sm:gap-3 shrink-0">
+        <div class="monitor-refresh-meta sc-surface px-3 py-2 text-xs text-[var(--sc-muted)]">
+            <i data-lucide="clock-3" class="sc-icon sc-icon-sm monitor-meta-icon" aria-hidden="true"></i>
+            <div class="min-w-0">
+                <span class="sc-subtle-label monitor-meta-label text-[10px] tracking-[0.18em]" th:text="#{monitorDetail.refresh.label}">Refresh</span>
+                <div id="monitor-last-refresh" class="mt-1 sc-code text-xs text-[var(--sc-text-body)] truncate" th:text="#{monitorDetail.lastRefresh.placeholder}">Last refresh: --</div>
+            </div>
         </div>
-        <button id="refresh-button" type="button" class="sc-btn-secondary px-3 sm:px-4 py-2 text-xs">
+        <button id="refresh-button" type="button" class="sc-btn-secondary monitor-refresh-button px-3 sm:px-4 py-2 text-xs">
             <i data-lucide="refresh-cw" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
             <span th:text="#{monitorDetail.refresh}">Refresh</span>
         </button>
     </div>
 </header>
 
-<main id="canvas-container" class="flex-1 canvas-bg relative overflow-hidden">
-    <div id="studio-message" class="hidden absolute top-4 left-4 right-4 md:right-auto md:w-[420px] sc-card-strong border px-4 py-3 text-sm z-40 shadow-xl"></div>
+<main id="canvas-container" class="flex-1 canvas-bg monitor-canvas relative overflow-hidden">
+    <div id="studio-message" class="hidden monitor-message absolute top-4 left-4 right-4 md:right-auto md:w-[420px] sc-card-strong border px-4 py-3 text-sm z-40 shadow-xl"></div>
     <div id="canvas-drop-zone" class="absolute inset-0">
-        <svg id="edges-layer" class="absolute inset-0 w-full h-full pointer-events-none z-0">
+        <svg id="edges-layer" class="absolute inset-0 w-full h-full pointer-events-none z-0" aria-hidden="true">
             <path id="temp-connection-path" fill="none" stroke="#60a5fa" stroke-width="2.5" class="opacity-0"></path>
         </svg>
         <div id="nodes-layer" class="absolute inset-0 z-10"></div>
@@ -46,30 +50,322 @@
 </main>
 
 <style>
-    .canvas-bg { background: var(--sc-bg); background-image: linear-gradient(var(--sc-border-soft) 1px, transparent 1px), linear-gradient(90deg, var(--sc-border-soft) 1px, transparent 1px); background-size: 44px 44px; }
-    .node-port { position: absolute; top: 50%; transform: translateY(-50%); width: 12px; height: 12px; border-radius: 999px; background: var(--sc-accent); border: 2px solid var(--sc-bg); box-shadow: 0 0 0 3px var(--sc-accent-soft); }
+    .sc-monitor-page {
+        --monitor-grid-size: 48px;
+        --monitor-grid-color: color-mix(in srgb, var(--sc-border-soft) 72%, transparent);
+        --monitor-line-color: color-mix(in srgb, var(--sc-border) 74%, transparent);
+    }
+
+    .sc-monitor-topbar {
+        position: relative;
+        z-index: 50;
+        min-height: 78px;
+        background: color-mix(in srgb, var(--sc-card-strong) 94%, var(--sc-accent) 6%);
+        box-shadow: 0 10px 28px rgba(13, 23, 40, 0.08);
+        isolation: isolate;
+    }
+
+    .sc-monitor-topbar::before {
+        position: absolute;
+        inset: 0 0 auto;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--sc-accent), transparent);
+        content: "";
+        opacity: 0.72;
+        pointer-events: none;
+    }
+
+    .sc-monitor-topbar::after {
+        position: absolute;
+        inset: 1px 0 auto;
+        height: 22px;
+        background: linear-gradient(180deg, var(--sc-accent-soft), transparent);
+        content: "";
+        opacity: 0.4;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .sc-monitor-topbar > :first-child {
+        position: relative;
+        z-index: 1;
+    }
+
+    .monitor-back-button {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        background: var(--sc-surface);
+    }
+
+    .monitor-back-button:hover {
+        background: var(--sc-card);
+        color: var(--sc-accent);
+    }
+
+    .monitor-title-block {
+        position: relative;
+    }
+
+    .monitor-title-line {
+        min-height: 28px;
+    }
+
+    .monitor-title-mark {
+        width: 18px;
+        height: 2px;
+        flex: 0 0 auto;
+        background: var(--sc-accent);
+        box-shadow: 7px 0 0 color-mix(in srgb, var(--sc-accent) 34%, transparent);
+    }
+
+    .monitor-title {
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 0;
+    }
+
+    #studio-status {
+        min-height: 28px;
+        padding: 5px 10px;
+        border-radius: 7px;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    #studio-status::before {
+        width: 6px;
+        height: 6px;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        background: currentColor;
+        content: "";
+        opacity: 0.72;
+    }
+
+    #studio-status.bg-emerald-50::before {
+        animation: monitor-status-pulse 1.8s ease-in-out infinite;
+    }
+
+    #studio-status.bg-red-50::before {
+        background: var(--sc-danger);
+    }
+
+    .monitor-toolbar {
+        position: relative;
+        z-index: 1;
+    }
+
+    .monitor-refresh-meta {
+        display: flex;
+        min-height: 44px;
+        align-items: center;
+        gap: 10px;
+        max-width: 260px;
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--sc-surface) 86%, var(--sc-card-strong) 14%);
+    }
+
+    .monitor-meta-icon {
+        color: var(--sc-accent);
+    }
+
+    .monitor-meta-label {
+        display: block;
+        line-height: 1;
+    }
+
+    .monitor-refresh-button {
+        min-height: 44px;
+        border-radius: 10px;
+    }
+
+    .monitor-refresh-button:hover .sc-icon {
+        transform: rotate(24deg);
+    }
+
+    .canvas-bg {
+        position: relative;
+        isolation: isolate;
+        background-color: var(--sc-bg);
+        background-image:
+            linear-gradient(var(--monitor-grid-color) 1px, transparent 1px),
+            linear-gradient(90deg, var(--monitor-grid-color) 1px, transparent 1px),
+            linear-gradient(135deg, color-mix(in srgb, var(--sc-accent) 4%, transparent), transparent 42%);
+        background-size: var(--monitor-grid-size) var(--monitor-grid-size), var(--monitor-grid-size) var(--monitor-grid-size), 100% 100%;
+    }
+
+    #canvas-drop-zone {
+        z-index: 1;
+    }
+
+    .monitor-canvas::before {
+        position: absolute;
+        inset: 16px;
+        border: 1px solid var(--monitor-line-color);
+        border-radius: 14px;
+        content: "";
+        opacity: 0.62;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .monitor-canvas::after {
+        position: absolute;
+        inset: 16px;
+        border-top: 1px solid color-mix(in srgb, var(--sc-accent) 34%, transparent);
+        border-bottom: 1px solid color-mix(in srgb, var(--sc-accent) 18%, transparent);
+        content: "";
+        opacity: 0.28;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .monitor-message {
+        max-width: min(420px, calc(100vw - 32px));
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--sc-card-strong) 86%, var(--sc-accent) 14%);
+        box-shadow: 0 18px 42px rgba(13, 23, 40, 0.16);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        animation: monitor-message-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .node-port { position: absolute; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; border-radius: 999px; background: var(--sc-bg); border: 2px solid var(--sc-accent); box-shadow: 0 0 0 4px var(--sc-accent-soft), 0 0 14px var(--sc-accent-soft); }
     .port-left { left: -6px; }
     .port-right { right: -6px; }
-    .port-stack { position: absolute; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 16px; }
+    .port-stack { position: absolute; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 18px; }
     .port-stack .node-port { position: static; top: auto; transform: none; }
     .port-stack .port-right, .port-stack .port-left { right: auto; left: auto; }
     .port-right-stack { right: -6px; align-items: flex-end; }
     .port-left-stack { left: -6px; align-items: flex-start; }
     .port-stack-item { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
     .port-stack-item-left { justify-content: flex-start; }
-    .port-label { max-width: 96px; overflow: hidden; padding: 3px 5px; border: 1px solid var(--sc-border); border-radius: 5px; background: var(--sc-card-strong); color: var(--sc-muted); font-family: 'Fira Code', monospace; font-size: 9px; font-weight: 600; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
-    .drag-handle { cursor: grab; }
+    .port-label { max-width: 96px; overflow: hidden; padding: 5px 7px; border: 1px solid var(--sc-border); border-radius: 6px; background: color-mix(in srgb, var(--sc-card-strong) 92%, var(--sc-accent) 8%); color: var(--sc-muted); font-family: 'Fira Code', monospace; font-size: 9px; font-weight: 600; line-height: 1; text-overflow: ellipsis; white-space: nowrap; box-shadow: var(--sc-shadow-soft); }
+    .drag-handle { cursor: default; }
     .drag-handle:active { cursor: grabbing; }
-    .draggable-node { position: absolute; width: 236px; transition: box-shadow .2s ease, border-color .2s ease; }
+    .draggable-node { position: absolute; width: 236px; transition: box-shadow .24s ease, border-color .24s ease, transform .24s ease; }
+    .sc-monitor-page .draggable-node { overflow: visible; border-radius: 14px; border-color: color-mix(in srgb, var(--sc-border) 78%, var(--sc-accent) 22%); background: color-mix(in srgb, var(--sc-card-strong) 96%, var(--sc-accent) 4%); box-shadow: 0 18px 42px rgba(13, 23, 40, 0.13), 0 0 0 1px color-mix(in srgb, var(--sc-accent) 10%, transparent); }
+    .sc-monitor-page .draggable-node:hover { border-color: color-mix(in srgb, var(--sc-accent) 56%, var(--sc-border) 44%); box-shadow: 0 22px 48px rgba(13, 23, 40, 0.18), 0 0 0 3px var(--sc-accent-soft); transform: translateY(-2px); }
     .studio-node-card { border-color: var(--sc-border); background: var(--sc-card-strong); box-shadow: var(--sc-shadow-soft); }
-    .studio-node-header { min-height: 44px; background: var(--sc-surface); border-color: var(--sc-border); }
-    .studio-node-badge { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; border: 1px solid currentColor; border-radius: 7px; }
-    .studio-node-body { min-height: 74px; background: var(--sc-card-strong); }
-    .studio-node-type { color: var(--sc-muted); font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
-    .studio-edge-path { stroke-linecap: round; stroke-linejoin: round; opacity: .72; }
+    .studio-node-header { min-height: 48px; background: var(--sc-surface); border-color: var(--sc-border); border-radius: 13px 13px 0 0; }
+    .studio-node-badge { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; border: 1px solid currentColor; border-radius: 9px; background: color-mix(in srgb, currentColor 12%, transparent); }
+    .studio-node-body { min-height: 74px; background: transparent; }
+    .studio-node-body > .font-mono { display: inline-flex; padding: 4px 7px; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 5px; background: color-mix(in srgb, currentColor 9%, transparent); letter-spacing: .04em; }
+    .studio-node-type { color: var(--sc-muted); font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+    .sc-monitor-page .studio-node-body > .mt-3 { margin-top: 14px; padding-top: 12px; border-color: var(--sc-border); }
+    .sc-monitor-page .studio-node-body > .mt-3 .grid > div { border-color: var(--sc-border); border-radius: 7px; background: var(--sc-surface); }
+    .studio-edge-path { stroke: color-mix(in srgb, var(--sc-accent) 76%, var(--sc-text) 24%); stroke-linecap: round; stroke-linejoin: round; opacity: .56; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 5px var(--sc-accent-soft)); }
+    .sc-monitor-page .studio-edge-path { stroke-dasharray: 2 11; }
+    .sc-monitor-page:has(#studio-status.bg-emerald-50) .studio-edge-path { animation: monitor-edge-flow 3.4s linear infinite; }
     .studio-edge-path-selected { stroke: var(--sc-warning); opacity: 1; stroke-width: 3.5; }
     .studio-edge-preview { stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 7 5; }
     .draggable-node.node-active { border-color: var(--sc-accent); box-shadow: 0 0 0 3px var(--sc-accent-soft), 0 16px 32px rgba(13,23,40,.18); z-index: 30; }
+
+    @keyframes monitor-edge-flow {
+        to { stroke-dashoffset: -26; }
+    }
+
+    @keyframes monitor-status-pulse {
+        0%, 100% { box-shadow: 0 0 0 0 currentColor; opacity: .72; }
+        50% { box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 20%, transparent); opacity: 1; }
+    }
+
+    @keyframes monitor-message-in {
+        from { opacity: 0; transform: translateY(-8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 767px) {
+        .sc-monitor-topbar {
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 14px 16px 12px;
+        }
+
+        .sc-monitor-topbar > :first-child {
+            width: 100%;
+        }
+
+        .monitor-toolbar {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .monitor-refresh-meta {
+            min-width: 0;
+            flex: 1 1 auto;
+            max-width: none;
+        }
+
+        .monitor-refresh-button {
+            flex: 0 0 auto;
+        }
+
+        .monitor-canvas::before,
+        .monitor-canvas::after {
+            inset: 10px;
+            border-radius: 10px;
+        }
+
+        .monitor-message {
+            top: 14px;
+            left: 14px;
+            right: 14px;
+            width: auto;
+            max-width: none;
+        }
+    }
+
+    @media (max-width: 479px) {
+        .monitor-title-line {
+            gap: 8px;
+        }
+
+        .monitor-title-mark {
+            width: 14px;
+        }
+
+        #studio-status {
+            padding-left: 8px;
+            padding-right: 8px;
+            letter-spacing: 0.04em;
+        }
+
+        .monitor-refresh-meta {
+            padding-left: 10px;
+            padding-right: 10px;
+        }
+
+        #monitor-last-refresh {
+            font-size: 10px;
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .monitor-title {
+            font-size: 20px;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #studio-status.bg-emerald-50::before,
+        .sc-monitor-page .studio-edge-path {
+            animation: none;
+        }
+
+        .sc-monitor-page .draggable-node,
+        .monitor-refresh-button .sc-icon {
+            transition: none;
+        }
+
+        .monitor-message {
+            animation: none;
+        }
+    }
 </style>
 
 <script th:src="@{/js/pipeline-port-contract.js}" src="/js/pipeline-port-contract.js"></script>
