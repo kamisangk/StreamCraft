@@ -10,7 +10,7 @@
     <header th:replace="~{fragments/topbar :: topbar(${pageTitle}, ${pageSubtitle})}"></header>
 
     <div class="sc-page-content flex-1 overflow-y-auto space-y-8">
-        <div id="message-box" class="hidden sc-card-strong px-4 py-3 text-sm"></div>
+        <div id="message-box" class="hidden sc-card-strong px-4 py-3 text-sm" role="status" aria-live="polite" aria-atomic="true"></div>
 
         <section data-page-hero="pipelines" class="sc-page-hero">
             <div>
@@ -25,7 +25,7 @@
         </section>
 
         <section class="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:gap-5">
-            <div class="sc-summary-card flex items-start justify-between gap-4">
+            <div class="sc-summary-card flex items-start justify-between gap-4" data-summary-tone="neutral">
                 <div class="mt-2 text-slate-900 dark:text-slate-100">
                     <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2" th:text="#{pipelines.summary.total}">Total pipelines</p>
                     <div class="text-3xl font-semibold" id="summary-total">0</div>
@@ -35,7 +35,7 @@
                 </span>
 
             </div>
-            <div class="sc-summary-card flex items-start justify-between gap-4">
+            <div class="sc-summary-card flex items-start justify-between gap-4" data-summary-tone="running">
                 <div class="mt-2 text-emerald-600">
                     <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2" th:text="#{pipelines.summary.running}">Running</p>
                     <div class="text-3xl font-semibold" id="summary-running">0</div>
@@ -45,7 +45,7 @@
                 </span>
 
             </div>
-            <div class="sc-summary-card flex items-start justify-between gap-4">
+            <div class="sc-summary-card flex items-start justify-between gap-4" data-summary-tone="stopped">
                 <div class="mt-2 text-amber-600">
                     <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2" th:text="#{pipelines.summary.stopped}">Stopped</p>
                     <div class="text-3xl font-semibold" id="summary-stopped">0</div>
@@ -61,16 +61,22 @@
             <div class="flex flex-col gap-4 lg:flex-row lg:items-end">
                 <div class="flex-1">
                     <label for="pipeline-search" class="sc-form-label" th:text="#{pipelines.search.label}">Search pipelines</label>
-                    <input id="pipeline-search" type="text" class="sc-input" th:placeholder="#{pipelines.search.placeholder}" placeholder="Search pipelines">
+                    <div class="sc-input-icon-wrap">
+                        <i data-lucide="search" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                        <input id="pipeline-search" type="text" class="sc-input" th:placeholder="#{pipelines.search.placeholder}" placeholder="Search pipelines">
+                    </div>
                 </div>
                 <div class="w-full lg:w-56">
                     <label for="pipeline-status-filter" class="sc-form-label" th:text="#{pipelines.filter.status}">Run status</label>
-                    <select id="pipeline-status-filter" class="sc-input">
-                        <option value="ALL" th:text="#{pipelines.filter.all}">All statuses</option>
-                        <option value="RUNNING" th:text="#{pipelines.status.running}">Running</option>
-                        <option value="STOPPED" th:text="#{pipelines.status.stopped}">Stopped</option>
-                        <option value="FAILED" th:text="#{pipelines.status.failed}">Failed</option>
-                    </select>
+                    <div class="sc-input-icon-wrap">
+                        <i data-lucide="list-filter" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                        <select id="pipeline-status-filter" class="sc-input">
+                            <option value="ALL" th:text="#{pipelines.filter.all}">All statuses</option>
+                            <option value="RUNNING" th:text="#{pipelines.status.running}">Running</option>
+                            <option value="STOPPED" th:text="#{pipelines.status.stopped}">Stopped</option>
+                            <option value="FAILED" th:text="#{pipelines.status.failed}">Failed</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </section>
@@ -79,12 +85,12 @@
             <div class="sc-panel-muted flex items-center justify-between rounded-none border-b-0 px-4 py-4 sm:px-6">
                 <div>
                     <p class="sc-subtle-label" th:text="#{pipelines.hero.label}">Workspace</p>
-                    <h2 class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100" th:text="#{pipelines.list.title}">Pipelines</h2>
+                    <h2 id="pipeline-table-title" class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100" th:text="#{pipelines.list.title}">Pipelines</h2>
 
                 </div>
                 <i data-lucide="list-filter" class="sc-icon sc-icon-sm text-slate-400 dark:text-slate-500" aria-hidden="true"></i>
             </div>
-            <div id="pipeline-table" class="overflow-x-auto"></div>
+            <div id="pipeline-table" class="sc-table-scroll" aria-labelledby="pipeline-table-title" aria-busy="true"></div>
         </section>
     </div>
 </main>
@@ -224,6 +230,7 @@
         updateSummary(allPipelines);
 
         const container = document.getElementById("pipeline-table");
+        container.setAttribute("aria-busy", busyPipelineIds.size > 0 ? "true" : "false");
         if (pipelines.length === 0) {
             container.innerHTML = `
                 <div class="sc-empty-state px-5 py-14 text-center sm:px-6 sm:py-16">
@@ -249,23 +256,23 @@
 
             return `
                 <tr class="hover:bg-slate-100 dark:hover:bg-neutral-800/80 dark:bg-neutral-900/40 transition-colors">
-                    <td class="px-4 py-4 text-left sm:px-6">
+                    <td class="sc-table-primary-cell px-4 py-4 text-left sm:px-6">
                         <div class="max-w-[24rem] truncate font-semibold text-slate-900 dark:text-slate-100 text-center">${escapeHtml(item.name)}</div>
                         <div class="mt-1 max-w-[24rem] truncate text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">${escapeHtml(item.description || t("pipelines.description.empty", "No description"))}</div>
                     </td>
                     <td class="px-4 py-4 text-left sm:px-6">
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-neutral-800/70 text-slate-700 dark:text-neutral-300 border border-slate-200 dark:border-neutral-600">
+                        <span class="sc-table-status-badge inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-neutral-800/70 text-slate-700 dark:text-neutral-300 border border-slate-200 dark:border-neutral-600">
                             ${t("pipelines.saved", "Saved")}
                         </span>
                     </td>
                     <td class="px-4 py-4 text-left sm:px-6">
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${runStatusClass}">
+                        <span class="sc-table-status-badge inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${runStatusClass}">
                             ${escapeHtml(runStatusLabel)}
                         </span>
                     </td>
                     <td class="px-4 py-4 text-left text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 sm:px-6">${escapeHtml(formatTime(item.updatedAt))}</td>
                     <td class="px-4 py-4 text-left sm:px-6">
-                        <div class="inline-flex flex-wrap items-center gap-1 text-sm">
+                        <div class="sc-table-action-group text-sm">
                             <a href="/studio/${item.id}" class="inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-slate-900 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:text-slate-100 dark:hover:bg-neutral-800 dark:hover:text-slate-300"><i data-lucide="pencil" class="sc-icon sc-icon-sm pointer-events-none" aria-hidden="true"></i><span>${t("pipelines.action.edit", "Edit")}</span></a>
                             ${buildActionButtons(item)}
                             <a href="/api/pipelines/${item.id}/definition" target="_blank" class="inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-neutral-800 dark:hover:text-slate-100"><i data-lucide="file-code-2" class="sc-icon sc-icon-sm pointer-events-none" aria-hidden="true"></i><span>${t("pipelines.action.viewDsl", "View DSL")}</span></a>
@@ -276,7 +283,7 @@
         }).join("");
 
         container.innerHTML = `
-            <table class="min-w-[760px] w-full border-collapse text-left whitespace-nowrap">
+            <table class="sc-data-table min-w-[760px] w-full border-collapse text-left whitespace-nowrap" aria-labelledby="pipeline-table-title">
                 <thead>
                     <tr class="sc-panel-muted text-xs font-medium text-slate-500 dark:text-slate-400">
                         <th class="px-6 py-4 border-b border-slate-300 dark:border-slate-700 text-center">${t("pipelines.table.pipeline", "Pipeline")}</th>
@@ -365,6 +372,7 @@
     async function loadPipelines() {
         const response = await fetch("/api/pipelines");
         if (!response.ok) {
+            document.getElementById("pipeline-table").setAttribute("aria-busy", "false");
             showMessage("error", t("pipelines.load.error", "Loading the pipeline list failed. Please refresh later."));
             return;
         }

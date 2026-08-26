@@ -675,6 +675,108 @@
             overflow: hidden;
         }
 
+        .sc-table-scroll {
+            position: relative;
+            overflow-x: auto;
+            overscroll-behavior-x: contain;
+            scrollbar-gutter: stable;
+        }
+
+        .sc-data-table {
+            border-spacing: 0;
+        }
+
+        .sc-data-table th,
+        .sc-data-table td {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .sc-data-table thead th {
+            background: var(--sc-surface);
+        }
+
+        .sc-data-table tbody tr {
+            transition: background-color 0.18s ease;
+        }
+
+        .sc-data-table tbody tr:hover td:first-child {
+            background: var(--sc-card);
+        }
+
+        .sc-data-table .sc-table-primary-cell {
+            background: var(--sc-card-strong);
+        }
+
+        .sc-table-status-badge {
+            min-height: 26px;
+            white-space: nowrap;
+        }
+
+        .sc-table-action-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            flex-wrap: wrap;
+        }
+
+        .sc-input-icon-wrap {
+            position: relative;
+        }
+
+        .sc-input-icon-wrap > .sc-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            z-index: 1;
+            color: var(--sc-muted);
+            pointer-events: none;
+            transform: translateY(-50%);
+        }
+
+        .sc-input-icon-wrap > .sc-input {
+            padding-left: 42px;
+        }
+
+        .sc-summary-card[data-summary-tone] {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sc-summary-card[data-summary-tone]::before {
+            position: absolute;
+            inset: 0 0 auto;
+            height: 2px;
+            background: var(--sc-border);
+            content: "";
+        }
+
+        .sc-summary-card[data-summary-tone="running"]::before {
+            background: var(--sc-success);
+        }
+
+        .sc-summary-card[data-summary-tone="stopped"]::before {
+            background: var(--sc-warning);
+        }
+
+        .sc-summary-card[data-summary-tone="danger"]::before {
+            background: var(--sc-danger);
+        }
+
+        @media (max-width: 767px) {
+            .sc-data-table th:first-child,
+            .sc-data-table td:first-child {
+                position: sticky;
+                left: 0;
+                z-index: 2;
+                background-clip: padding-box;
+                box-shadow: 1px 0 0 var(--sc-border);
+            }
+
+            .sc-data-table thead th:first-child {
+                z-index: 3;
+            }
+        }
+
         .sc-section-head {
             color: var(--sc-text);
             font-size: 14px;
