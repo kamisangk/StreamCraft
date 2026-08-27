@@ -3,7 +3,7 @@
 <head th:replace="~{fragments/app-shell :: commonHead(#{studio.documentTitle})}">
     <title>Pipeline Studio - StreamCraft</title>
 </head>
-<body class="sc-shell-page min-h-[100dvh] w-screen flex flex-col overflow-hidden" data-studio-shell="editor">
+<body class="sc-shell-page h-screen w-screen flex flex-col overflow-hidden" data-studio-shell="editor">
 <div id="studio-bootstrap"
      class="hidden"
      data-page-mode="editor"
@@ -23,18 +23,9 @@
         background: var(--sc-surface);
         overflow-y: auto;
     }
-    @media (min-width: 768px) and (max-width: 1023px) {
+    @media (min-width: 768px) {
         .studio-shell-grid {
-            grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
-            grid-template-rows: minmax(0, 1fr);
-            gap: 14px;
-            padding: 14px;
-            overflow: hidden;
-        }
-    }
-    @media (min-width: 1024px) {
-        .studio-shell-grid {
-            grid-template-columns: minmax(220px, 248px) minmax(0, 1fr) minmax(320px, 360px);
+            grid-template-columns: 272px minmax(0, 1fr) 388px;
             grid-template-rows: minmax(0, 1fr);
             gap: 16px;
             padding: 16px;
@@ -82,6 +73,7 @@
         background: var(--sc-surface);
     }
     .studio-rail-body {
+        min-height: 0;
         padding: 16px;
     }
     .studio-rail-mark {
@@ -718,7 +710,7 @@
 
 <div class="flex-1 min-h-0 overflow-hidden">
     <div class="studio-shell-grid h-full min-h-0" data-studio-shell="editor">
-        <aside id="operator-palette" data-studio-panel="palette" data-studio-rail="palette" class="studio-rail min-h-0 hidden lg:flex flex-col overflow-hidden">
+        <aside id="operator-palette" data-studio-panel="palette" data-studio-rail="palette" class="studio-rail min-h-0 hidden md:flex flex-col overflow-hidden">
             <div class="studio-rail-header">
                 <div class="flex items-start gap-3 min-w-0">
                     <span class="studio-rail-mark" aria-hidden="true">
