@@ -10,7 +10,7 @@
     <header th:replace="~{fragments/topbar :: topbar(${pageTitle}, ${pageSubtitle})}"></header>
 
     <div class="sc-page-content flex-1 min-h-0 overflow-y-auto space-y-8">
-        <section data-page-hero="settings" class="sc-page-hero w-full max-w-6xl mx-auto">
+        <section data-page-hero="settings" class="sc-page-hero w-full max-w-4xl mx-auto">
             <div class="min-w-0 max-w-3xl">
                 <p class="sc-subtle-label" th:text="#{settings.hero.label}">Admin</p>
                 <h2 class="sc-page-heading mt-3" th:text="${pageTitle}">Settings</h2>
@@ -18,16 +18,17 @@
             </div>
         </section>
 
-        <section class="grid w-full max-w-6xl mx-auto grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+        <section class="w-full max-w-4xl mx-auto">
             <div class="sc-config-panel sc-card-strong settings-password-card">
                 <div class="sc-config-panel-header">
-                    <div class="flex min-w-0 items-center gap-4">
+                    <div class="flex min-w-0 items-start gap-4">
                         <span class="sc-icon-frame" aria-hidden="true">
                         <i data-lucide="key-round" class="sc-icon" aria-hidden="true"></i>
                         </span>
                         <div class="min-w-0">
                             <p class="sc-subtle-label" th:text="#{settings.hero.label}">Admin</p>
                             <h3 class="sc-config-panel-title mt-2" th:text="#{settings.password.title}">Password settings</h3>
+                            <p class="sc-config-panel-description mt-2" th:text="${pageSubtitle}">Manage global account settings.</p>
                         </div>
                     </div>
                 </div>
@@ -92,22 +93,6 @@
                     </div>
                 </form>
             </div>
-
-            <aside class="sc-panel-muted sc-security-panel self-start p-6">
-                <div>
-                    <span class="sc-icon-frame" aria-hidden="true">
-                        <i data-lucide="lock-keyhole" class="sc-icon" aria-hidden="true"></i>
-                    </span>
-                    <div class="sc-security-panel-rule" aria-hidden="true"></div>
-                    <p class="sc-subtle-label" th:text="#{settings.hero.label}">Admin</p>
-                    <h3 class="sc-section-head mt-3" th:text="#{settings.password.title}">Password settings</h3>
-                    <p class="mt-3 text-sm leading-6 text-[var(--sc-muted)]" th:text="${pageSubtitle}">Manage global account settings.</p>
-                </div>
-                <div class="mt-8 flex items-center gap-3 text-[var(--sc-muted-soft)]" aria-hidden="true">
-                    <i data-lucide="fingerprint" class="sc-icon sc-icon-lg"></i>
-                    <span class="h-px flex-1 bg-[var(--sc-border)]"></span>
-                </div>
-            </aside>
         </section>
     </div>
 </main>
