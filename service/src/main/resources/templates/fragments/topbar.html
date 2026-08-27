@@ -13,17 +13,56 @@
     </div>
 
     <div class="sc-topbar-actions flex items-center gap-3 lg:gap-4">
-        <label for="topbar-language-select" class="sr-only" th:text="#{language.switcher.label}">Language</label>
-        <div class="sc-language-control">
-            <i data-lucide="languages" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+        <div data-shell-language-switcher class="sc-language-control">
+            <span id="topbar-language-label" class="sr-only" th:text="#{language.switcher.label}">Language</span>
             <select id="topbar-language-select"
                     data-language-select
                     class="sc-language-select"
+                    tabindex="-1"
+                    aria-hidden="true"
                     th:aria-label="#{language.switcher.label}"
                     aria-label="Language">
                 <option value="zh-CN" th:selected="${currentLocaleTag == 'zh-CN'}" th:text="#{language.zhCN}">简体中文</option>
                 <option value="en-US" th:selected="${currentLocaleTag == 'en-US'}" th:text="#{language.enUS}">English</option>
             </select>
+            <button id="topbar-language-trigger"
+                    type="button"
+                    data-language-trigger
+                    class="sc-language-trigger"
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                    aria-controls="topbar-language-menu"
+                    aria-labelledby="topbar-language-label">
+                <i data-lucide="languages" class="sc-icon sc-icon-sm sc-language-trigger-icon" aria-hidden="true"></i>
+                <span data-language-current class="sc-language-current" th:if="${currentLocaleTag == 'zh-CN'}" th:text="#{language.zhCN}">简体中文</span>
+                <span data-language-current class="sc-language-current" th:if="${currentLocaleTag == 'en-US'}" th:text="#{language.enUS}">English</span>
+                <span data-language-current class="sc-language-current" th:unless="${currentLocaleTag == 'zh-CN' or currentLocaleTag == 'en-US'}" th:text="#{language.zhCN}">简体中文</span>
+                <i data-lucide="chevron-down" class="sc-icon sc-icon-sm sc-language-chevron" aria-hidden="true"></i>
+            </button>
+            <div id="topbar-language-menu"
+                 data-language-menu
+                 class="sc-language-menu"
+                 role="listbox"
+                 aria-labelledby="topbar-language-label"
+                 tabindex="-1"
+                 hidden>
+                <button type="button"
+                        class="sc-language-option"
+                        role="option"
+                        data-language-option="zh-CN"
+                        th:attr="aria-selected=${currentLocaleTag == 'zh-CN'}">
+                    <span th:text="#{language.zhCN}">简体中文</span>
+                    <i data-lucide="check" class="sc-icon sc-icon-sm sc-language-option-check" aria-hidden="true"></i>
+                </button>
+                <button type="button"
+                        class="sc-language-option"
+                        role="option"
+                        data-language-option="en-US"
+                        th:attr="aria-selected=${currentLocaleTag == 'en-US'}">
+                    <span th:text="#{language.enUS}">English</span>
+                    <i data-lucide="check" class="sc-icon sc-icon-sm sc-language-option-check" aria-hidden="true"></i>
+                </button>
+            </div>
         </div>
 
         <button id="theme-toggle" type="button" class="sc-btn-icon" th:aria-label="#{topbar.themeToggle}" th:title="#{topbar.themeToggle}" aria-label="Toggle theme" title="Toggle theme">
