@@ -3,90 +3,593 @@
 <head th:replace="~{fragments/app-shell :: commonHead(${pageTitle})}">
     <title>StreamCraft</title>
 </head>
-<body class="sc-shell-page h-screen w-screen flex min-h-0 overflow-hidden">
+<body class="sc-shell-page sc-st-page h-screen w-screen flex overflow-hidden">
+
+<div class="st-bg" aria-hidden="true">
+    <div class="st-bg-grid"></div>
+    <div class="st-bg-aurora st-bg-aurora-a"></div>
+    <div class="st-bg-aurora st-bg-aurora-b"></div>
+    <div class="st-bg-noise"></div>
+</div>
+
 <aside th:replace="~{fragments/sidebar :: sidebar(${activeNav})}"></aside>
 
-<main class="sc-page-frame flex-1 flex flex-col min-h-0 min-w-0 relative overflow-hidden">
-    <header th:replace="~{fragments/topbar :: topbar(${pageTitle}, ${null})}"></header>
+<main class="sc-page-frame st-frame flex-1 flex flex-col min-w-0 relative overflow-hidden">
+    <header th:replace="~{fragments/topbar :: topbar(${pageTitle}, ${pageSubtitle})}"></header>
 
-    <div class="sc-page-content flex-1 min-h-0 overflow-y-auto">
-        <section class="settings-workspace w-full max-w-6xl mx-auto">
-            <aside class="settings-section-nav">
-                <nav class="settings-section-list" th:aria-label="${pageTitle}" aria-label="Settings">
-                    <a href="#settings-password-panel"
-                       class="settings-section-option"
-                       aria-current="page">
-                        <i data-lucide="key-round" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
-                        <span th:text="#{settings.password.title}">Password settings</span>
-                        <i data-lucide="chevron-right" class="settings-section-option-arrow sc-icon sc-icon-sm" aria-hidden="true"></i>
-                    </a>
-                </nav>
-            </aside>
-
-            <div id="settings-password-panel" class="sc-config-panel sc-card-strong settings-password-card">
-                <form data-settings-password-form class="sc-config-form space-y-5" aria-busy="false">
-                    <div id="settings-password-message"
-                         class="hidden sc-feedback-message border px-4 py-3 text-sm"
-                         role="status"
-                         aria-live="polite">
-                        <i id="settings-password-success-icon" data-lucide="check-circle-2" class="sc-feedback-message-icon hidden sc-icon sc-icon-sm text-[var(--sc-success)]" aria-hidden="true"></i>
-                        <i id="settings-password-error-icon" data-lucide="triangle-alert" class="sc-feedback-message-icon hidden sc-icon sc-icon-sm text-[var(--sc-danger)]" aria-hidden="true"></i>
-                        <span id="settings-password-message-text"></span>
-                    </div>
-
-                    <div class="sc-config-field">
-                        <label for="currentPassword" class="sc-form-label" th:text="#{settings.password.current}">Current password</label>
-                        <div class="sc-input-icon-wrap">
-                            <i data-lucide="key-round" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
-                            <input id="currentPassword"
-                                   name="currentPassword"
-                                   type="password"
-                                   autocomplete="current-password"
-                                   class="sc-input"
-                                   required>
-                        </div>
-                    </div>
-
-                    <div class="sc-config-field">
-                        <label for="newPassword" class="sc-form-label" th:text="#{settings.password.new}">New password</label>
-                        <div class="sc-input-icon-wrap">
-                            <i data-lucide="lock" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
-                            <input id="newPassword"
-                                   name="newPassword"
-                                   type="password"
-                                   autocomplete="new-password"
-                                   class="sc-input"
-                                   required>
-                        </div>
-                    </div>
-
-                    <div class="sc-config-field">
-                        <label for="confirmPassword" class="sc-form-label" th:text="#{settings.password.confirm}">Confirm new password</label>
-                        <div class="sc-input-icon-wrap">
-                            <i data-lucide="badge-check" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
-                            <input id="confirmPassword"
-                                   name="confirmPassword"
-                                   type="password"
-                                   autocomplete="new-password"
-                                   class="sc-input"
-                                   required>
-                        </div>
-                    </div>
-
-                    <div class="sc-config-action-bar">
-                        <button id="settings-password-submit"
-                                type="submit"
-                                class="sc-btn-primary"
-                                aria-busy="false">
-                            <i data-lucide="shield-check" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
-                            <span th:text="#{settings.password.save}">Save password</span>
-                        </button>
-                    </div>
-                </form>
+    <div class="sc-page-content st-content flex-1 overflow-y-auto">
+        <section data-page-hero="settings" class="st-hero">
+            <div class="st-wordmark" aria-hidden="true">CONFIG</div>
+            <div class="st-hero-copy">
+                <p class="st-eyebrow st-rise" style="--d:40ms">
+                    <span aria-hidden="true">//</span>
+                    <span th:text="#{settings.hero.label}">管理</span>
+                </p>
+                <h2 class="st-title st-rise" style="--d:80ms">
+                    <span th:text="#{page.settings.title}">设置</span>
+                    <span class="st-caret" aria-hidden="true"></span>
+                </h2>
+                <p class="st-lead st-rise" style="--d:120ms" th:text="#{page.settings.subtitle}">更新全局管理员账号凭据。</p>
             </div>
         </section>
+
+        <section class="st-panel st-rise" style="--d:160ms">
+            <header class="st-panel-head">
+                <div class="st-panel-head-copy">
+                    <p class="st-eyebrow-sm">
+                        <span aria-hidden="true">//</span>
+                        <span th:text="#{settings.hero.label}">管理</span>
+                    </p>
+                    <h3 class="st-panel-title" th:text="#{settings.password.title}">密码设置</h3>
+                </div>
+                <div class="st-panel-badge">
+                    <i data-lucide="key-round" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                    <span class="st-tag">SEC-01</span>
+                </div>
+            </header>
+
+            <form data-settings-password-form class="st-form" aria-busy="false">
+                <div id="settings-password-message"
+                     class="st-message hidden"
+                     role="status"
+                     aria-live="polite">
+                    <i id="settings-password-success-icon" data-lucide="check-circle-2" class="hidden sc-icon sc-icon-sm st-message-icon" data-tone="success" aria-hidden="true"></i>
+                    <i id="settings-password-error-icon" data-lucide="triangle-alert" class="hidden sc-icon sc-icon-sm st-message-icon" data-tone="error" aria-hidden="true"></i>
+                    <span id="settings-password-message-text"></span>
+                </div>
+
+                <div class="st-field">
+                    <label for="currentPassword" class="st-label" th:text="#{settings.password.current}">当前密码</label>
+                    <div class="st-input-wrap">
+                        <i data-lucide="key-round" class="sc-icon sc-icon-sm st-input-icon" aria-hidden="true"></i>
+                        <input id="currentPassword"
+                               name="currentPassword"
+                               type="password"
+                               autocomplete="current-password"
+                               class="st-input"
+                               required>
+                    </div>
+                </div>
+
+                <div class="st-field">
+                    <label for="newPassword" class="st-label" th:text="#{settings.password.new}">新密码</label>
+                    <div class="st-input-wrap">
+                        <i data-lucide="lock" class="sc-icon sc-icon-sm st-input-icon" aria-hidden="true"></i>
+                        <input id="newPassword"
+                               name="newPassword"
+                               type="password"
+                               autocomplete="new-password"
+                               class="st-input"
+                               required>
+                    </div>
+                </div>
+
+                <div class="st-field">
+                    <label for="confirmPassword" class="st-label" th:text="#{settings.password.confirm}">确认新密码</label>
+                    <div class="st-input-wrap">
+                        <i data-lucide="badge-check" class="sc-icon sc-icon-sm st-input-icon" aria-hidden="true"></i>
+                        <input id="confirmPassword"
+                               name="confirmPassword"
+                               type="password"
+                               autocomplete="new-password"
+                               class="st-input"
+                               required>
+                    </div>
+                </div>
+
+                <div class="st-actions">
+                    <button id="settings-password-submit"
+                            type="submit"
+                            class="st-btn st-btn-primary"
+                            aria-busy="false">
+                        <i data-lucide="shield-check" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                        <span th:text="#{settings.password.save}">保存密码</span>
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <footer class="st-statusbar">
+            <span class="st-statusbar-left">STREAMCRAFT // <span th:text="#{settings.password.title}">密码设置</span></span>
+            <span class="st-statusbar-right">
+                <span>SECURE</span>
+                <span class="st-live-dot" aria-hidden="true"></span>
+                <span id="st-clock">--:--:--</span>
+            </span>
+        </footer>
     </div>
 </main>
+
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&display=swap');
+
+    .sc-st-page {
+        --st-font-display: 'Syne', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        --st-font-mono: 'Fira Code', 'SFMono-Regular', Consolas, monospace;
+        --st-ease: cubic-bezier(0.22, 1, 0.36, 1);
+        position: relative;
+    }
+
+    /* ---------- shell integration ---------- */
+
+    .sc-st-page .sc-page-frame {
+        position: relative;
+        z-index: 1;
+        background: transparent;
+    }
+
+    .sc-st-page .sc-shell-sidebar {
+        background: color-mix(in srgb, var(--sc-sidebar) 88%, transparent);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+    }
+
+    .sc-st-page .sc-shell-topbar {
+        background: color-mix(in srgb, var(--sc-bg) 72%, transparent);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom-color: var(--sc-border-soft);
+    }
+
+    .sc-st-page .sc-topbar-context {
+        display: none;
+    }
+
+    /* ---------- layered background ---------- */
+
+    .st-bg {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        pointer-events: none;
+    }
+
+    .st-bg-grid {
+        position: absolute;
+        inset: 0;
+        background-image:
+            linear-gradient(color-mix(in srgb, var(--sc-text) 5%, transparent) 1px, transparent 1px),
+            linear-gradient(90deg, color-mix(in srgb, var(--sc-text) 5%, transparent) 1px, transparent 1px);
+        background-size: 44px 44px;
+        -webkit-mask-image: radial-gradient(ellipse 90% 80% at 40% 0%, #000 0%, transparent 74%);
+        mask-image: radial-gradient(ellipse 90% 80% at 40% 0%, #000 0%, transparent 74%);
+    }
+
+    .st-bg-aurora {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(70px);
+        will-change: transform;
+    }
+
+    .st-bg-aurora-a {
+        top: -24%;
+        left: -10%;
+        width: 52vw;
+        height: 52vw;
+        background: radial-gradient(circle, color-mix(in srgb, var(--sc-accent) 15%, transparent), transparent 65%);
+    }
+
+    .st-bg-aurora-b {
+        right: -18%;
+        bottom: -30%;
+        width: 46vw;
+        height: 46vw;
+        background: radial-gradient(circle, color-mix(in srgb, var(--sc-accent) 10%, transparent), transparent 65%);
+    }
+
+    .st-bg-noise {
+        position: absolute;
+        inset: 0;
+        opacity: 0.5;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+    }
+
+    /* ---------- shared primitives ---------- */
+
+    .st-tag {
+        color: var(--sc-muted-soft);
+        font-family: var(--st-font-mono);
+        font-size: 9px;
+        font-weight: 500;
+        letter-spacing: 0.24em;
+    }
+
+    .st-live-dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--sc-success);
+        box-shadow: 0 0 8px var(--sc-success);
+        animation: st-pulse 2.4s ease-in-out infinite;
+    }
+
+    @keyframes st-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.35; }
+    }
+
+    @keyframes st-rise-in {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .st-rise {
+        animation: st-rise-in 0.5s var(--st-ease) backwards;
+        animation-delay: var(--d, 0ms);
+    }
+
+    /* ---------- hero ---------- */
+
+    .st-hero {
+        position: relative;
+        padding: 36px 0 28px;
+    }
+
+    .st-wordmark {
+        position: absolute;
+        top: -6px;
+        left: -4px;
+        z-index: 0;
+        color: transparent;
+        font-family: var(--st-font-display);
+        font-size: clamp(64px, 9vw, 128px);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 0.9;
+        -webkit-text-stroke: 1px color-mix(in srgb, var(--sc-text) 14%, transparent);
+        user-select: none;
+        pointer-events: none;
+    }
+
+    .st-hero-copy {
+        position: relative;
+        z-index: 1;
+        min-width: 0;
+        max-width: 60ch;
+    }
+
+    .st-eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--sc-accent);
+        font-family: var(--st-font-mono);
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+    }
+
+    .st-eyebrow span:last-child {
+        color: var(--sc-muted);
+    }
+
+    .st-title {
+        margin-top: 14px;
+        color: var(--sc-text);
+        font-size: clamp(30px, 4vw, 48px);
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        line-height: 1.1;
+    }
+
+    .st-caret {
+        display: inline-block;
+        width: 0.5em;
+        height: 1em;
+        margin-left: 8px;
+        vertical-align: -0.14em;
+        background: var(--sc-accent);
+        animation: st-caret-blink 1.1s steps(1) infinite;
+    }
+
+    @keyframes st-caret-blink {
+        0%, 49% { opacity: 1; }
+        50%, 100% { opacity: 0; }
+    }
+
+    .st-lead {
+        margin-top: 12px;
+        color: var(--sc-muted);
+        font-size: 14px;
+        line-height: 1.65;
+    }
+
+    /* ---------- panel ---------- */
+
+    .st-panel {
+        max-width: 560px;
+        border: 1px solid var(--sc-border);
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--sc-card-strong) 82%, transparent);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: var(--sc-shadow-soft);
+        overflow: hidden;
+    }
+
+    .st-panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px 22px;
+        border-bottom: 1px solid var(--sc-border-soft);
+        background: color-mix(in srgb, var(--sc-surface) 55%, transparent);
+    }
+
+    .st-eyebrow-sm {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--sc-muted-soft);
+        font-family: var(--st-font-mono);
+        font-size: 9px;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+    }
+
+    .st-eyebrow-sm span[aria-hidden] {
+        color: var(--sc-accent);
+    }
+
+    .st-panel-title {
+        margin-top: 7px;
+        color: var(--sc-text);
+        font-size: 17px;
+        font-weight: 700;
+    }
+
+    .st-panel-badge {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 10px;
+        border: 1px solid var(--sc-border);
+        border-radius: 9px;
+        color: var(--sc-muted);
+        background: color-mix(in srgb, var(--sc-card) 92%, transparent);
+    }
+
+    /* ---------- form ---------- */
+
+    .st-form {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        padding: 22px;
+    }
+
+    .st-field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .st-label {
+        color: var(--sc-text-body);
+        font-size: 12.5px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+    }
+
+    .st-input-wrap {
+        display: flex;
+        align-items: center;
+        border: 1px solid var(--sc-border);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--sc-card) 92%, transparent);
+        transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .st-input-wrap:focus-within {
+        border-color: var(--sc-accent);
+        box-shadow: 0 0 0 3px var(--sc-accent-soft);
+    }
+
+    .st-input-icon {
+        margin: 0 0 0 14px;
+        color: var(--sc-muted-soft);
+        pointer-events: none;
+    }
+
+    .st-input {
+        flex: 1 1 auto;
+        width: 100%;
+        padding: 12px 16px;
+        border: 0;
+        background: transparent;
+        color: var(--sc-text);
+        font-family: var(--st-font-mono);
+        font-size: 13px;
+        letter-spacing: 0.06em;
+        outline: none;
+    }
+
+    .st-input::placeholder {
+        color: var(--sc-muted-soft);
+    }
+
+    /* ---------- actions ---------- */
+
+    .st-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .st-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 38px;
+        padding: 10px 20px;
+        border: 1px solid var(--sc-border);
+        border-radius: 9px;
+        font-size: 12.5px;
+        font-weight: 600;
+        line-height: 1;
+        cursor: pointer;
+        transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+    }
+
+    .st-btn-primary {
+        border-color: var(--sc-accent);
+        background: var(--sc-accent);
+        color: var(--sc-primary-foreground);
+        box-shadow: 0 10px 24px color-mix(in srgb, var(--sc-accent) 26%, transparent);
+    }
+
+    .st-btn-primary:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 14px 30px color-mix(in srgb, var(--sc-accent) 32%, transparent);
+    }
+
+    .st-btn:active:not(:disabled) {
+        transform: translateY(0);
+    }
+
+    .st-btn:disabled,
+    .st-btn[aria-busy="true"] {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .st-btn:focus-visible {
+        outline: 2px solid var(--sc-accent);
+        outline-offset: 2px;
+    }
+
+    /* ---------- message ---------- */
+
+    .st-message {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 10px 16px;
+        border: 1px solid var(--sc-border);
+        border-left: 3px solid var(--sc-accent);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--sc-card) 92%, transparent);
+        color: var(--sc-text-body);
+        font-size: 13px;
+    }
+
+    .st-message[data-tone="success"] {
+        border-left-color: var(--sc-success);
+        color: var(--sc-success);
+    }
+
+    .st-message[data-tone="error"] {
+        border-left-color: var(--sc-danger);
+        color: var(--sc-danger);
+    }
+
+    .st-message-icon {
+        flex: 0 0 auto;
+    }
+
+    .st-message-icon[data-tone="success"] { color: var(--sc-success); }
+    .st-message-icon[data-tone="error"] { color: var(--sc-danger); }
+
+    /* ---------- statusbar ---------- */
+
+    .st-statusbar {
+        position: sticky;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-top: 22px;
+        padding: 10px 16px;
+        border-top: 1px solid var(--sc-border-soft);
+        background: color-mix(in srgb, var(--sc-bg) 88%, transparent);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        color: var(--sc-muted-soft);
+        font-family: var(--st-font-mono);
+        font-size: 9.5px;
+        letter-spacing: 0.2em;
+    }
+
+    .st-statusbar-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    #st-clock {
+        color: var(--sc-muted);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* ---------- responsive ---------- */
+
+    @media (max-width: 767px) {
+        .st-hero {
+            padding-top: 26px;
+        }
+
+        .st-panel {
+            max-width: none;
+        }
+
+        .st-actions {
+            justify-content: stretch;
+        }
+
+        .st-btn {
+            flex: 1 1 auto;
+        }
+
+        .st-statusbar {
+            letter-spacing: 0.12em;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .st-rise,
+        .st-caret,
+        .st-live-dot {
+            animation: none;
+            transition: none;
+        }
+    }
+</style>
 
 <script th:inline="javascript">
     const settingsPasswordForm = document.querySelector('[data-settings-password-form]');
@@ -106,26 +609,11 @@
 
     function showSettingsPasswordMessage(message, tone) {
         settingsPasswordMessageText.textContent = message;
-        settingsPasswordMessage.classList.remove(
-            'hidden',
-            'border-emerald-200',
-            'bg-emerald-50',
-            'text-emerald-700',
-            'border-red-200',
-            'bg-red-50',
-            'text-red-700'
-        );
+        settingsPasswordMessage.classList.remove('hidden');
         settingsPasswordMessage.dataset.tone = tone;
         settingsPasswordMessage.setAttribute('role', tone === 'success' ? 'status' : 'alert');
         settingsPasswordSuccessIcon?.classList.toggle('hidden', tone !== 'success');
         settingsPasswordErrorIcon?.classList.toggle('hidden', tone === 'success');
-
-        if (tone === 'success') {
-            settingsPasswordMessage.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
-            return;
-        }
-
-        settingsPasswordMessage.classList.add('border-red-200', 'bg-red-50', 'text-red-700');
     }
 
     function localizeSettingsPasswordError(message) {
@@ -146,7 +634,6 @@
         settingsPasswordSubmit.disabled = true;
         settingsPasswordSubmit.setAttribute('aria-busy', 'true');
         settingsPasswordForm.setAttribute('aria-busy', 'true');
-        settingsPasswordSubmit.classList.add('opacity-70', 'cursor-not-allowed');
 
         const formData = new FormData(settingsPasswordForm);
         const payload = {
@@ -183,9 +670,15 @@
             settingsPasswordSubmit.disabled = false;
             settingsPasswordSubmit.setAttribute('aria-busy', 'false');
             settingsPasswordForm.setAttribute('aria-busy', 'false');
-            settingsPasswordSubmit.classList.remove('opacity-70', 'cursor-not-allowed');
         }
     });
+
+    const stClock = document.getElementById('st-clock');
+    function tickStClock() {
+        stClock.textContent = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+    }
+    tickStClock();
+    setInterval(tickStClock, 1000);
 </script>
 </body>
 </html>
