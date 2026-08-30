@@ -18,12 +18,6 @@
     <header th:replace="~{fragments/topbar :: topbar(${pageTitle}, ${pageSubtitle})}"></header>
 
     <div class="sc-page-content rt-content flex-1 overflow-y-auto">
-        <div id="message-box" class="rt-message hidden" role="status" aria-live="polite">
-            <i id="message-box-success-icon" data-lucide="check-circle-2" class="hidden sc-icon sc-icon-sm rt-message-icon" data-tone="success" aria-hidden="true"></i>
-            <i id="message-box-error-icon" data-lucide="triangle-alert" class="hidden sc-icon sc-icon-sm rt-message-icon" data-tone="error" aria-hidden="true"></i>
-            <span id="message-box-text"></span>
-        </div>
-
         <section data-page-hero="runtime-target" class="rt-hero">
             <div class="rt-wordmark" aria-hidden="true">FLINK</div>
             <div class="rt-hero-copy">
@@ -36,6 +30,11 @@
                     <span class="rt-caret" aria-hidden="true"></span>
                 </h2>
                 <p class="rt-lead rt-rise" style="--d:120ms" th:text="#{runtimeTarget.hero.description}">配置该 StreamCraft service 连接的 Flink REST 端点。</p>
+                <div id="message-box" class="rt-message hidden" role="status" aria-live="polite">
+                    <i id="message-box-success-icon" data-lucide="check-circle-2" class="hidden sc-icon sc-icon-sm rt-message-icon" data-tone="success" aria-hidden="true"></i>
+                    <i id="message-box-error-icon" data-lucide="triangle-alert" class="hidden sc-icon sc-icon-sm rt-message-icon" data-tone="error" aria-hidden="true"></i>
+                    <span id="message-box-text"></span>
+                </div>
             </div>
         </section>
 
@@ -628,7 +627,7 @@
         display: flex;
         align-items: center;
         gap: 9px;
-        margin: 0 0 4px;
+        margin-top: 14px;
         padding: 10px 16px;
         border: 1px solid var(--sc-border);
         border-left: 3px solid var(--sc-accent);
@@ -636,6 +635,7 @@
         background: color-mix(in srgb, var(--sc-card) 92%, transparent);
         color: var(--sc-text-body);
         font-size: 13px;
+        max-width: 60ch;
     }
 
     .rt-message[data-tone="success"] {
