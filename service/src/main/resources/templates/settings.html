@@ -33,7 +33,23 @@
             </div>
         </section>
 
-        <section class="st-panel st-rise" style="--d:160ms">
+        <section class="st-workspace st-rise" style="--d:160ms">
+            <aside class="st-section-nav">
+                <p class="st-eyebrow-sm">
+                    <span aria-hidden="true">//</span>
+                    <span th:text="#{settings.hero.label}">管理</span>
+                </p>
+                <nav class="st-section-list" th:aria-label="${pageTitle}" aria-label="Settings">
+                    <a href="#settings-password-panel" class="st-section-option" aria-current="page">
+                        <span class="st-section-index" aria-hidden="true">01</span>
+                        <i data-lucide="key-round" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                        <span class="st-section-label" th:text="#{settings.password.title}">密码设置</span>
+                        <i data-lucide="chevron-right" class="st-section-arrow sc-icon sc-icon-sm" aria-hidden="true"></i>
+                    </a>
+                </nav>
+            </aside>
+
+        <div id="settings-password-panel" class="st-panel">
             <header class="st-panel-head">
                 <div class="st-panel-head-copy">
                     <p class="st-eyebrow-sm">
@@ -107,6 +123,7 @@
                     </button>
                 </div>
             </form>
+        </div>
         </section>
 
         <footer class="st-statusbar">
@@ -324,10 +341,105 @@
         line-height: 1.65;
     }
 
+    /* ---------- workspace ---------- */
+
+    .st-workspace {
+        display: grid;
+        grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+        align-items: start;
+        gap: 32px;
+    }
+
+    .st-section-nav {
+        position: sticky;
+        top: 22px;
+        min-width: 0;
+    }
+
+    .st-section-list {
+        display: grid;
+        gap: 6px;
+        margin-top: 12px;
+        padding-right: 20px;
+        border-right: 1px solid var(--sc-border);
+    }
+
+    .st-section-option {
+        display: grid;
+        grid-template-columns: 20px 18px minmax(0, 1fr) 18px;
+        align-items: center;
+        gap: 10px;
+        position: relative;
+        min-height: 44px;
+        padding: 10px 12px;
+        border: 1px solid transparent;
+        border-radius: 9px;
+        color: var(--sc-muted);
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+    }
+
+    .st-section-option::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        width: 0;
+        height: 20px;
+        border-radius: 2px;
+        background: var(--sc-accent);
+        transform: translateY(-50%);
+        transition: width 0.2s var(--st-ease);
+    }
+
+    .st-section-option:hover {
+        border-color: var(--sc-border);
+        background: var(--sc-surface);
+        color: var(--sc-text);
+    }
+
+    .st-section-option:focus-visible {
+        outline: 2px solid var(--sc-accent);
+        outline-offset: 2px;
+    }
+
+    .st-section-option[aria-current="page"] {
+        border-color: var(--sc-border);
+        background: var(--sc-accent-soft);
+        color: var(--sc-text);
+    }
+
+    .st-section-option[aria-current="page"]::before {
+        width: 3px;
+    }
+
+    .st-section-index {
+        color: var(--sc-muted-soft);
+        font-family: var(--st-font-mono);
+        font-size: 10px;
+        font-weight: 500;
+        letter-spacing: 0.14em;
+    }
+
+    .st-section-option[aria-current="page"] .st-section-index {
+        color: var(--sc-accent);
+    }
+
+    .st-section-arrow {
+        color: var(--sc-muted-soft);
+    }
+
+    .st-section-option[aria-current="page"] .st-section-arrow {
+        color: var(--sc-accent);
+    }
+
     /* ---------- panel ---------- */
 
     .st-panel {
-        max-width: 560px;
+        min-width: 0;
+        max-width: 640px;
         border: 1px solid var(--sc-border);
         border-radius: 14px;
         background: color-mix(in srgb, var(--sc-card-strong) 82%, transparent);
@@ -562,6 +674,34 @@
     @media (max-width: 767px) {
         .st-hero {
             padding-top: 26px;
+        }
+
+        .st-workspace {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 20px;
+        }
+
+        .st-section-nav {
+            position: static;
+            overflow-x: auto;
+        }
+
+        .st-section-list {
+            display: flex;
+            min-width: max-content;
+            margin-top: 10px;
+            padding-right: 0;
+            padding-bottom: 12px;
+            border-right: 0;
+            border-bottom: 1px solid var(--sc-border);
+        }
+
+        .st-section-option {
+            min-width: 180px;
+        }
+
+        .st-section-arrow {
+            transform: rotate(90deg);
         }
 
         .st-panel {
