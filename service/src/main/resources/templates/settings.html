@@ -74,46 +74,49 @@
                     <span id="settings-password-message-text"></span>
                 </div>
 
-                <div class="st-field">
-                    <label for="currentPassword" class="st-label" th:text="#{settings.password.current}">当前密码</label>
-                    <div class="st-input-wrap">
-                        <i data-lucide="key-round" class="sc-icon sc-icon-sm st-input-icon" aria-hidden="true"></i>
-                        <input id="currentPassword"
-                               name="currentPassword"
-                               type="password"
-                               autocomplete="current-password"
-                               class="st-input"
-                               required>
+                <div class="st-field-grid">
+                    <div class="st-field">
+                        <label for="currentPassword" class="st-label" th:text="#{settings.password.current}">当前密码</label>
+                        <div class="st-input-wrap">
+                            <i data-lucide="key-round" class="sc-icon sc-icon-sm st-input-icon" aria-hidden="true"></i>
+                            <input id="currentPassword"
+                                   name="currentPassword"
+                                   type="password"
+                                   autocomplete="current-password"
+                                   class="st-input"
+                                   required>
+                        </div>
                     </div>
-                </div>
 
-                <div class="st-field">
-                    <label for="newPassword" class="st-label" th:text="#{settings.password.new}">新密码</label>
-                    <div class="st-input-wrap">
-                        <i data-lucide="lock" class="sc-icon sc-icon-sm st-input-icon" aria-hidden="true"></i>
-                        <input id="newPassword"
-                               name="newPassword"
-                               type="password"
-                               autocomplete="new-password"
-                               class="st-input"
-                               required>
+                    <div class="st-field">
+                        <label for="newPassword" class="st-label" th:text="#{settings.password.new}">新密码</label>
+                        <div class="st-input-wrap">
+                            <i data-lucide="lock" class="sc-icon sc-icon-sm st-input-icon" aria-hidden="true"></i>
+                            <input id="newPassword"
+                                   name="newPassword"
+                                   type="password"
+                                   autocomplete="new-password"
+                                   class="st-input"
+                                   required>
+                        </div>
                     </div>
-                </div>
 
-                <div class="st-field">
-                    <label for="confirmPassword" class="st-label" th:text="#{settings.password.confirm}">确认新密码</label>
-                    <div class="st-input-wrap">
-                        <i data-lucide="badge-check" class="sc-icon sc-icon-sm st-input-icon" aria-hidden="true"></i>
-                        <input id="confirmPassword"
-                               name="confirmPassword"
-                               type="password"
-                               autocomplete="new-password"
-                               class="st-input"
-                               required>
+                    <div class="st-field">
+                        <label for="confirmPassword" class="st-label" th:text="#{settings.password.confirm}">确认新密码</label>
+                        <div class="st-input-wrap">
+                            <i data-lucide="badge-check" class="sc-icon sc-icon-sm st-input-icon" aria-hidden="true"></i>
+                            <input id="confirmPassword"
+                                   name="confirmPassword"
+                                   type="password"
+                                   autocomplete="new-password"
+                                   class="st-input"
+                                   required>
+                        </div>
                     </div>
                 </div>
 
                 <div class="st-actions">
+                    <span class="st-actions-note" aria-hidden="true">ENCRYPTED // TLS CHANNEL</span>
                     <button id="settings-password-submit"
                             type="submit"
                             class="st-btn st-btn-primary"
@@ -439,7 +442,6 @@
 
     .st-panel {
         min-width: 0;
-        max-width: 640px;
         border: 1px solid var(--sc-border);
         border-radius: 14px;
         background: color-mix(in srgb, var(--sc-card-strong) 82%, transparent);
@@ -497,14 +499,21 @@
     .st-form {
         display: flex;
         flex-direction: column;
+        gap: 20px;
+        padding: 24px;
+    }
+
+    .st-field-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 18px;
-        padding: 22px;
     }
 
     .st-field {
         display: flex;
         flex-direction: column;
         gap: 8px;
+        min-width: 0;
     }
 
     .st-label {
@@ -556,9 +565,18 @@
     .st-actions {
         display: flex;
         align-items: center;
-        justify-content: flex-end;
-        gap: 10px;
+        justify-content: space-between;
+        gap: 12px;
         flex-wrap: wrap;
+        padding-top: 20px;
+        border-top: 1px solid var(--sc-border-soft);
+    }
+
+    .st-actions-note {
+        color: var(--sc-muted-soft);
+        font-family: var(--st-font-mono);
+        font-size: 9.5px;
+        letter-spacing: 0.22em;
     }
 
     .st-btn {
@@ -704,12 +722,16 @@
             transform: rotate(90deg);
         }
 
-        .st-panel {
-            max-width: none;
+        .st-form {
+            padding: 18px;
         }
 
         .st-actions {
             justify-content: stretch;
+        }
+
+        .st-actions-note {
+            display: none;
         }
 
         .st-btn {
