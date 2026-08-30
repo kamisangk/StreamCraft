@@ -3,97 +3,846 @@
 <head th:replace="~{fragments/app-shell :: commonHead(${pageTitle})}">
     <title>StreamCraft</title>
 </head>
-<body class="sc-shell-page h-screen w-screen flex overflow-hidden">
+<body class="sc-shell-page sc-pl-page h-screen w-screen flex overflow-hidden">
+
+<div class="pl-bg" aria-hidden="true">
+    <div class="pl-bg-grid"></div>
+    <div class="pl-bg-aurora pl-bg-aurora-a"></div>
+    <div class="pl-bg-aurora pl-bg-aurora-b"></div>
+    <div class="pl-bg-noise"></div>
+</div>
+
 <aside th:replace="~{fragments/sidebar :: sidebar(${activeNav})}"></aside>
 
-<main class="sc-page-frame flex-1 flex flex-col min-w-0 relative overflow-hidden">
+<main class="sc-page-frame pl-frame flex-1 flex flex-col min-w-0 relative overflow-hidden">
     <header th:replace="~{fragments/topbar :: topbar(${pageTitle}, ${pageSubtitle})}"></header>
 
-    <div class="sc-page-content flex-1 overflow-y-auto space-y-8">
-        <div id="message-box" class="hidden sc-card-strong px-4 py-3 text-sm" role="status" aria-live="polite" aria-atomic="true"></div>
+    <div class="sc-page-content pl-content flex-1 overflow-y-auto">
+        <div id="message-box" class="pl-message hidden" role="status" aria-live="polite" aria-atomic="true"></div>
 
-        <section data-page-hero="pipelines" class="sc-page-hero">
-            <div>
-                <p class="sc-subtle-label" th:text="#{pipelines.hero.label}">Workspace</p>
-                <h2 class="sc-page-heading mt-3" th:text="#{pipelines.hero.title}">Manage saved realtime pipelines</h2>
-                <p class="sc-page-lead"></p>
+        <section data-page-hero="pipelines" class="pl-hero">
+            <div class="pl-wordmark" aria-hidden="true">PIPELINES</div>
+
+            <div class="pl-hero-copy">
+                <p class="pl-eyebrow pl-rise" style="--d:40ms">
+                    <span aria-hidden="true">//</span>
+                    <span th:text="#{pipelines.hero.label}">工作区</span>
+                </p>
+                <h2 class="pl-title pl-rise" style="--d:80ms">
+                    <span th:text="#{pipelines.hero.title}">管理已保存的实时任务</span>
+                    <span class="pl-caret" aria-hidden="true"></span>
+                </h2>
             </div>
-            <a data-create-pipeline-link th:href="@{/studio}" class="sc-btn-primary px-4 py-2 text-sm inline-flex items-center">
+
+            <a data-create-pipeline-link th:href="@{/studio}" class="pl-new-btn pl-rise" style="--d:120ms">
                 <i data-lucide="plus" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
-                <span th:text="#{pipelines.action.create}">New pipeline</span>
+                <span th:text="#{pipelines.action.create}">新建任务</span>
             </a>
         </section>
 
-        <section class="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:gap-5">
-            <div class="sc-summary-card flex items-start justify-between gap-4" data-summary-tone="neutral">
-                <div class="mt-2 text-slate-900 dark:text-slate-100">
-                    <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2" th:text="#{pipelines.summary.total}">Total pipelines</p>
-                    <div class="text-3xl font-semibold" id="summary-total">0</div>
-                </div>
-                <span class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500 dark:border-neutral-700 dark:bg-neutral-800/70 dark:text-neutral-300">
+        <section class="pl-counters">
+            <article class="pl-counter pl-rise" style="--d:160ms" data-tone="total">
+                <header class="pl-counter-head">
+                    <span class="pl-tag">CNT-01</span>
                     <i data-lucide="workflow" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
-                </span>
-
-            </div>
-            <div class="sc-summary-card flex items-start justify-between gap-4" data-summary-tone="running">
-                <div class="mt-2 text-emerald-600">
-                    <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2" th:text="#{pipelines.summary.running}">Running</p>
-                    <div class="text-3xl font-semibold" id="summary-running">0</div>
+                </header>
+                <div class="pl-counter-body">
+                    <span id="summary-total" class="pl-counter-num">0</span>
+                    <span class="pl-counter-label" th:text="#{pipelines.summary.total}">总任务数</span>
                 </div>
-                <span class="flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
+                <div class="pl-counter-bar" aria-hidden="true"><span></span></div>
+            </article>
+
+            <article class="pl-counter pl-rise" style="--d:200ms" data-tone="running">
+                <header class="pl-counter-head">
+                    <span class="pl-tag">CNT-02</span>
                     <i data-lucide="play-circle" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
-                </span>
-
-            </div>
-            <div class="sc-summary-card flex items-start justify-between gap-4" data-summary-tone="stopped">
-                <div class="mt-2 text-amber-600">
-                    <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2" th:text="#{pipelines.summary.stopped}">Stopped</p>
-                    <div class="text-3xl font-semibold" id="summary-stopped">0</div>
+                </header>
+                <div class="pl-counter-body">
+                    <span id="summary-running" class="pl-counter-num">0</span>
+                    <span class="pl-counter-label" th:text="#{pipelines.summary.running}">运行中</span>
                 </div>
-                <span class="flex h-9 w-9 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 text-amber-600 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                <div class="pl-counter-bar" aria-hidden="true"><span></span></div>
+            </article>
+
+            <article class="pl-counter pl-rise" style="--d:240ms" data-tone="stopped">
+                <header class="pl-counter-head">
+                    <span class="pl-tag">CNT-03</span>
                     <i data-lucide="pause-circle" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
-                </span>
+                </header>
+                <div class="pl-counter-body">
+                    <span id="summary-stopped" class="pl-counter-num">0</span>
+                    <span class="pl-counter-label" th:text="#{pipelines.summary.stopped}">已停止</span>
+                </div>
+                <div class="pl-counter-bar" aria-hidden="true"><span></span></div>
+            </article>
+        </section>
 
+        <section class="pl-filter pl-rise" style="--d:280ms">
+            <div class="pl-filter-search">
+                <label for="pipeline-search" class="sr-only" th:text="#{pipelines.search.label}">搜索任务</label>
+                <i data-lucide="search" class="sc-icon sc-icon-sm pl-filter-icon" aria-hidden="true"></i>
+                <input id="pipeline-search" type="text" class="pl-filter-input" th:placeholder="#{pipelines.search.placeholder}" placeholder="搜索任务">
+            </div>
+            <div class="pl-filter-status">
+                <label for="pipeline-status-filter" class="sr-only" th:text="#{pipelines.filter.status}">运行状态筛选</label>
+                <i data-lucide="list-filter" class="sc-icon sc-icon-sm pl-filter-icon" aria-hidden="true"></i>
+                <select id="pipeline-status-filter" class="pl-filter-select">
+                    <option value="ALL" th:text="#{pipelines.filter.all}">全部状态</option>
+                    <option value="RUNNING" th:text="#{pipelines.status.running}">运行中</option>
+                    <option value="STOPPED" th:text="#{pipelines.status.stopped}">已停止</option>
+                    <option value="FAILED" th:text="#{pipelines.status.failed}">失败</option>
+                </select>
             </div>
         </section>
 
-        <section class="sc-filter-bar">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-end">
-                <div class="flex-1">
-                    <label for="pipeline-search" class="sc-form-label" th:text="#{pipelines.search.label}">Search pipelines</label>
-                    <div class="sc-input-icon-wrap">
-                        <i data-lucide="search" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
-                        <input id="pipeline-search" type="text" class="sc-input" th:placeholder="#{pipelines.search.placeholder}" placeholder="Search pipelines">
-                    </div>
+        <section data-collection-panel="pipeline-list" class="pl-panel pl-rise" style="--d:320ms">
+            <header class="pl-panel-head">
+                <div class="pl-panel-head-copy">
+                    <p class="pl-eyebrow-sm">
+                        <span aria-hidden="true">//</span>
+                        <span th:text="#{pipelines.hero.label}">工作区</span>
+                    </p>
+                    <h3 id="pipeline-table-title" class="pl-panel-title" th:text="#{pipelines.list.title}">任务列表</h3>
                 </div>
-                <div class="w-full lg:w-56">
-                    <label for="pipeline-status-filter" class="sc-form-label" th:text="#{pipelines.filter.status}">Run status</label>
-                    <div class="sc-input-icon-wrap">
-                        <i data-lucide="list-filter" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
-                        <select id="pipeline-status-filter" class="sc-input">
-                            <option value="ALL" th:text="#{pipelines.filter.all}">All statuses</option>
-                            <option value="RUNNING" th:text="#{pipelines.status.running}">Running</option>
-                            <option value="STOPPED" th:text="#{pipelines.status.stopped}">Stopped</option>
-                            <option value="FAILED" th:text="#{pipelines.status.failed}">Failed</option>
-                        </select>
-                    </div>
+                <div class="pl-panel-meta">
+                    <span class="pl-panel-count"><span id="pl-visible-count">0</span>/<span id="pl-total-count">0</span></span>
+                    <i data-lucide="list-filter" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
                 </div>
-            </div>
+            </header>
+            <div id="pipeline-table" class="pl-table-scroll" aria-labelledby="pipeline-table-title" aria-busy="true"></div>
         </section>
 
-        <section data-collection-panel="pipeline-list" class="sc-table-wrap">
-            <div class="sc-panel-muted flex items-center justify-between rounded-none border-b-0 px-4 py-4 sm:px-6">
-                <div>
-                    <p class="sc-subtle-label" th:text="#{pipelines.hero.label}">Workspace</p>
-                    <h2 id="pipeline-table-title" class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100" th:text="#{pipelines.list.title}">Pipelines</h2>
-
-                </div>
-                <i data-lucide="list-filter" class="sc-icon sc-icon-sm text-slate-400 dark:text-slate-500" aria-hidden="true"></i>
-            </div>
-            <div id="pipeline-table" class="sc-table-scroll" aria-labelledby="pipeline-table-title" aria-busy="true"></div>
-        </section>
+        <footer class="pl-statusbar">
+            <span class="pl-statusbar-left">STREAMCRAFT // <span th:text="#{nav.pipelines}">任务管理</span></span>
+            <span class="pl-statusbar-right">
+                <span>LIST</span>
+                <span class="pl-live-dot" aria-hidden="true"></span>
+                <span id="pl-clock">--:--:--</span>
+            </span>
+        </footer>
     </div>
 </main>
+
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&display=swap');
+
+    .sc-pl-page {
+        --pl-font-display: 'Syne', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        --pl-font-mono: 'Fira Code', 'SFMono-Regular', Consolas, monospace;
+        --pl-ease: cubic-bezier(0.22, 1, 0.36, 1);
+        position: relative;
+    }
+
+    /* ---------- shell integration ---------- */
+
+    .sc-pl-page .sc-page-frame {
+        position: relative;
+        z-index: 1;
+        background: transparent;
+    }
+
+    .sc-pl-page .sc-shell-sidebar {
+        background: color-mix(in srgb, var(--sc-sidebar) 88%, transparent);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+    }
+
+    .sc-pl-page .sc-shell-topbar {
+        background: color-mix(in srgb, var(--sc-bg) 72%, transparent);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom-color: var(--sc-border-soft);
+    }
+
+    .sc-pl-page .sc-topbar-context {
+        display: none;
+    }
+
+    /* ---------- layered background ---------- */
+
+    .pl-bg {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        pointer-events: none;
+    }
+
+    .pl-bg-grid {
+        position: absolute;
+        inset: 0;
+        background-image:
+            linear-gradient(color-mix(in srgb, var(--sc-text) 5%, transparent) 1px, transparent 1px),
+            linear-gradient(90deg, color-mix(in srgb, var(--sc-text) 5%, transparent) 1px, transparent 1px);
+        background-size: 44px 44px;
+        -webkit-mask-image: radial-gradient(ellipse 90% 80% at 40% 0%, #000 0%, transparent 74%);
+        mask-image: radial-gradient(ellipse 90% 80% at 40% 0%, #000 0%, transparent 74%);
+    }
+
+    .pl-bg-aurora {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(70px);
+        will-change: transform;
+    }
+
+    .pl-bg-aurora-a {
+        top: -24%;
+        left: -10%;
+        width: 52vw;
+        height: 52vw;
+        background: radial-gradient(circle, color-mix(in srgb, var(--sc-accent) 15%, transparent), transparent 65%);
+    }
+
+    .pl-bg-aurora-b {
+        right: -18%;
+        bottom: -30%;
+        width: 46vw;
+        height: 46vw;
+        background: radial-gradient(circle, color-mix(in srgb, var(--sc-accent) 10%, transparent), transparent 65%);
+    }
+
+    .pl-bg-noise {
+        position: absolute;
+        inset: 0;
+        opacity: 0.5;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+    }
+
+    /* ---------- shared primitives ---------- */
+
+    .pl-tag {
+        color: var(--sc-muted-soft);
+        font-family: var(--pl-font-mono);
+        font-size: 9px;
+        font-weight: 500;
+        letter-spacing: 0.24em;
+    }
+
+    .pl-live-dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--sc-success);
+        box-shadow: 0 0 8px var(--sc-success);
+        animation: pl-pulse 2.4s ease-in-out infinite;
+    }
+
+    @keyframes pl-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.35; }
+    }
+
+    /* ---------- staggered entry ---------- */
+
+    @keyframes pl-rise-in {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .pl-rise {
+        animation: pl-rise-in 0.5s var(--pl-ease) backwards;
+        animation-delay: var(--d, 0ms);
+    }
+
+    /* ---------- hero ---------- */
+
+    .pl-hero {
+        position: relative;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 36px 0 28px;
+    }
+
+    .pl-wordmark {
+        position: absolute;
+        top: -6px;
+        left: -4px;
+        z-index: 0;
+        color: transparent;
+        font-family: var(--pl-font-display);
+        font-size: clamp(64px, 9vw, 128px);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 0.9;
+        -webkit-text-stroke: 1px color-mix(in srgb, var(--sc-text) 14%, transparent);
+        user-select: none;
+        pointer-events: none;
+    }
+
+    .pl-hero-copy {
+        position: relative;
+        z-index: 1;
+        min-width: 0;
+    }
+
+    .pl-eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--sc-accent);
+        font-family: var(--pl-font-mono);
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+    }
+
+    .pl-eyebrow span[aria-hidden] {
+        color: var(--sc-accent);
+    }
+
+    .pl-eyebrow span:last-child {
+        color: var(--sc-muted);
+    }
+
+    .pl-title {
+        margin-top: 14px;
+        color: var(--sc-text);
+        font-size: clamp(26px, 3.4vw, 40px);
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        line-height: 1.12;
+        max-width: 22ch;
+    }
+
+    .pl-caret {
+        display: inline-block;
+        width: 0.5em;
+        height: 1em;
+        margin-left: 8px;
+        vertical-align: -0.14em;
+        background: var(--sc-accent);
+        animation: pl-caret-blink 1.1s steps(1) infinite;
+    }
+
+    @keyframes pl-caret-blink {
+        0%, 49% { opacity: 1; }
+        50%, 100% { opacity: 0; }
+    }
+
+    .pl-new-btn {
+        position: relative;
+        z-index: 1;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 22px;
+        border: 1px solid var(--sc-accent);
+        background: var(--sc-accent);
+        color: var(--sc-primary-foreground);
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        box-shadow: 4px 4px 0 color-mix(in srgb, var(--sc-accent) 30%, transparent);
+        transition: transform 0.16s var(--pl-ease), box-shadow 0.16s var(--pl-ease);
+    }
+
+    .pl-new-btn:hover {
+        transform: translate(-1px, -1px);
+        box-shadow: 6px 6px 0 color-mix(in srgb, var(--sc-accent) 30%, transparent);
+    }
+
+    .pl-new-btn:active {
+        transform: translate(2px, 2px);
+        box-shadow: 1px 1px 0 color-mix(in srgb, var(--sc-accent) 30%, transparent);
+    }
+
+    /* ---------- counters ---------- */
+
+    .pl-counters {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .pl-counter {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 18px 20px 20px;
+        border: 1px solid var(--sc-border);
+        border-left: 3px solid var(--sc-accent);
+        background: color-mix(in srgb, var(--sc-card) 92%, transparent);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        overflow: hidden;
+    }
+
+    .pl-counter[data-tone="running"] { border-left-color: var(--sc-success); }
+    .pl-counter[data-tone="stopped"] { border-left-color: var(--sc-muted-soft); }
+
+    .pl-counter-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: var(--sc-muted);
+    }
+
+    .pl-counter[data-tone="running"] .pl-counter-head .sc-icon { color: var(--sc-success); }
+    .pl-counter[data-tone="stopped"] .pl-counter-head .sc-icon { color: var(--sc-muted-soft); }
+
+    .pl-counter-body {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .pl-counter-num {
+        color: var(--sc-text);
+        font-family: var(--pl-font-mono);
+        font-size: 34px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+    }
+
+    .pl-counter[data-tone="running"] .pl-counter-num { color: var(--sc-success); }
+    .pl-counter[data-tone="stopped"] .pl-counter-num { color: var(--sc-muted); }
+
+    .pl-counter-label {
+        color: var(--sc-muted);
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .pl-counter-bar {
+        height: 3px;
+        background: var(--sc-border-soft);
+        overflow: hidden;
+    }
+
+    .pl-counter-bar span {
+        display: block;
+        height: 100%;
+        width: 0%;
+        background: var(--sc-accent);
+        transition: width 0.6s var(--pl-ease);
+    }
+
+    .pl-counter[data-tone="running"] .pl-counter-bar span { background: var(--sc-success); }
+    .pl-counter[data-tone="stopped"] .pl-counter-bar span { background: var(--sc-muted-soft); }
+
+    /* ---------- filter ---------- */
+
+    .pl-filter {
+        display: flex;
+        gap: 12px;
+        margin-top: 18px;
+    }
+
+    .pl-filter-search,
+    .pl-filter-status {
+        position: relative;
+        display: flex;
+        align-items: center;
+        border: 1px solid var(--sc-border);
+        background: color-mix(in srgb, var(--sc-card) 92%, transparent);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .pl-filter-search:focus-within,
+    .pl-filter-status:focus-within {
+        border-color: var(--sc-accent);
+        box-shadow: 0 0 0 3px var(--sc-accent-soft);
+    }
+
+    .pl-filter-search {
+        flex: 1 1 auto;
+    }
+
+    .pl-filter-status {
+        flex: 0 0 auto;
+        min-width: 200px;
+    }
+
+    .pl-filter-icon {
+        margin: 0 0 0 14px;
+        color: var(--sc-muted-soft);
+        pointer-events: none;
+    }
+
+    .pl-filter-input,
+    .pl-filter-select {
+        flex: 1 1 auto;
+        width: 100%;
+        padding: 12px 16px;
+        border: 0;
+        background: transparent;
+        color: var(--sc-text);
+        font-family: inherit;
+        font-size: 13px;
+        outline: none;
+    }
+
+    .pl-filter-select {
+        appearance: none;
+        -webkit-appearance: none;
+        padding-right: 36px;
+        cursor: pointer;
+    }
+
+    .pl-filter-status::after {
+        position: absolute;
+        right: 14px;
+        width: 7px;
+        height: 7px;
+        border-right: 1.5px solid var(--sc-muted);
+        border-bottom: 1.5px solid var(--sc-muted);
+        transform: translateY(-1px) rotate(45deg);
+        content: "";
+        pointer-events: none;
+    }
+
+    /* ---------- panel ---------- */
+
+    .pl-panel {
+        margin-top: 18px;
+        border: 1px solid var(--sc-border);
+        background: color-mix(in srgb, var(--sc-card) 92%, transparent);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        overflow: hidden;
+    }
+
+    .pl-panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px 22px;
+        border-bottom: 1px solid var(--sc-border-soft);
+    }
+
+    .pl-eyebrow-sm {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--sc-muted-soft);
+        font-family: var(--pl-font-mono);
+        font-size: 9px;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+    }
+
+    .pl-eyebrow-sm span[aria-hidden] {
+        color: var(--sc-accent);
+    }
+
+    .pl-panel-title {
+        margin-top: 6px;
+        color: var(--sc-text);
+        font-size: 17px;
+        font-weight: 700;
+    }
+
+    .pl-panel-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--sc-muted);
+    }
+
+    .pl-panel-count {
+        font-family: var(--pl-font-mono);
+        font-size: 10.5px;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.1em;
+    }
+
+    /* ---------- table ---------- */
+
+    .pl-table-scroll {
+        overflow-x: auto;
+    }
+
+    .pl-table {
+        width: 100%;
+        min-width: 860px;
+        border-collapse: collapse;
+    }
+
+    .pl-table th {
+        padding: 12px 18px;
+        border-bottom: 1px solid var(--sc-border);
+        color: var(--sc-muted);
+        font-family: var(--pl-font-mono);
+        font-size: 9.5px;
+        font-weight: 500;
+        letter-spacing: 0.18em;
+        text-align: left;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .pl-table td {
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--sc-border-soft);
+        color: var(--sc-text-body);
+        font-size: 13px;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .pl-table tbody tr {
+        transition: background-color 0.15s ease;
+    }
+
+    .pl-table tbody tr:hover {
+        background: color-mix(in srgb, var(--sc-accent) 5%, transparent);
+    }
+
+    .pl-table tbody tr:last-child td {
+        border-bottom: 0;
+    }
+
+    .pl-row-index {
+        display: inline-block;
+        color: var(--sc-muted-soft);
+        font-family: var(--pl-font-mono);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+    }
+
+    .pl-cell-name {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 0;
+        max-width: 24rem;
+        white-space: normal;
+    }
+
+    .pl-cell-name strong {
+        color: var(--sc-text);
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .pl-cell-name small {
+        color: var(--sc-muted-soft);
+        font-size: 11.5px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .pl-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 4px 10px;
+        border: 1px solid var(--sc-border);
+        color: var(--sc-muted);
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    .pl-chip-dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    .pl-chip[data-tone="saved"] { color: var(--sc-muted); }
+    .pl-chip[data-tone="running"] { color: var(--sc-success); border-color: color-mix(in srgb, var(--sc-success) 40%, transparent); background: color-mix(in srgb, var(--sc-success) 8%, transparent); }
+    .pl-chip[data-tone="stopped"] { color: var(--sc-warning); border-color: color-mix(in srgb, var(--sc-warning) 40%, transparent); background: color-mix(in srgb, var(--sc-warning) 8%, transparent); }
+    .pl-chip[data-tone="failed"] { color: var(--sc-danger); border-color: color-mix(in srgb, var(--sc-danger) 40%, transparent); background: color-mix(in srgb, var(--sc-danger) 8%, transparent); }
+    .pl-chip[data-tone="unknown"] { color: var(--sc-muted-soft); }
+
+    .pl-cell-time {
+        font-family: var(--pl-font-mono);
+        font-size: 11.5px;
+        color: var(--sc-muted);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .pl-actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .pl-act {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 11px;
+        border: 1px solid transparent;
+        color: var(--sc-muted);
+        font-size: 12px;
+        font-weight: 500;
+        transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .pl-act:hover:not(:disabled) {
+        color: var(--sc-text);
+        border-color: var(--sc-border);
+        background: color-mix(in srgb, var(--sc-accent) 6%, transparent);
+        transform: translateY(-1px);
+    }
+
+    .pl-act:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .pl-act[data-tone="stop"]:hover:not(:disabled) { color: var(--sc-warning); border-color: color-mix(in srgb, var(--sc-warning) 40%, transparent); background: color-mix(in srgb, var(--sc-warning) 8%, transparent); }
+    .pl-act[data-tone="danger"]:hover:not(:disabled) { color: var(--sc-danger); border-color: color-mix(in srgb, var(--sc-danger) 40%, transparent); background: color-mix(in srgb, var(--sc-danger) 8%, transparent); }
+    .pl-act[data-busy] {
+        opacity: 0.6;
+        cursor: wait;
+    }
+
+    .pl-act .sc-icon {
+        flex: 0 0 auto;
+    }
+
+    /* ---------- message ---------- */
+
+    .pl-message {
+        margin: 0 0 4px;
+        padding: 10px 16px;
+        border: 1px solid var(--sc-border);
+        border-left: 3px solid var(--sc-accent);
+        background: color-mix(in srgb, var(--sc-card) 92%, transparent);
+        color: var(--sc-text-body);
+        font-size: 13px;
+    }
+
+    .pl-message[data-kind="success"] { border-left-color: var(--sc-success); color: var(--sc-success); }
+    .pl-message[data-kind="error"] { border-left-color: var(--sc-danger); color: var(--sc-danger); }
+
+    /* ---------- empty ---------- */
+
+    .pl-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        padding: 56px 20px;
+        text-align: center;
+    }
+
+    .pl-empty-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 52px;
+        height: 52px;
+        border: 1px dashed var(--sc-border);
+        color: var(--sc-muted-soft);
+    }
+
+    .pl-empty-title {
+        color: var(--sc-text);
+        font-size: 15px;
+        font-weight: 600;
+    }
+
+    .pl-empty-desc {
+        color: var(--sc-muted);
+        font-size: 12.5px;
+    }
+
+    /* ---------- statusbar ---------- */
+
+    .pl-statusbar {
+        position: sticky;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-top: 18px;
+        padding: 10px 16px;
+        border-top: 1px solid var(--sc-border-soft);
+        background: color-mix(in srgb, var(--sc-bg) 88%, transparent);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        color: var(--sc-muted-soft);
+        font-family: var(--pl-font-mono);
+        font-size: 9.5px;
+        letter-spacing: 0.2em;
+    }
+
+    .pl-statusbar-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    #pl-clock {
+        color: var(--sc-muted);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* ---------- responsive ---------- */
+
+    @media (max-width: 1023px) {
+        .pl-counters {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .pl-counter:nth-child(3) {
+            grid-column: 1 / -1;
+        }
+    }
+
+    @media (max-width: 767px) {
+        .pl-hero {
+            flex-direction: column;
+            align-items: stretch;
+            padding-top: 26px;
+        }
+
+        .pl-new-btn {
+            align-self: flex-start;
+        }
+
+        .pl-counters {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .pl-filter {
+            flex-direction: column;
+        }
+
+        .pl-filter-status {
+            min-width: 0;
+        }
+
+        .pl-statusbar {
+            letter-spacing: 0.12em;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .pl-rise,
+        .pl-caret,
+        .pl-live-dot,
+        .pl-counter-bar span {
+            animation: none;
+            transition: none;
+        }
+    }
+</style>
 
 <script th:inline="javascript">
     const t = window.StreamCraftI18n?.t || ((key, fallback, params) => {
@@ -111,11 +860,11 @@
         FAILED: t("pipelines.status.failed", "Failed"),
         UNKNOWN: t("pipelines.status.unknown", "Not run")
     };
-    const runtimeStatusClasses = {
-        RUNNING: "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-500/30",
-        STOPPED: "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-200 border border-amber-200 dark:border-amber-500/30",
-        FAILED: "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-200 border border-red-200 dark:border-red-500/30",
-        UNKNOWN: "bg-slate-200 dark:bg-neutral-800/70 text-slate-700 dark:text-neutral-300 border border-slate-300 dark:border-neutral-600"
+    const runtimeStatusTones = {
+        RUNNING: "running",
+        STOPPED: "stopped",
+        FAILED: "failed",
+        UNKNOWN: "unknown"
     };
 
     let allPipelines = [];
@@ -123,32 +872,13 @@
 
     function showMessage(kind, text) {
         const box = document.getElementById("message-box");
-        box.classList.remove(
-            "hidden",
-            "border-emerald-200",
-            "bg-emerald-50",
-            "dark:bg-emerald-500/10",
-            "text-emerald-700",
-            "dark:text-emerald-200",
-            "border-red-500/30",
-            "bg-red-50",
-            "dark:bg-red-500/10",
-            "text-red-700",
-            "dark:text-red-200",
-            "border-slate-200",
-            "bg-slate-50",
-            "dark:bg-neutral-800/70",
-            "text-slate-700",
-            "dark:text-neutral-300"
-        );
-        if (kind === "success") {
-            box.classList.add("border-emerald-200", "bg-emerald-50", "dark:bg-emerald-500/10", "text-emerald-700", "dark:text-emerald-200");
-        } else if (kind === "info") {
-            box.classList.add("border-slate-200", "bg-slate-50", "dark:bg-neutral-800/70", "text-slate-700", "dark:text-neutral-300");
-        } else {
-            box.classList.add("border-red-500/30", "bg-red-50", "dark:bg-red-500/10", "text-red-700", "dark:text-red-200");
-        }
+        box.dataset.kind = kind;
+        box.classList.remove("hidden");
         box.textContent = text;
+    }
+
+    function hideMessage() {
+        document.getElementById("message-box").classList.add("hidden");
     }
 
     function escapeHtml(value) {
@@ -172,13 +902,25 @@
     }
 
     function updateSummary(pipelines) {
-        document.getElementById("summary-total").textContent = String(pipelines.length);
-        document.getElementById("summary-running").textContent = String(
-            pipelines.filter(item => normalizeRunStatus(item) === "RUNNING").length
-        );
-        document.getElementById("summary-stopped").textContent = String(
-            pipelines.filter(item => normalizeRunStatus(item) !== "RUNNING").length
-        );
+        const total = pipelines.length;
+        const running = pipelines.filter(item => normalizeRunStatus(item) === "RUNNING").length;
+        const stopped = total - running;
+
+        document.getElementById("summary-total").textContent = String(total);
+        document.getElementById("summary-running").textContent = String(running);
+        document.getElementById("summary-stopped").textContent = String(stopped);
+
+        const setBar = (id, value) => {
+            const bar = document.querySelector(`${id} .pl-counter-bar span`);
+            if (bar) {
+                bar.style.width = total > 0 ? `${Math.round((value / total) * 100)}%` : "0%";
+            }
+        };
+        setBar('[data-tone="total"]', total);
+        setBar('[data-tone="running"]', running);
+        setBar('[data-tone="stopped"]', stopped);
+
+        document.getElementById("pl-total-count").textContent = String(total);
     }
 
     function filteredPipelines() {
@@ -191,38 +933,33 @@
         });
     }
 
-    function actionButtonClasses(isBusy, tone, isDisabled = false) {
-        if (isBusy) {
-            return "opacity-60 cursor-wait";
-        }
-        if (isDisabled) {
-            return "text-slate-500 dark:text-slate-400 cursor-not-allowed";
-        }
-        if (tone === "stop") {
-            return "text-amber-600 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200";
-        }
-        if (tone === "delete") {
-            return "text-red-600 hover:text-red-700 dark:text-red-300 dark:hover:text-red-200";
-        }
-        return "text-slate-900 hover:text-slate-600 dark:text-slate-100 dark:hover:text-slate-300";
-    }
-
     function isRunningPipeline(item) {
         return normalizeRunStatus(item) === "RUNNING";
+    }
+
+    function actionTone(item, tone) {
+        const isBusy = busyPipelineIds.has(item.id);
+        if (isBusy) {
+            return " data-busy";
+        }
+        return tone ? ` data-tone="${tone}"` : "";
     }
 
     function buildActionButtons(item) {
         const isBusy = busyPipelineIds.has(item.id);
         const isRunning = isRunningPipeline(item);
         const deleteDisabled = isBusy || isRunning;
-        const actionClass = "inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500";
         const runIcon = isRunning ? "square" : "play";
-        const runButton = `<button type="button" class="${isRunning ? "stop-button" : "run-button"} ${actionClass} ${actionButtonClasses(isBusy, isRunning ? "stop" : "run")}" data-pipeline-id="${item.id}" ${isBusy ? "disabled" : ""}><i data-lucide="${runIcon}" class="sc-icon sc-icon-sm pointer-events-none" aria-hidden="true"></i><span class="pointer-events-none">${isRunning ? t("pipelines.action.stop", "Stop") : t("pipelines.action.run", "Run")}</span></button>`;
-        const deleteButton = `<button type="button" class="delete-button ${actionClass} ${actionButtonClasses(isBusy, "delete", deleteDisabled)}" data-pipeline-id="${item.id}" ${deleteDisabled ? "disabled" : ""} ${isRunning ? `title="${escapeHtml(t("pipelines.delete.disabledRunning", "Stop the pipeline before deleting"))}"` : ""}><i data-lucide="trash-2" class="sc-icon sc-icon-sm pointer-events-none" aria-hidden="true"></i><span class="pointer-events-none">${t("pipelines.action.delete", "Delete")}</span></button>`;
+        const runButton = `<button type="button" class="pl-act${isRunning ? " stop-button" : " run-button"}"${actionTone(item, isRunning ? "stop" : "")}" data-pipeline-id="${item.id}"${isBusy ? " disabled" : ""}><i data-lucide="${runIcon}" class="sc-icon sc-icon-sm pointer-events-none" aria-hidden="true"></i><span class="pointer-events-none">${isRunning ? t("pipelines.action.stop", "Stop") : t("pipelines.action.run", "Run")}</span></button>`;
+        const deleteButton = `<button type="button" class="pl-act delete-button"${actionTone(item, "danger")}" data-pipeline-id="${item.id}"${deleteDisabled ? " disabled" : ""}${isRunning ? ` title="${escapeHtml(t("pipelines.delete.disabledRunning", "Stop the pipeline before deleting"))}"` : ""}><i data-lucide="trash-2" class="sc-icon sc-icon-sm pointer-events-none" aria-hidden="true"></i><span class="pointer-events-none">${t("pipelines.action.delete", "Delete")}</span></button>`;
         const monitorLink = isRunning
-                ? `<a href="/pipelines/${item.id}/monitor" class="inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-slate-900 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:text-slate-100 dark:hover:bg-neutral-800 dark:hover:text-slate-300"><i data-lucide="activity" class="sc-icon sc-icon-sm pointer-events-none" aria-hidden="true"></i><span>${t("pipelines.action.monitor", "Monitor")}</span></a>`
+                ? `<a href="/pipelines/${item.id}/monitor" class="pl-act"${actionTone(item, "success")}"><i data-lucide="activity" class="sc-icon sc-icon-sm pointer-events-none" aria-hidden="true"></i><span class="pointer-events-none">${t("pipelines.action.monitor", "Monitor")}</span></a>`
                 : "";
         return `${runButton}${deleteButton}${monitorLink}`;
+    }
+
+    function statusChip(label, tone) {
+        return `<span class="pl-chip" data-tone="${tone}"><span class="pl-chip-dot" aria-hidden="true"></span>${escapeHtml(label)}</span>`;
     }
 
     function renderTable() {
@@ -231,17 +968,17 @@
 
         const container = document.getElementById("pipeline-table");
         container.setAttribute("aria-busy", busyPipelineIds.size > 0 ? "true" : "false");
+        document.getElementById("pl-visible-count").textContent = String(pipelines.length);
+
         if (pipelines.length === 0) {
             container.innerHTML = `
-                <div class="sc-empty-state px-5 py-14 text-center sm:px-6 sm:py-16">
-                    <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-                        <i data-lucide="workflow" class="sc-icon-lg" aria-hidden="true"></i>
-                    </div>
-                    <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">${t("pipelines.empty.title", "No pipelines yet")}</h3>
-                    <p class="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-6">${t("pipelines.empty.description", "Create a Kafka Source to Kafka Sink draft first.")}</p>
-                    <a href="/studio" class="sc-btn-primary inline-flex items-center px-4 py-2 text-sm">
+                <div class="pl-empty" role="status">
+                    <span class="pl-empty-icon"><i data-lucide="workflow" class="sc-icon-lg" aria-hidden="true"></i></span>
+                    <h3 class="pl-empty-title">${t("pipelines.empty.title", "No pipelines yet")}</h3>
+                    <p class="pl-empty-desc">${t("pipelines.empty.description", "Create a Kafka Source to Kafka Sink draft first.")}</p>
+                    <a href="/studio" class="pl-new-btn">
                         <i data-lucide="plus" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
-                        ${t("pipelines.action.create", "New pipeline")}
+                        <span>${t("pipelines.action.create", "New pipeline")}</span>
                     </a>
                 </div>
             `;
@@ -249,33 +986,29 @@
             return;
         }
 
-        const rows = pipelines.map(item => {
+        const rows = pipelines.map((item, index) => {
             const runStatusKey = normalizeRunStatus(item);
             const runStatusLabel = runtimeStatusLabels[runStatusKey] || runStatusKey;
-            const runStatusClass = runtimeStatusClasses[runStatusKey] || runtimeStatusClasses.UNKNOWN;
+            const runStatusTone = runtimeStatusTones[runStatusKey] || "unknown";
+            const rowIndex = `P-${String(index + 1).padStart(2, "0")}`;
 
             return `
-                <tr class="hover:bg-slate-100 dark:hover:bg-neutral-800/80 dark:bg-neutral-900/40 transition-colors">
-                    <td class="sc-table-primary-cell px-4 py-4 text-left sm:px-6">
-                        <div class="max-w-[24rem] truncate font-semibold text-slate-900 dark:text-slate-100 text-center">${escapeHtml(item.name)}</div>
-                        <div class="mt-1 max-w-[24rem] truncate text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">${escapeHtml(item.description || t("pipelines.description.empty", "No description"))}</div>
+                <tr>
+                    <td><span class="pl-row-index">${rowIndex}</span></td>
+                    <td>
+                        <div class="pl-cell-name">
+                            <strong title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</strong>
+                            <small>${escapeHtml(item.description || t("pipelines.description.empty", "No description"))}</small>
+                        </div>
                     </td>
-                    <td class="px-4 py-4 text-left sm:px-6">
-                        <span class="sc-table-status-badge inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-neutral-800/70 text-slate-700 dark:text-neutral-300 border border-slate-200 dark:border-neutral-600">
-                            ${t("pipelines.saved", "Saved")}
-                        </span>
-                    </td>
-                    <td class="px-4 py-4 text-left sm:px-6">
-                        <span class="sc-table-status-badge inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${runStatusClass}">
-                            ${escapeHtml(runStatusLabel)}
-                        </span>
-                    </td>
-                    <td class="px-4 py-4 text-left text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 sm:px-6">${escapeHtml(formatTime(item.updatedAt))}</td>
-                    <td class="px-4 py-4 text-left sm:px-6">
-                        <div class="sc-table-action-group text-sm">
-                            <a href="/studio/${item.id}" class="inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-slate-900 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:text-slate-100 dark:hover:bg-neutral-800 dark:hover:text-slate-300"><i data-lucide="pencil" class="sc-icon sc-icon-sm pointer-events-none" aria-hidden="true"></i><span>${t("pipelines.action.edit", "Edit")}</span></a>
+                    <td>${statusChip(t("pipelines.saved", "Saved"), "saved")}</td>
+                    <td>${statusChip(runStatusLabel, runStatusTone)}</td>
+                    <td><span class="pl-cell-time">${escapeHtml(formatTime(item.updatedAt))}</span></td>
+                    <td>
+                        <div class="pl-actions">
+                            <a href="/studio/${item.id}" class="pl-act"><i data-lucide="pencil" class="sc-icon sc-icon-sm pointer-events-none" aria-hidden="true"></i><span class="pointer-events-none">${t("pipelines.action.edit", "Edit")}</span></a>
                             ${buildActionButtons(item)}
-                            <a href="/api/pipelines/${item.id}/definition" target="_blank" class="inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-neutral-800 dark:hover:text-slate-100"><i data-lucide="file-code-2" class="sc-icon sc-icon-sm pointer-events-none" aria-hidden="true"></i><span>${t("pipelines.action.viewDsl", "View DSL")}</span></a>
+                            <a href="/api/pipelines/${item.id}/definition" target="_blank" class="pl-act"><i data-lucide="file-code-2" class="sc-icon sc-icon-sm pointer-events-none" aria-hidden="true"></i><span class="pointer-events-none">${t("pipelines.action.viewDsl", "View DSL")}</span></a>
                         </div>
                     </td>
                 </tr>
@@ -283,17 +1016,18 @@
         }).join("");
 
         container.innerHTML = `
-            <table class="sc-data-table min-w-[760px] w-full border-collapse text-left whitespace-nowrap" aria-labelledby="pipeline-table-title">
+            <table class="pl-table" aria-labelledby="pipeline-table-title">
                 <thead>
-                    <tr class="sc-panel-muted text-xs font-medium text-slate-500 dark:text-slate-400">
-                        <th class="px-6 py-4 border-b border-slate-300 dark:border-slate-700 text-center">${t("pipelines.table.pipeline", "Pipeline")}</th>
-                        <th class="px-6 py-4 border-b border-slate-300 dark:border-slate-700 text-center">${t("pipelines.table.status", "Status")}</th>
-                        <th class="px-6 py-4 border-b border-slate-300 dark:border-slate-700 text-center">${t("pipelines.table.runStatus", "Run status")}</th>
-                        <th class="px-6 py-4 border-b border-slate-300 dark:border-slate-700 text-center">${t("pipelines.table.updated", "Last updated")}</th>
-                        <th class="px-6 py-4 border-b border-slate-300 dark:border-slate-700 text-center">${t("pipelines.table.actions", "Actions")}</th>
+                    <tr>
+                        <th>#</th>
+                        <th>${t("pipelines.table.pipeline", "Pipeline")}</th>
+                        <th>${t("pipelines.table.status", "Status")}</th>
+                        <th>${t("pipelines.table.runStatus", "Run status")}</th>
+                        <th>${t("pipelines.table.updated", "Last updated")}</th>
+                        <th>${t("pipelines.table.actions", "Actions")}</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-200 dark:divide-neutral-800/70 text-sm">${rows}</tbody>
+                <tbody>${rows}</tbody>
             </table>
         `;
         window.StreamCraftIcons?.refresh();
@@ -407,6 +1141,13 @@
             }
         }
     });
+
+    const plClock = document.getElementById("pl-clock");
+    function tickPlClock() {
+        plClock.textContent = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+    }
+    tickPlClock();
+    setInterval(tickPlClock, 1000);
 
     loadPipelines();
 </script>
