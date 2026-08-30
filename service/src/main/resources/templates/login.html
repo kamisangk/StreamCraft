@@ -75,10 +75,6 @@
                          class="login-brand-mark">
                     <span class="login-brand-name">StreamCraft</span>
                 </div>
-                <div class="login-status">
-                    <span class="login-status-dot" aria-hidden="true"></span>
-                    <span th:text="#{login.hero.status}">ALL SYSTEMS OPERATIONAL</span>
-                </div>
             </div>
 
             <div class="login-hero-body mt-auto mb-auto pt-10 lg:pt-12">
@@ -122,21 +118,6 @@
                         <text class="login-viz-label" x="490" y="122" text-anchor="middle" th:text="#{login.viz.sink}">SINK</text>
                     </g>
                 </svg>
-            </div>
-
-            <div class="login-hero-stats login-rise" style="--d:290ms">
-                <div class="login-stat">
-                    <span class="login-stat-value">99.9%</span>
-                    <span class="login-stat-label" th:text="#{login.hero.stat.sla}">SERVICE SLA</span>
-                </div>
-                <div class="login-stat">
-                    <span class="login-stat-value">&lt;12ms</span>
-                    <span class="login-stat-label" th:text="#{login.hero.stat.latency}">E2E LATENCY</span>
-                </div>
-                <div class="login-stat">
-                    <span class="login-stat-value">128+</span>
-                    <span class="login-stat-label" th:text="#{login.hero.stat.pipelines}">PARALLEL PIPELINES</span>
-                </div>
             </div>
         </section>
 
@@ -389,32 +370,6 @@
             letter-spacing: -0.01em;
         }
 
-        .login-status {
-            display: inline-flex;
-            align-items: center;
-            gap: 9px;
-            padding: 7px 13px;
-            border: 1px solid var(--sc-border);
-            border-radius: 9999px;
-            background: color-mix(in srgb, var(--sc-card-strong) 72%, transparent);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            color: var(--sc-muted);
-            font-family: var(--login-font-mono);
-            font-size: 10px;
-            letter-spacing: 0.16em;
-            white-space: nowrap;
-        }
-
-        .login-status-dot {
-            width: 6px;
-            height: 6px;
-            flex: 0 0 auto;
-            border-radius: 50%;
-            background: var(--sc-success);
-            animation: login-dot 2.6s ease-out infinite;
-        }
-
         @keyframes login-dot {
             0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--sc-success) 42%, transparent); }
             70% { box-shadow: 0 0 0 7px transparent; }
@@ -556,45 +511,6 @@
             font-family: var(--login-font-mono);
             font-size: 9px;
             letter-spacing: 0.14em;
-        }
-
-        /* ---------- hero stats ---------- */
-
-        .login-hero-stats {
-            position: relative;
-            z-index: 1;
-            display: flex;
-            gap: clamp(20px, 3.4vw, 44px);
-            padding-top: 22px;
-            border-top: 1px solid var(--sc-border-soft);
-        }
-
-        .login-stat {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            min-width: 0;
-        }
-
-        .login-stat + .login-stat {
-            padding-left: clamp(20px, 3.4vw, 44px);
-            border-left: 1px solid var(--sc-border-soft);
-        }
-
-        .login-stat-value {
-            color: var(--sc-text);
-            font-family: var(--login-font-mono);
-            font-size: clamp(16px, 1.7vw, 20px);
-            font-weight: 600;
-            letter-spacing: -0.01em;
-        }
-
-        .login-stat-label {
-            color: var(--sc-muted-soft);
-            font-family: var(--login-font-mono);
-            font-size: 10px;
-            letter-spacing: 0.18em;
-            text-transform: uppercase;
         }
 
         /* ---------- form panel ---------- */
@@ -1123,10 +1039,6 @@
             .login-rail {
                 display: none;
             }
-
-            .login-hero-stats {
-                display: none;
-            }
         }
 
         @media (max-width: 767px) {
@@ -1167,7 +1079,6 @@
             .login-viz-flow,
             .login-viz-pulse,
             .login-caret,
-            .login-status-dot,
             .login-footer-dot {
                 animation: none;
                 transition: none;
