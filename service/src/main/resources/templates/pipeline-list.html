@@ -339,23 +339,24 @@
         gap: 8px;
         padding: 12px 22px;
         border: 1px solid var(--sc-accent);
+        border-radius: 9px;
         background: var(--sc-accent);
         color: var(--sc-primary-foreground);
         font-size: 13px;
         font-weight: 600;
         letter-spacing: 0.04em;
-        box-shadow: 4px 4px 0 color-mix(in srgb, var(--sc-accent) 30%, transparent);
+        box-shadow: 0 10px 24px color-mix(in srgb, var(--sc-accent) 26%, transparent);
         transition: transform 0.16s var(--pl-ease), box-shadow 0.16s var(--pl-ease);
     }
 
     .pl-new-btn:hover {
-        transform: translate(-1px, -1px);
-        box-shadow: 6px 6px 0 color-mix(in srgb, var(--sc-accent) 30%, transparent);
+        transform: translateY(-1px);
+        box-shadow: 0 14px 30px color-mix(in srgb, var(--sc-accent) 32%, transparent);
     }
 
     .pl-new-btn:active {
-        transform: translate(2px, 2px);
-        box-shadow: 1px 1px 0 color-mix(in srgb, var(--sc-accent) 30%, transparent);
+        transform: translateY(0);
+        box-shadow: 0 6px 16px color-mix(in srgb, var(--sc-accent) 22%, transparent);
     }
 
     /* ---------- counters ---------- */
@@ -374,6 +375,7 @@
         padding: 18px 20px 20px;
         border: 1px solid var(--sc-border);
         border-left: 3px solid var(--sc-accent);
+        border-radius: 14px;
         background: color-mix(in srgb, var(--sc-card) 92%, transparent);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
@@ -449,6 +451,7 @@
         display: flex;
         align-items: center;
         border: 1px solid var(--sc-border);
+        border-radius: 10px;
         background: color-mix(in srgb, var(--sc-card) 92%, transparent);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
@@ -513,6 +516,7 @@
     .pl-panel {
         margin-top: 18px;
         border: 1px solid var(--sc-border);
+        border-radius: 14px;
         background: color-mix(in srgb, var(--sc-card) 92%, transparent);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
@@ -645,8 +649,9 @@
         display: inline-flex;
         align-items: center;
         gap: 7px;
-        padding: 4px 10px;
+        padding: 4px 11px;
         border: 1px solid var(--sc-border);
+        border-radius: 9999px;
         color: var(--sc-muted);
         font-size: 11px;
         font-weight: 500;
@@ -685,6 +690,7 @@
         gap: 6px;
         padding: 7px 11px;
         border: 1px solid transparent;
+        border-radius: 9px;
         color: var(--sc-muted);
         font-size: 12px;
         font-weight: 500;
@@ -721,6 +727,7 @@
         padding: 10px 16px;
         border: 1px solid var(--sc-border);
         border-left: 3px solid var(--sc-accent);
+        border-radius: 10px;
         background: color-mix(in srgb, var(--sc-card) 92%, transparent);
         color: var(--sc-text-body);
         font-size: 13px;
@@ -747,6 +754,7 @@
         width: 52px;
         height: 52px;
         border: 1px dashed var(--sc-border);
+        border-radius: 12px;
         color: var(--sc-muted-soft);
     }
 
