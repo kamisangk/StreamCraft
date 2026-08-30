@@ -1,103 +1,740 @@
 <!DOCTYPE html>
 <html th:lang="${currentLocaleTag}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/app-shell :: commonHead(${pageTitle})}"></head>
-<body class="sc-shell-page min-h-[100dvh] w-screen flex overflow-hidden">
-<th:block th:replace="~{fragments/sidebar :: sidebar(${activeNav})}"></th:block>
-<main class="sc-page-frame flex-1 flex flex-col min-w-0 relative overflow-hidden">
-    <th:block th:replace="~{fragments/topbar :: topbar(${pageTitle}, ${pageSubtitle})}"></th:block>
-    <div class="sc-page-content flex-1 overflow-y-auto space-y-8">
-        <div id="message-box" class="hidden sc-card-strong sc-feedback-message px-4 py-3 text-sm" role="status" aria-live="polite">
-            <i id="message-box-success-icon" data-lucide="check-circle-2" class="sc-feedback-message-icon hidden sc-icon sc-icon-sm text-[var(--sc-success)]" aria-hidden="true"></i>
-            <i id="message-box-error-icon" data-lucide="triangle-alert" class="sc-feedback-message-icon hidden sc-icon sc-icon-sm text-[var(--sc-danger)]" aria-hidden="true"></i>
+<head th:replace="~{fragments/app-shell :: commonHead(${pageTitle})}">
+    <title>StreamCraft</title>
+</head>
+<body class="sc-shell-page sc-rt-page h-screen w-screen flex overflow-hidden">
+
+<div class="rt-bg" aria-hidden="true">
+    <div class="rt-bg-grid"></div>
+    <div class="rt-bg-aurora rt-bg-aurora-a"></div>
+    <div class="rt-bg-aurora rt-bg-aurora-b"></div>
+    <div class="rt-bg-noise"></div>
+</div>
+
+<aside th:replace="~{fragments/sidebar :: sidebar(${activeNav})}"></aside>
+
+<main class="sc-page-frame rt-frame flex-1 flex flex-col min-w-0 relative overflow-hidden">
+    <header th:replace="~{fragments/topbar :: topbar(${pageTitle}, ${pageSubtitle})}"></header>
+
+    <div class="sc-page-content rt-content flex-1 overflow-y-auto">
+        <div id="message-box" class="rt-message hidden" role="status" aria-live="polite">
+            <i id="message-box-success-icon" data-lucide="check-circle-2" class="sc-icon sc-icon-sm rt-message-icon" data-tone="success" aria-hidden="true"></i>
+            <i id="message-box-error-icon" data-lucide="triangle-alert" class="sc-icon sc-icon-sm rt-message-icon" data-tone="error" aria-hidden="true"></i>
             <span id="message-box-text"></span>
         </div>
 
-        <section data-page-hero="runtime-target" class="sc-page-hero">
-            <div class="min-w-0 max-w-3xl">
-                <p class="sc-subtle-label" th:text="#{runtimeTarget.hero.label}">Infrastructure</p>
-                <h2 class="sc-page-heading mt-3" th:text="#{runtimeTarget.hero.title}">Flink</h2>
-                <p class="sc-page-lead" th:text="#{runtimeTarget.hero.description}">Choose the only Flink runtime mode this StreamCraft service connects to.</p>
+        <section data-page-hero="runtime-target" class="rt-hero">
+            <div class="rt-wordmark" aria-hidden="true">FLINK</div>
+            <div class="rt-hero-copy">
+                <p class="rt-eyebrow rt-rise" style="--d:40ms">
+                    <span aria-hidden="true">//</span>
+                    <span th:text="#{runtimeTarget.hero.label}">基础设施</span>
+                </p>
+                <h2 class="rt-title rt-rise" style="--d:80ms">
+                    <span th:text="#{runtimeTarget.hero.title}">Flink</span>
+                    <span class="rt-caret" aria-hidden="true"></span>
+                </h2>
+                <p class="rt-lead rt-rise" style="--d:120ms" th:text="#{runtimeTarget.hero.description}">配置该 StreamCraft service 连接的 Flink REST 端点。</p>
             </div>
         </section>
 
-        <section class="grid grid-cols-1 gap-4 md:grid-cols-3 lg:gap-6">
-            <div class="sc-summary-card sc-config-stat" data-tone="mode">
-                <div class="sc-config-stat-top">
-                    <span class="sc-config-stat-icon" aria-hidden="true">
-                        <i data-lucide="network" class="sc-icon sc-icon-sm"></i>
-                    </span>
+        <section class="rt-stats">
+            <article class="rt-stat rt-rise" style="--d:160ms" data-tone="mode">
+                <header class="rt-stat-head">
+                    <span class="rt-tag">RT-01</span>
+                    <i data-lucide="network" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                </header>
+                <div class="rt-stat-body">
+                    <span class="rt-stat-label" th:text="#{runtimeTarget.summary.mode}">运行模式</span>
+                    <span id="summary-runtime-mode" class="rt-stat-value">-</span>
                 </div>
-                <div>
-                    <p class="sc-config-stat-label mb-3" th:text="#{runtimeTarget.summary.mode}">Runtime mode</p>
-                    <h3 id="summary-runtime-mode" class="sc-config-stat-value sc-code">-</h3>
-                </div>
-            </div>
-            <div class="sc-summary-card sc-config-stat" data-tone="status">
-                <div class="sc-config-stat-top">
-                    <span class="sc-config-stat-icon" aria-hidden="true">
-                        <i data-lucide="activity" class="sc-icon sc-icon-sm"></i>
-                    </span>
-                </div>
-                <div>
-                    <p class="sc-config-stat-label mb-3" th:text="#{runtimeTarget.summary.status}">Status</p>
-                    <h3 id="summary-runtime-status" class="sc-config-stat-value sc-runtime-status" data-status="UNKNOWN">
-                        <span class="sc-runtime-status-dot" aria-hidden="true"></span>
-                        <span id="summary-runtime-status-label" th:text="#{runtimeTarget.status.unknown}">Pending validation</span>
+            </article>
+
+            <article class="rt-stat rt-rise" style="--d:200ms" data-tone="status">
+                <header class="rt-stat-head">
+                    <span class="rt-tag">RT-02</span>
+                    <i data-lucide="activity" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                </header>
+                <div class="rt-stat-body">
+                    <span class="rt-stat-label" th:text="#{runtimeTarget.summary.status}">状态</span>
+                    <h3 id="summary-runtime-status" class="rt-status" data-status="UNKNOWN">
+                        <span class="rt-status-dot" aria-hidden="true"></span>
+                        <span id="summary-runtime-status-label" th:text="#{runtimeTarget.status.unknown}">待校验</span>
                     </h3>
                 </div>
-            </div>
-            <div class="sc-summary-card sc-config-stat" data-tone="capacity">
-                <div class="sc-config-stat-top">
-                    <span class="sc-config-stat-icon" aria-hidden="true">
-                        <i data-lucide="cpu" class="sc-icon sc-icon-sm"></i>
-                    </span>
+            </article>
+
+            <article class="rt-stat rt-rise" style="--d:240ms" data-tone="capacity">
+                <header class="rt-stat-head">
+                    <span class="rt-tag">RT-03</span>
+                    <i data-lucide="cpu" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
+                </header>
+                <div class="rt-stat-body">
+                    <span class="rt-stat-label" th:text="#{runtimeTarget.summary.totalSlots}">总槽位</span>
+                    <h3 id="summary-total-slots" class="rt-stat-value">0</h3>
                 </div>
-                <div>
-                    <p class="sc-config-stat-label mb-3" th:text="#{runtimeTarget.summary.totalSlots}">Total slots</p>
-                    <h3 id="summary-total-slots" class="sc-config-stat-value sc-code">0 <span class="text-sm font-normal text-[var(--sc-muted)]" th:text="#{runtimeTarget.summary.available}">available</span></h3>
-                </div>
-            </div>
+            </article>
         </section>
 
-        <section class="sc-config-panel sc-card-strong">
-            <div class="sc-config-panel-header">
-                <div class="sc-config-panel-heading">
-                    <p class="sc-subtle-label" th:text="#{runtimeTarget.add.title}">Runtime target</p>
-                    <h3 class="sc-config-panel-title mt-2" th:text="#{runtimeTarget.target.title}">Configure runtime target</h3>
-                    <p class="sc-config-panel-description" th:text="#{runtimeTarget.target.description}">Switching modes replaces the existing target configuration.</p>
+        <section class="rt-panel rt-rise" style="--d:280ms">
+            <header class="rt-panel-head">
+                <div class="rt-panel-head-copy">
+                    <p class="rt-eyebrow-sm">
+                        <span aria-hidden="true">//</span>
+                        <span th:text="#{runtimeTarget.add.title}">运行目标</span>
+                    </p>
+                    <h3 class="rt-panel-title" th:text="#{runtimeTarget.target.title}">配置运行目标</h3>
+                    <p class="rt-panel-desc" th:text="#{runtimeTarget.target.description}">切换模式会替换现有目标配置。</p>
                 </div>
-                <div id="runtime-target-form-status" class="sc-config-panel-status sc-runtime-status" data-status="UNKNOWN" role="status" aria-live="polite">
-                    <span class="sc-runtime-status-dot" aria-hidden="true"></span>
-                    <span id="runtime-target-form-status-label" th:text="#{runtimeTarget.status.unknown}">Pending validation</span>
+                <div id="runtime-target-form-status" class="rt-status" data-status="UNKNOWN" role="status" aria-live="polite">
+                    <span class="rt-status-dot" aria-hidden="true"></span>
+                    <span id="runtime-target-form-status-label" th:text="#{runtimeTarget.status.unknown}">待校验</span>
                 </div>
-            </div>
+            </header>
 
-            <form id="runtime-target-form" class="sc-config-form space-y-6" aria-busy="false">
-                <div id="standalone-target-panel" class="sc-config-field space-y-4">
-                    <div>
-                        <label for="target-job-manager-url" class="sc-form-label mb-1.5" th:text="#{runtimeTarget.form.jobManagerUrl}">JobManager address</label>
-                        <div class="sc-input-icon-wrap">
-                            <i data-lucide="link-2" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
-                            <input id="target-job-manager-url" type="text" class="sc-input sc-code" placeholder="http://127.0.0.1:8081" aria-describedby="runtime-target-url-note">
-                        </div>
-                        <p id="runtime-target-url-note" class="sc-config-field-note" th:text="#{runtimeTarget.type.standalone.description}">Connect through the JobManager address.</p>
+            <form id="runtime-target-form" class="rt-form" aria-busy="false">
+                <div id="standalone-target-panel" class="rt-field">
+                    <label for="target-job-manager-url" class="rt-label" th:text="#{runtimeTarget.form.jobManagerUrl}">JobManager 地址</label>
+                    <div class="rt-input-wrap">
+                        <i data-lucide="link-2" class="sc-icon sc-icon-sm rt-input-icon" aria-hidden="true"></i>
+                        <input id="target-job-manager-url" type="text" class="rt-input" placeholder="http://127.0.0.1:8081" aria-describedby="runtime-target-url-note" spellcheck="false">
                     </div>
+                    <p id="runtime-target-url-note" class="rt-note" th:text="#{runtimeTarget.type.standalone.description}">通过 JobManager 地址接入集群</p>
                 </div>
 
-                <div class="sc-config-action-bar">
-                    <button id="reload-runtime-target" type="button" class="sc-btn-secondary px-4 py-2 text-sm" aria-busy="false">
+                <div class="rt-actions">
+                    <button id="reload-runtime-target" type="button" class="rt-btn rt-btn-secondary" aria-busy="false">
                         <i data-lucide="refresh-cw" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
-                        <span th:text="#{runtimeTarget.target.reload}">Reload</span>
+                        <span th:text="#{runtimeTarget.target.reload}">重新加载</span>
                     </button>
-                    <button id="save-runtime-target" type="submit" class="sc-btn-primary px-4 py-2 text-sm font-medium" aria-busy="false">
+                    <button id="save-runtime-target" type="submit" class="rt-btn rt-btn-primary" aria-busy="false">
                         <i data-lucide="save" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
-                        <span th:text="#{runtimeTarget.target.save}">Save runtime target</span>
+                        <span th:text="#{runtimeTarget.target.save}">保存运行目标</span>
                     </button>
                 </div>
             </form>
         </section>
+
+        <footer class="rt-statusbar">
+            <span class="rt-statusbar-left">STREAMCRAFT // <span th:text="#{nav.runtimeTarget}">Flink</span></span>
+            <span class="rt-statusbar-right">
+                <span>LINK</span>
+                <span class="rt-live-dot" aria-hidden="true"></span>
+                <span id="rt-clock">--:--:--</span>
+            </span>
+        </footer>
     </div>
 </main>
+
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&display=swap');
+
+    .sc-rt-page {
+        --rt-font-display: 'Syne', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        --rt-font-mono: 'Fira Code', 'SFMono-Regular', Consolas, monospace;
+        --rt-ease: cubic-bezier(0.22, 1, 0.36, 1);
+        position: relative;
+    }
+
+    /* ---------- shell integration ---------- */
+
+    .sc-rt-page .sc-page-frame {
+        position: relative;
+        z-index: 1;
+        background: transparent;
+    }
+
+    .sc-rt-page .sc-shell-sidebar {
+        background: color-mix(in srgb, var(--sc-sidebar) 88%, transparent);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+    }
+
+    .sc-rt-page .sc-shell-topbar {
+        background: color-mix(in srgb, var(--sc-bg) 72%, transparent);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom-color: var(--sc-border-soft);
+    }
+
+    .sc-rt-page .sc-topbar-context {
+        display: none;
+    }
+
+    /* ---------- layered background ---------- */
+
+    .rt-bg {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        pointer-events: none;
+    }
+
+    .rt-bg-grid {
+        position: absolute;
+        inset: 0;
+        background-image:
+            linear-gradient(color-mix(in srgb, var(--sc-text) 5%, transparent) 1px, transparent 1px),
+            linear-gradient(90deg, color-mix(in srgb, var(--sc-text) 5%, transparent) 1px, transparent 1px);
+        background-size: 44px 44px;
+        -webkit-mask-image: radial-gradient(ellipse 90% 80% at 40% 0%, #000 0%, transparent 74%);
+        mask-image: radial-gradient(ellipse 90% 80% at 40% 0%, #000 0%, transparent 74%);
+    }
+
+    .rt-bg-aurora {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(70px);
+        will-change: transform;
+    }
+
+    .rt-bg-aurora-a {
+        top: -24%;
+        left: -10%;
+        width: 52vw;
+        height: 52vw;
+        background: radial-gradient(circle, color-mix(in srgb, var(--sc-accent) 15%, transparent), transparent 65%);
+    }
+
+    .rt-bg-aurora-b {
+        right: -18%;
+        bottom: -30%;
+        width: 46vw;
+        height: 46vw;
+        background: radial-gradient(circle, color-mix(in srgb, var(--sc-accent) 10%, transparent), transparent 65%);
+    }
+
+    .rt-bg-noise {
+        position: absolute;
+        inset: 0;
+        opacity: 0.5;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+    }
+
+    /* ---------- shared primitives ---------- */
+
+    .rt-tag {
+        color: var(--sc-muted-soft);
+        font-family: var(--rt-font-mono);
+        font-size: 9px;
+        font-weight: 500;
+        letter-spacing: 0.24em;
+    }
+
+    .rt-live-dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--sc-success);
+        box-shadow: 0 0 8px var(--sc-success);
+        animation: rt-pulse 2.4s ease-in-out infinite;
+    }
+
+    @keyframes rt-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.35; }
+    }
+
+    @keyframes rt-rise-in {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .rt-rise {
+        animation: rt-rise-in 0.5s var(--rt-ease) backwards;
+        animation-delay: var(--d, 0ms);
+    }
+
+    /* ---------- hero ---------- */
+
+    .rt-hero {
+        position: relative;
+        padding: 36px 0 28px;
+    }
+
+    .rt-wordmark {
+        position: absolute;
+        top: -6px;
+        left: -4px;
+        z-index: 0;
+        color: transparent;
+        font-family: var(--rt-font-display);
+        font-size: clamp(80px, 12vw, 170px);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 0.9;
+        -webkit-text-stroke: 1px color-mix(in srgb, var(--sc-text) 14%, transparent);
+        user-select: none;
+        pointer-events: none;
+    }
+
+    .rt-hero-copy {
+        position: relative;
+        z-index: 1;
+        min-width: 0;
+        max-width: 60ch;
+    }
+
+    .rt-eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--sc-accent);
+        font-family: var(--rt-font-mono);
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+    }
+
+    .rt-eyebrow span:last-child {
+        color: var(--sc-muted);
+    }
+
+    .rt-title {
+        margin-top: 14px;
+        color: var(--sc-text);
+        font-size: clamp(30px, 4vw, 48px);
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        line-height: 1.1;
+    }
+
+    .rt-caret {
+        display: inline-block;
+        width: 0.5em;
+        height: 1em;
+        margin-left: 8px;
+        vertical-align: -0.14em;
+        background: var(--sc-accent);
+        animation: rt-caret-blink 1.1s steps(1) infinite;
+    }
+
+    @keyframes rt-caret-blink {
+        0%, 49% { opacity: 1; }
+        50%, 100% { opacity: 0; }
+    }
+
+    .rt-lead {
+        margin-top: 12px;
+        color: var(--sc-muted);
+        font-size: 14px;
+        line-height: 1.65;
+    }
+
+    /* ---------- stats ---------- */
+
+    .rt-stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .rt-stat {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 18px 20px 20px;
+        border: 1px solid var(--sc-border);
+        border-left: 3px solid var(--sc-accent);
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--sc-card) 92%, transparent);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        overflow: hidden;
+    }
+
+    .rt-stat[data-tone="status"] { border-left-color: var(--sc-success); }
+    .rt-stat[data-tone="capacity"] { border-left-color: var(--sc-warning); }
+
+    .rt-stat-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: var(--sc-muted);
+    }
+
+    .rt-stat[data-tone="status"] .rt-stat-head .sc-icon { color: var(--sc-success); }
+    .rt-stat[data-tone="capacity"] .rt-stat-head .sc-icon { color: var(--sc-warning); }
+
+    .rt-stat-body {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+    }
+
+    .rt-stat-label {
+        color: var(--sc-muted);
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .rt-stat-value {
+        color: var(--sc-text);
+        font-family: var(--rt-font-mono);
+        font-size: 20px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        line-height: 1.2;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .rt-stat-value small {
+        color: var(--sc-muted);
+        font-size: 12px;
+        font-weight: 400;
+    }
+
+    /* ---------- status indicator ---------- */
+
+    .rt-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        color: var(--sc-muted);
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .rt-status-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: var(--sc-muted-soft);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--sc-muted-soft) 18%, transparent);
+        transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .rt-status[data-status="CONNECTED"] { color: var(--sc-success); }
+    .rt-status[data-status="CONNECTED"] .rt-status-dot {
+        background: var(--sc-success);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--sc-success) 18%, transparent), 0 0 10px var(--sc-success);
+        animation: rt-pulse 2.4s ease-in-out infinite;
+    }
+
+    .rt-status[data-status="UNREACHABLE"] { color: var(--sc-danger); }
+    .rt-status[data-status="UNREACHABLE"] .rt-status-dot {
+        background: var(--sc-danger);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--sc-danger) 18%, transparent);
+    }
+
+    .rt-status[data-status="UNKNOWN"] { color: var(--sc-muted); }
+    .rt-status[data-status="UNKNOWN"] .rt-status-dot {
+        background: var(--sc-muted-soft);
+    }
+
+    /* ---------- panel ---------- */
+
+    .rt-panel {
+        margin-top: 22px;
+        border: 1px solid var(--sc-border);
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--sc-card-strong) 82%, transparent);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: var(--sc-shadow-soft);
+        overflow: hidden;
+    }
+
+    .rt-panel-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px 22px;
+        border-bottom: 1px solid var(--sc-border-soft);
+        background: color-mix(in srgb, var(--sc-surface) 55%, transparent);
+    }
+
+    .rt-panel-head-copy {
+        min-width: 0;
+    }
+
+    .rt-eyebrow-sm {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--sc-muted-soft);
+        font-family: var(--rt-font-mono);
+        font-size: 9px;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+    }
+
+    .rt-eyebrow-sm span[aria-hidden] {
+        color: var(--sc-accent);
+    }
+
+    .rt-panel-title {
+        margin-top: 7px;
+        color: var(--sc-text);
+        font-size: 17px;
+        font-weight: 700;
+    }
+
+    .rt-panel-desc {
+        margin: 6px 0 0;
+        color: var(--sc-muted);
+        font-size: 12.5px;
+        line-height: 1.55;
+    }
+
+    /* ---------- form ---------- */
+
+    .rt-form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        padding: 22px;
+    }
+
+    .rt-field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .rt-label {
+        color: var(--sc-text-body);
+        font-size: 12.5px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+    }
+
+    .rt-input-wrap {
+        display: flex;
+        align-items: center;
+        border: 1px solid var(--sc-border);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--sc-card) 92%, transparent);
+        transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .rt-input-wrap:focus-within {
+        border-color: var(--sc-accent);
+        box-shadow: 0 0 0 3px var(--sc-accent-soft);
+    }
+
+    .rt-input-icon {
+        margin: 0 0 0 14px;
+        color: var(--sc-muted-soft);
+        pointer-events: none;
+    }
+
+    .rt-input {
+        flex: 1 1 auto;
+        width: 100%;
+        padding: 12px 16px;
+        border: 0;
+        background: transparent;
+        color: var(--sc-text);
+        font-family: var(--rt-font-mono);
+        font-size: 13px;
+        outline: none;
+    }
+
+    .rt-input::placeholder {
+        color: var(--sc-muted-soft);
+    }
+
+    .rt-note {
+        margin: 0;
+        color: var(--sc-muted-soft);
+        font-size: 11.5px;
+    }
+
+    /* ---------- actions ---------- */
+
+    .rt-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .rt-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 38px;
+        padding: 10px 20px;
+        border: 1px solid var(--sc-border);
+        border-radius: 9px;
+        font-size: 12.5px;
+        font-weight: 600;
+        line-height: 1;
+        cursor: pointer;
+        transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+    }
+
+    .rt-btn-secondary {
+        background: var(--sc-secondary);
+        color: var(--sc-secondary-foreground);
+    }
+
+    .rt-btn-secondary:hover:not(:disabled) {
+        border-color: color-mix(in srgb, var(--sc-accent) 46%, var(--sc-border) 54%);
+        background: var(--sc-card-strong);
+        transform: translateY(-1px);
+    }
+
+    .rt-btn-primary {
+        border-color: var(--sc-accent);
+        background: var(--sc-accent);
+        color: var(--sc-primary-foreground);
+        box-shadow: 0 10px 24px color-mix(in srgb, var(--sc-accent) 26%, transparent);
+    }
+
+    .rt-btn-primary:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 14px 30px color-mix(in srgb, var(--sc-accent) 32%, transparent);
+    }
+
+    .rt-btn:active:not(:disabled) {
+        transform: translateY(0);
+    }
+
+    .rt-btn:disabled,
+    .rt-btn[aria-busy="true"] {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .rt-btn:focus-visible {
+        outline: 2px solid var(--sc-accent);
+        outline-offset: 2px;
+    }
+
+    /* ---------- message ---------- */
+
+    .rt-message {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin: 0 0 4px;
+        padding: 10px 16px;
+        border: 1px solid var(--sc-border);
+        border-left: 3px solid var(--sc-accent);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--sc-card) 92%, transparent);
+        color: var(--sc-text-body);
+        font-size: 13px;
+    }
+
+    .rt-message[data-tone="success"] {
+        border-left-color: var(--sc-success);
+        color: var(--sc-success);
+    }
+
+    .rt-message[data-tone="error"] {
+        border-left-color: var(--sc-danger);
+        color: var(--sc-danger);
+    }
+
+    .rt-message-icon {
+        flex: 0 0 auto;
+    }
+
+    .rt-message-icon[data-tone="success"] { color: var(--sc-success); }
+    .rt-message-icon[data-tone="error"] { color: var(--sc-danger); }
+
+    /* ---------- statusbar ---------- */
+
+    .rt-statusbar {
+        position: sticky;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-top: 22px;
+        padding: 10px 16px;
+        border-top: 1px solid var(--sc-border-soft);
+        background: color-mix(in srgb, var(--sc-bg) 88%, transparent);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        color: var(--sc-muted-soft);
+        font-family: var(--rt-font-mono);
+        font-size: 9.5px;
+        letter-spacing: 0.2em;
+    }
+
+    .rt-statusbar-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    #rt-clock {
+        color: var(--sc-muted);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* ---------- responsive ---------- */
+
+    @media (max-width: 1023px) {
+        .rt-stats {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .rt-stat:nth-child(3) {
+            grid-column: 1 / -1;
+        }
+    }
+
+    @media (max-width: 767px) {
+        .rt-hero {
+            padding-top: 26px;
+        }
+
+        .rt-stats {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .rt-panel-head {
+            flex-direction: column;
+        }
+
+        .rt-actions {
+            justify-content: stretch;
+        }
+
+        .rt-btn {
+            flex: 1 1 auto;
+        }
+
+        .rt-statusbar {
+            letter-spacing: 0.12em;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .rt-rise,
+        .rt-caret,
+        .rt-live-dot,
+        .rt-status[data-status="CONNECTED"] .rt-status-dot {
+            animation: none;
+            transition: none;
+        }
+    }
+</style>
 
 <script th:inline="javascript">
     const t = window.StreamCraftI18n?.t || ((key, fallback, params) => {
@@ -131,27 +768,11 @@
         const messageText = byId('message-box-text');
         const successIcon = byId('message-box-success-icon');
         const errorIcon = byId('message-box-error-icon');
-        box.classList.remove(
-            'hidden',
-            'border-emerald-200',
-            'bg-emerald-50',
-            'text-emerald-700',
-            'dark:text-emerald-200',
-            'border-red-500/30',
-            'bg-red-50',
-            'text-red-700',
-            'dark:text-red-200',
-            'dark:bg-red-500/10'
-        );
         box.dataset.tone = kind;
+        box.classList.remove('hidden');
         box.setAttribute('role', kind === 'error' ? 'alert' : 'status');
         successIcon?.classList.toggle('hidden', kind !== 'success');
         errorIcon?.classList.toggle('hidden', kind === 'success');
-        if (kind === 'success') {
-            box.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-700', 'dark:text-emerald-200');
-        } else {
-            box.classList.add('border-red-500/30', 'bg-red-50', 'text-red-700', 'dark:text-red-200', 'dark:bg-red-500/10');
-        }
         if (messageText) {
             messageText.textContent = text;
         }
@@ -201,7 +822,7 @@
         if (formStatusLabel) {
             formStatusLabel.textContent = statusCopy;
         }
-        byId('summary-total-slots').innerHTML = `${totalSlotsText} <span class="text-sm font-normal text-slate-500 dark:text-slate-400">${t('runtimeTarget.summary.available', 'available')} / ${availableSlotsText}</span>`;
+        byId('summary-total-slots').innerHTML = `${totalSlotsText} <small>${t('runtimeTarget.summary.available', 'available')} / ${availableSlotsText}</small>`;
         window.StreamCraftIcons?.refresh();
     }
 
@@ -284,6 +905,13 @@
         saveRuntimeTarget();
     });
     byId('reload-runtime-target')?.addEventListener('click', loadRuntimeTarget);
+
+    const rtClock = byId('rt-clock');
+    function tickRtClock() {
+        rtClock.textContent = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+    }
+    tickRtClock();
+    setInterval(tickRtClock, 1000);
 
     renderRuntimeTargetSummary();
     renderRuntimeTargetForm();
