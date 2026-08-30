@@ -346,55 +346,23 @@
         align-items: flex-end;
         justify-content: space-between;
         gap: 22px;
-        padding: 26px 28px 22px;
-        border: 1px solid var(--sc-border);
-        border-radius: 16px;
-        background: color-mix(in srgb, var(--sc-card-strong) 55%, transparent);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        overflow: hidden;
-    }
-
-    .mn-hero::before,
-    .mn-hero::after {
-        position: absolute;
-        width: 22px;
-        height: 22px;
-        border: 1px solid color-mix(in srgb, var(--sc-accent) 52%, transparent);
-        content: "";
-        opacity: 0.7;
-        pointer-events: none;
-        z-index: 2;
-    }
-
-    .mn-hero::before {
-        top: 16px;
-        left: 16px;
-        border-right: 0;
-        border-bottom: 0;
-    }
-
-    .mn-hero::after {
-        right: 16px;
-        bottom: 16px;
-        border-left: 0;
-        border-top: 0;
+        padding: 36px 0 28px;
     }
 
     .mn-wordmark {
         position: absolute;
-        right: -0.06em;
-        top: -0.34em;
+        top: -6px;
+        left: -4px;
         z-index: 0;
         color: transparent;
         font-family: var(--mn-font-display);
         font-weight: 800;
-        font-size: clamp(80px, 10vw, 170px);
-        letter-spacing: -0.04em;
-        line-height: 0.75;
+        font-size: clamp(64px, 9vw, 128px);
+        letter-spacing: -0.02em;
+        line-height: 0.9;
         pointer-events: none;
         user-select: none;
-        -webkit-text-stroke: 1px color-mix(in srgb, var(--sc-text) 11%, transparent);
+        -webkit-text-stroke: 1px color-mix(in srgb, var(--sc-text) 14%, transparent);
     }
 
     @supports not (-webkit-text-stroke: 1px black) {
@@ -1422,7 +1390,7 @@
 
     @media (max-width: 639px) {
         .mn-hero {
-            padding: 22px 20px 18px;
+            padding: 26px 0 20px;
         }
 
         .mn-module-body {
