@@ -1,15 +1,24 @@
 <!DOCTYPE html>
 <html th:lang="${currentLocaleTag}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <body>
-<aside th:fragment="sidebar(activeNav)" data-shell-sidebar class="sc-shell-sidebar flex flex-col z-20 relative">
-    <div class="sc-sidebar-brand h-16 flex items-center px-6 border-b border-[var(--sc-border-soft)]">
-        <span class="sc-brand-mark mr-3">
+<aside th:fragment="sidebar(activeNav)" data-shell-sidebar class="sc-shell-sidebar">
+    <div class="sc-sidebar-brand">
+        <span class="sc-brand-mark">
             <img th:src="@{/brand-logo.png}" src="/brand-logo.png" alt="StreamCraft">
         </span>
-        <span class="sc-brand-copy">StreamCraft</span>
+        <div class="sc-brand-copy">
+            <span class="sc-brand-name">StreamCraft</span>
+            <span class="sc-brand-sub" aria-hidden="true">DATA TERMINAL</span>
+        </div>
     </div>
 
-    <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-2 sc-scroll">
+    <div class="sc-sidebar-rail" aria-hidden="true">
+        <span class="sc-rail-slash">//</span>
+        <span class="sc-rail-text">MODULES</span>
+        <span class="sc-rail-rule"></span>
+    </div>
+
+    <nav class="sc-sidebar-nav sc-scroll">
         <a th:href="@{/main}"
            data-nav-key="pipeline-monitor"
            th:attr="aria-current=${activeNav == 'pipeline-monitor'} ? 'page' : null"
@@ -17,8 +26,10 @@
            title="Task Monitor"
            class="sc-nav-link"
            th:classappend="${activeNav == 'pipeline-monitor'} ? ' sc-nav-link-active' : ''">
-            <i data-lucide="layout-dashboard" class="sc-icon sc-icon-sm shrink-0" aria-hidden="true"></i>
-            <span th:text="#{nav.pipelineMonitor}">Task Monitor</span>
+            <span class="sc-nav-index" aria-hidden="true">01</span>
+            <i data-lucide="layout-dashboard" class="sc-icon sc-icon-sm sc-nav-icon" aria-hidden="true"></i>
+            <span class="sc-nav-label" th:text="#{nav.pipelineMonitor}">Task Monitor</span>
+            <i data-lucide="chevron-right" class="sc-icon sc-icon-sm sc-nav-arrow" aria-hidden="true"></i>
         </a>
 
         <a th:href="@{/pipelines}"
@@ -28,8 +39,10 @@
            title="Pipelines"
            class="sc-nav-link"
            th:classappend="${activeNav == 'pipelines'} ? ' sc-nav-link-active' : ''">
-            <i data-lucide="git-branch" class="sc-icon sc-icon-sm shrink-0" aria-hidden="true"></i>
-            <span th:text="#{nav.pipelines}">Pipelines</span>
+            <span class="sc-nav-index" aria-hidden="true">02</span>
+            <i data-lucide="git-branch" class="sc-icon sc-icon-sm sc-nav-icon" aria-hidden="true"></i>
+            <span class="sc-nav-label" th:text="#{nav.pipelines}">Pipelines</span>
+            <i data-lucide="chevron-right" class="sc-icon sc-icon-sm sc-nav-arrow" aria-hidden="true"></i>
         </a>
 
         <a th:href="@{/runtime-target}"
@@ -39,8 +52,10 @@
            title="Flink"
            class="sc-nav-link"
            th:classappend="${activeNav == 'runtime-target'} ? ' sc-nav-link-active' : ''">
-            <i data-lucide="server" class="sc-icon sc-icon-sm shrink-0" aria-hidden="true"></i>
-            <span th:text="#{nav.runtimeTarget}">Flink</span>
+            <span class="sc-nav-index" aria-hidden="true">03</span>
+            <i data-lucide="server" class="sc-icon sc-icon-sm sc-nav-icon" aria-hidden="true"></i>
+            <span class="sc-nav-label" th:text="#{nav.runtimeTarget}">Flink</span>
+            <i data-lucide="chevron-right" class="sc-icon sc-icon-sm sc-nav-arrow" aria-hidden="true"></i>
         </a>
 
         <a th:href="@{/settings}"
@@ -50,14 +65,20 @@
            title="Settings"
            class="sc-nav-link"
            th:classappend="${activeNav == 'settings'} ? ' sc-nav-link-active' : ''">
-            <i data-lucide="settings-2" class="sc-icon sc-icon-sm shrink-0" aria-hidden="true"></i>
-            <span th:text="#{nav.settings}">Settings</span>
+            <span class="sc-nav-index" aria-hidden="true">04</span>
+            <i data-lucide="settings-2" class="sc-icon sc-icon-sm sc-nav-icon" aria-hidden="true"></i>
+            <span class="sc-nav-label" th:text="#{nav.settings}">Settings</span>
+            <i data-lucide="chevron-right" class="sc-icon sc-icon-sm sc-nav-arrow" aria-hidden="true"></i>
         </a>
     </nav>
 
-    <div class="px-4 py-4 border-t border-[var(--sc-border-soft)] text-xs text-[var(--sc-muted)]">
-        StreamCraft v1.0.0-beta
-    </div>
+    <footer class="sc-sidebar-foot">
+        <span class="sc-foot-status">
+            <span class="sc-foot-dot" aria-hidden="true"></span>
+            <span class="sc-foot-text">ONLINE</span>
+        </span>
+        <span class="sc-foot-ver">v1.0.0-beta</span>
+    </footer>
 </aside>
 </body>
 </html>
