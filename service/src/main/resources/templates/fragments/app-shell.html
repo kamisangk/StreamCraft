@@ -253,70 +253,203 @@
         }
 
         .sc-shell-sidebar {
-            width: clamp(208px, 22vw, 256px);
-            flex: 0 0 clamp(208px, 22vw, 256px);
+            --sc-sidebar-mono: 'Fira Code', 'SFMono-Regular', Consolas, 'PingFang SC', monospace;
+            --sc-sidebar-ease: cubic-bezier(0.22, 1, 0.36, 1);
+            display: flex;
+            flex-direction: column;
+            width: clamp(216px, 22vw, 258px);
+            flex: 0 0 clamp(216px, 22vw, 258px);
             position: relative;
             background: var(--sc-sidebar);
             color: var(--sc-sidebar-foreground);
             border-right: 1px solid var(--sc-border);
             box-shadow: 1px 0 0 var(--sc-border-soft);
+            overflow: hidden;
+        }
+
+        /* dot-matrix texture */
+        .sc-shell-sidebar::before {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            background-image: radial-gradient(color-mix(in srgb, var(--sc-text) 9%, transparent) 1px, transparent 1.5px);
+            background-size: 20px 20px;
+            -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+            mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+            content: "";
+            pointer-events: none;
+        }
+
+        /* staggered entry */
+        @keyframes sc-sidebar-in {
+            from {
+                opacity: 0;
+                transform: translateY(-7px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .sc-sidebar-brand,
+        .sc-sidebar-rail,
+        .sc-sidebar-nav,
+        .sc-sidebar-foot {
+            position: relative;
+            z-index: 1;
         }
 
         .sc-sidebar-brand {
-            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 64px;
+            padding: 0 20px;
+            border-bottom: 1px solid var(--sc-border-soft);
+            animation: sc-sidebar-in 0.5s var(--sc-sidebar-ease) backwards;
         }
 
         .sc-brand-mark {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 38px;
-            height: 38px;
+            width: 36px;
+            height: 36px;
             flex: 0 0 auto;
             border: 1px solid var(--sc-border);
-            border-radius: 10px;
+            border-radius: 6px;
             background: var(--sc-card-strong);
             box-shadow: 0 6px 16px rgba(13, 23, 40, 0.08);
         }
 
         .sc-brand-mark img {
-            width: 30px;
-            height: 30px;
-            border-radius: 8px;
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
             object-fit: cover;
         }
 
         .sc-brand-copy {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .sc-brand-name {
             color: var(--sc-text);
-            font-size: 17px;
-            font-weight: 700;
-            line-height: 1.1;
-            letter-spacing: 0;
+            font-family: var(--sc-sidebar-mono);
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            line-height: 1.2;
+        }
+
+        .sc-brand-sub {
+            color: var(--sc-muted-soft);
+            font-family: var(--sc-sidebar-mono);
+            font-size: 8.5px;
+            font-weight: 500;
+            letter-spacing: 0.28em;
+            line-height: 1;
+        }
+
+        .sc-sidebar-rail {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 24px 22px 10px;
+            color: var(--sc-muted-soft);
+            font-family: var(--sc-sidebar-mono);
+            font-size: 9px;
+            font-weight: 500;
+            letter-spacing: 0.3em;
+            animation: sc-sidebar-in 0.5s var(--sc-sidebar-ease) 0.05s backwards;
+        }
+
+        .sc-rail-slash {
+            color: var(--sc-accent);
+        }
+
+        .sc-rail-rule {
+            flex: 1 1 auto;
+            height: 1px;
+            background: linear-gradient(to right, var(--sc-border), transparent);
+        }
+
+        .sc-sidebar-nav {
+            display: flex;
+            flex: 1 1 auto;
+            flex-direction: column;
+            gap: 4px;
+            overflow-y: auto;
+            padding: 6px 12px 16px;
         }
 
         .sc-nav-link {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             min-height: 44px;
-            padding: 10px 12px;
+            padding: 10px 12px 10px 14px;
             border: 1px solid transparent;
-            border-radius: 12px;
+            border-radius: 4px;
             color: var(--sc-text-body);
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: 500;
             line-height: 1.4;
             position: relative;
             transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+            animation: sc-sidebar-in 0.5s var(--sc-sidebar-ease) backwards;
         }
 
+        .sc-sidebar-nav .sc-nav-link:nth-child(1) { animation-delay: 0.08s; }
+        .sc-sidebar-nav .sc-nav-link:nth-child(2) { animation-delay: 0.14s; }
+        .sc-sidebar-nav .sc-nav-link:nth-child(3) { animation-delay: 0.2s; }
+        .sc-sidebar-nav .sc-nav-link:nth-child(4) { animation-delay: 0.26s; }
+
+        /* terminal insertion caret: grows on active */
         .sc-nav-link::before {
+            position: absolute;
+            left: 0;
+            top: 50%;
             width: 3px;
-            height: 18px;
-            margin-left: -12px;
-            border-radius: 0 3px 3px 0;
-            background: transparent;
+            height: 0;
+            transform: translateY(-50%);
+            border-radius: 0 2px 2px 0;
+            background: var(--sc-accent);
+            box-shadow: 3px 0 10px var(--sc-accent-soft);
+            transition: height 0.24s var(--sc-sidebar-ease);
             content: "";
+        }
+
+        .sc-nav-index {
+            flex: 0 0 22px;
+            color: var(--sc-muted-soft);
+            font-family: var(--sc-sidebar-mono);
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: 0.08em;
+            transition: color 0.18s ease;
+        }
+
+        .sc-nav-icon {
+            flex: 0 0 auto;
+            transition: color 0.18s ease;
+        }
+
+        .sc-nav-label {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .sc-nav-arrow {
+            flex: 0 0 auto;
+            color: var(--sc-accent);
+            opacity: 0;
+            transform: translateX(-4px);
+            transition: opacity 0.18s ease, transform 0.18s ease;
         }
 
         .sc-nav-link:hover {
@@ -325,24 +458,82 @@
             transform: translateX(2px);
         }
 
+        .sc-nav-link:hover .sc-nav-index,
+        .sc-nav-link:hover .sc-nav-icon {
+            color: var(--sc-accent);
+        }
+
+        .sc-nav-link:hover .sc-nav-arrow {
+            opacity: 0.7;
+            transform: translateX(0);
+        }
+
         .sc-nav-link-active {
             background: var(--sc-sidebar-active);
             color: var(--sc-text);
             border-color: var(--sc-border);
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
         }
 
-        .sc-nav-link-active .sc-icon {
+        .sc-nav-link-active .sc-nav-icon {
+            color: var(--sc-accent);
+        }
+
+        .sc-nav-link-active .sc-nav-index {
             color: var(--sc-accent);
         }
 
         .sc-nav-link-active::before {
-            background: var(--sc-accent);
+            height: 20px;
+        }
+
+        .sc-nav-link-active .sc-nav-arrow {
+            opacity: 1;
+            transform: translateX(0);
         }
 
         .sc-nav-link-active:hover {
             background: var(--sc-sidebar-active);
             color: var(--sc-text);
+        }
+
+        .sc-sidebar-foot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 15px 20px;
+            border-top: 1px solid var(--sc-border-soft);
+            font-family: var(--sc-sidebar-mono);
+            font-size: 9.5px;
+            font-weight: 500;
+            letter-spacing: 0.16em;
+            animation: sc-sidebar-in 0.5s var(--sc-sidebar-ease) 0.32s backwards;
+        }
+
+        .sc-foot-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            color: var(--sc-success);
+        }
+
+        @keyframes sc-foot-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+
+        .sc-foot-dot {
+            width: 6px;
+            height: 6px;
+            flex: 0 0 auto;
+            border-radius: 50%;
+            background: var(--sc-success);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--sc-success) 16%, transparent), 0 0 8px var(--sc-success);
+            animation: sc-foot-pulse 2.4s ease-in-out infinite;
+        }
+
+        .sc-foot-ver {
+            color: var(--sc-muted-soft);
         }
 
         .sc-shell-topbar {
@@ -575,6 +766,7 @@
 
             .sc-sidebar-brand {
                 justify-content: center;
+                gap: 0;
                 padding-left: 0;
                 padding-right: 0;
             }
@@ -585,26 +777,34 @@
             }
 
             .sc-brand-copy,
-            .sc-shell-sidebar > div:last-child {
+            .sc-sidebar-rail,
+            .sc-foot-text,
+            .sc-foot-ver {
                 display: none;
             }
 
-            .sc-shell-sidebar nav {
+            .sc-sidebar-nav {
                 padding-left: 12px;
                 padding-right: 12px;
             }
 
             .sc-nav-link {
                 justify-content: center;
+                gap: 0;
                 padding-left: 0;
                 padding-right: 0;
+            }
+
+            .sc-nav-index,
+            .sc-nav-arrow {
+                display: none;
             }
 
             .sc-nav-link::before {
                 display: none;
             }
 
-            .sc-nav-link span {
+            .sc-nav-label {
                 position: absolute;
                 width: 1px;
                 height: 1px;
@@ -614,6 +814,11 @@
                 clip: rect(0, 0, 0, 0);
                 white-space: nowrap;
                 border: 0;
+            }
+
+            .sc-sidebar-foot {
+                justify-content: center;
+                padding: 12px 8px;
             }
 
             .sc-nav-link::after {
