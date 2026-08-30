@@ -3,177 +3,1477 @@
 <head th:replace="~{fragments/app-shell :: commonHead(${pageTitle})}">
     <title>StreamCraft</title>
 </head>
-<body class="sc-shell-page h-screen w-screen flex overflow-hidden">
+<body class="sc-shell-page sc-main-page h-screen w-screen flex overflow-hidden">
+
+<div class="mn-bg" aria-hidden="true">
+    <div class="mn-bg-grid"></div>
+    <div class="mn-bg-aurora mn-bg-aurora-a"></div>
+    <div class="mn-bg-aurora mn-bg-aurora-b"></div>
+    <div class="mn-bg-noise"></div>
+</div>
+
 <aside th:replace="~{fragments/sidebar :: sidebar(${activeNav})}"></aside>
 
-<main class="sc-page-frame flex-1 flex flex-col min-w-0 relative overflow-hidden">
+<main class="sc-page-frame mn-frame flex-1 flex flex-col min-w-0 relative overflow-hidden">
     <header th:replace="~{fragments/topbar :: topbar(${pageTitle}, ${pageSubtitle})}"></header>
 
-    <div class="sc-page-content flex-1 overflow-y-auto space-y-6">
-        <section data-page-hero="monitor-overview" class="sc-page-hero">
-            <div class="min-w-0 max-w-3xl">
-                <p class="sc-subtle-label" th:text="#{main.hero.label}">Operations</p>
-                <h2 class="sc-page-heading mt-3" th:text="${pageTitle}">Task Monitor</h2>
-                <p class="sc-page-lead" th:text="${pageSubtitle}"></p>
+    <div class="sc-page-content mn-content flex-1 overflow-y-auto">
+        <section data-page-hero="monitor-overview" class="mn-hero">
+            <div class="mn-wordmark" aria-hidden="true">MONITOR</div>
+
+            <div class="mn-hero-copy">
+                <p class="mn-eyebrow mn-rise" style="--d:40ms">
+                    <span aria-hidden="true">//</span>
+                    <span th:text="#{main.hero.label}">运维</span>
+                </p>
+                <h2 class="mn-title mn-rise" style="--d:80ms">
+                    <span th:text="${pageTitle}">任务监控</span>
+                    <span class="mn-caret" aria-hidden="true"></span>
+                </h2>
+                <p class="mn-lead mn-rise" style="--d:120ms" th:text="${pageSubtitle}"></p>
             </div>
-            <div class="sc-surface px-4 py-4 min-w-[280px] max-w-xl flex-1 lg:flex-none lg:min-w-[360px]">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <p id="pipeline-monitor-last-refresh" class="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 font-mono" th:text="#{main.lastUpdated.placeholder}">Last updated: --</p>
-                    <button id="pipeline-monitor-refresh" type="button"
-                            class="sc-btn-secondary inline-flex min-h-10 items-center gap-1.5 px-3 text-xs">
+
+            <div class="mn-console mn-rise" style="--d:160ms">
+                <div class="mn-console-head">
+                    <span class="mn-console-title">LIVE FEED</span>
+                    <span class="mn-console-live">
+                        <span class="mn-live-dot" aria-hidden="true"></span>
+                        <span>LIVE</span>
+                    </span>
+                </div>
+                <p id="pipeline-monitor-last-refresh" class="mn-console-time" th:text="#{main.lastUpdated.placeholder}">上次更新: --</p>
+                <div class="mn-console-actions">
+                    <button id="pipeline-monitor-refresh" type="button" class="mn-console-btn">
                         <i data-lucide="refresh-cw" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
-                        <span th:text="#{main.refresh}"></span>
+                        <span th:text="#{main.refresh}">刷新</span>
                     </button>
                 </div>
             </div>
         </section>
 
-        <section id="pipeline-monitor-loading" class="sc-loading-state min-h-80 flex items-center justify-center px-5 py-10" role="status" aria-live="polite" aria-busy="true">
-            <div class="w-full max-w-3xl">
-                <div class="mb-5 flex items-center gap-3">
-                    <span class="sc-topbar-signal" aria-hidden="true"></span>
-                    <p class="text-sm font-medium text-slate-700 dark:text-slate-300" th:text="#{main.loading}">Loading...</p>
-                </div>
-                <div class="grid gap-3 sm:grid-cols-3">
-                    <div class="sc-skeleton-line h-20 w-full animate-pulse"></div>
-                    <div class="sc-skeleton-line h-20 w-full animate-pulse"></div>
-                    <div class="sc-skeleton-line h-20 w-full animate-pulse"></div>
-                </div>
-                <div class="mt-5 space-y-3">
-                    <div class="sc-skeleton-line sc-skeleton-line-wide animate-pulse"></div>
-                    <div class="sc-skeleton-line sc-skeleton-line-short animate-pulse"></div>
-                </div>
+        <section id="pipeline-monitor-loading" class="mn-loading" role="status" aria-live="polite" aria-busy="true">
+            <div class="mn-loading-head">
+                <span class="mn-live-dot" aria-hidden="true"></span>
+                <p th:text="#{main.loading}">正在加载全局任务监控视图...</p>
+            </div>
+            <div class="mn-loading-grid">
+                <div class="mn-skeleton mn-skeleton-block"></div>
+                <div class="mn-skeleton mn-skeleton-block"></div>
+                <div class="mn-skeleton mn-skeleton-block"></div>
+            </div>
+            <div class="mn-loading-lines">
+                <div class="mn-skeleton mn-skeleton-line"></div>
+                <div class="mn-skeleton mn-skeleton-line mn-skeleton-short"></div>
             </div>
         </section>
 
         <section id="pipeline-monitor-error" class="hidden" role="alert" aria-live="assertive">
-            <div class="sc-card-strong sc-monitor-error border-red-200 bg-red-50 p-5 text-center dark:border-red-500/30 dark:bg-red-500/10 sm:p-6">
-                <i data-lucide="triangle-alert" class="mx-auto mb-3 h-6 w-6 text-red-600 dark:text-red-200" aria-hidden="true"></i>
-                <h3 class="text-lg font-semibold text-red-600 dark:text-red-200" th:text="#{main.error.title}">Loading failed</h3>
-                <p id="pipeline-monitor-error-message" class="mt-2 text-sm text-slate-700 dark:text-slate-300" th:text="#{main.error.retry}">Please try again later.</p>
+            <div class="mn-error">
+                <i data-lucide="triangle-alert" class="sc-icon sc-icon-lg" aria-hidden="true"></i>
+                <h3 th:text="#{main.error.title}">加载监控数据失败</h3>
+                <p id="pipeline-monitor-error-message" th:text="#{main.error.retry}">请稍后重试。</p>
             </div>
         </section>
 
-        <section id="pipeline-monitor-content" class="hidden space-y-6" aria-live="polite" aria-busy="false">
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 sm:grid-cols-2 lg:gap-5">
-                <article class="sc-summary-card sc-monitor-metric flex min-w-0 items-center overflow-hidden xl:col-span-1" data-summary-tone="health">
-                    <div class="relative mr-4 h-20 w-20 flex-shrink-0 sm:mr-5">
-                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                            <path class="text-slate-700 dark:text-slate-300" stroke-width="3" stroke="currentColor" fill="none"
-                                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
-                            <path id="pipeline-monitor-health-ring" class="text-emerald-500" stroke-width="3" stroke-dasharray="0, 100"
-                                  stroke-linecap="round" stroke="currentColor" fill="none"
-                                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
-                        </svg>
-                        <div class="absolute inset-0 flex items-center justify-center">
-                            <span id="pipeline-monitor-health-score" class="text-xl font-bold text-slate-900 dark:text-slate-100">--</span>
+        <section id="pipeline-monitor-content" class="hidden" aria-live="polite" aria-busy="false">
+            <div class="mn-grid">
+                <article class="mn-module mn-rise" style="--d:200ms">
+                    <header class="mn-module-head">
+                        <span class="mn-tag">SYS-01</span>
+                        <h3 class="mn-module-title" th:text="#{main.health.title}">系统整体健康度</h3>
+                    </header>
+                    <div class="mn-module-body">
+                        <div class="mn-ring-box">
+                            <svg class="mn-ring" viewBox="0 0 36 36" aria-hidden="true">
+                                <path class="mn-ring-track" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                                <path id="pipeline-monitor-health-ring" class="mn-ring-value" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                            </svg>
+                            <span id="pipeline-monitor-health-score" class="mn-ring-score">--</span>
                         </div>
-                    </div>
-                    <div class="min-w-0">
-                        <h3 class="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm font-medium mb-1" th:text="#{main.health.title}">System health</h3>
-                        <p id="pipeline-monitor-health-label" class="text-xs text-emerald-600 mb-2" th:text="#{main.health.waiting}">Waiting for data</p>
-                        <div class="flex space-x-3 text-[10px] text-slate-500 dark:text-slate-400 dark:text-slate-500">
-                            <span th:text="#{main.connectedRuntimeTargets.label}">Runtime target:</span>
-                            <span id="pipeline-monitor-runtime-targets" class="text-emerald-600" th:text="#{main.notProvided}">Not provided</span>
+                        <div class="mn-module-meta">
+                            <p id="pipeline-monitor-health-label" class="mn-tone-label" data-tone="none" th:text="#{main.health.waiting}">等待数据</p>
+                            <p class="mn-kv">
+                                <span th:text="#{main.connectedRuntimeTargets.label}">运行目标:</span>
+                                <span id="pipeline-monitor-runtime-targets" class="mn-kv-value">--</span>
+                            </p>
                         </div>
                     </div>
                 </article>
 
-                <article class="sc-summary-card md:col-span-2 xl:col-span-1 flex items-center gap-6 overflow-hidden">
-                    <div class="relative h-24 w-24 flex-shrink-0">
-                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36" aria-hidden="true">
-                            <path class="text-slate-200 dark:text-slate-800" stroke-width="3" stroke="currentColor" fill="none"
-                                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
-                            <g id="pipeline-monitor-status-ring"></g>
-                        </svg>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span id="pipeline-monitor-status-total" class="text-xl font-bold text-slate-900 dark:text-slate-100">--</span>
-                            <span id="pipeline-monitor-status-label" class="mt-1 text-[10px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Tasks</span>
+                <article class="mn-module mn-rise" style="--d:240ms">
+                    <header class="mn-module-head">
+                        <span class="mn-tag">SYS-02</span>
+                        <h3 class="mn-module-title" th:text="#{main.status.title}">全局任务状态分布</h3>
+                    </header>
+                    <div class="mn-module-body">
+                        <div class="mn-ring-box">
+                            <svg class="mn-ring" viewBox="0 0 36 36" aria-hidden="true">
+                                <path class="mn-ring-track" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                                <g id="pipeline-monitor-status-ring"></g>
+                            </svg>
+                            <div class="mn-ring-center">
+                                <span id="pipeline-monitor-status-total" class="mn-ring-score">--</span>
+                                <span id="pipeline-monitor-status-label" class="mn-ring-caption">Tasks</span>
+                            </div>
                         </div>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <h3 class="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm font-medium mb-1" th:text="#{main.status.title}">Global status distribution</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-3" th:text="#{main.status.description}">Summarize all tasks by status.</p>
-                        <div id="pipeline-monitor-status-legend" class="flex flex-wrap gap-3 text-xs font-medium"></div>
+                        <div class="mn-module-meta">
+                            <div id="pipeline-monitor-status-legend" class="mn-chips"></div>
+                        </div>
                     </div>
                 </article>
 
-                <article class="sc-summary-card sc-monitor-metric flex min-w-0 items-center gap-4 overflow-hidden xl:col-span-1 sm:gap-5" data-summary-tone="capacity">
-                    <div class="relative h-20 w-20 flex-shrink-0">
-                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36" aria-hidden="true">
-                            <path class="text-slate-200 dark:text-slate-800" stroke-width="3" stroke="currentColor" fill="none"
-                                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
-                            <path id="pipeline-monitor-slot-ring" class="text-slate-300 dark:text-slate-700" stroke-width="3" stroke-dasharray="0, 100"
-                                  stroke-linecap="round" stroke="currentColor" fill="none"
-                                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
-                        </svg>
-                        <div class="absolute inset-0 flex items-center justify-center">
-                            <span id="pipeline-monitor-slot-rate" class="text-lg font-bold text-slate-900 dark:text-slate-100">--</span>
+                <article class="mn-module mn-rise" style="--d:280ms">
+                    <header class="mn-module-head">
+                        <span class="mn-tag">SYS-03</span>
+                        <h3 class="mn-module-title" th:text="#{main.slots.title}">Flink Slots 分配率</h3>
+                    </header>
+                    <div class="mn-module-body">
+                        <div class="mn-ring-box">
+                            <svg class="mn-ring" viewBox="0 0 36 36" aria-hidden="true">
+                                <path class="mn-ring-track" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                                <path id="pipeline-monitor-slot-ring" class="mn-ring-value" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                            </svg>
+                            <span id="pipeline-monitor-slot-rate" class="mn-ring-score">--</span>
                         </div>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <h3 class="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm font-medium mb-1" th:text="#{main.slots.title}">Flink slot allocation</h3>
-                        <p id="pipeline-monitor-slot-label" class="text-xs text-slate-500 dark:text-slate-400 mb-2" th:text="#{main.notProvided}">Waiting for data</p>
-                        <div class="flex items-end gap-1">
-                            <span id="pipeline-monitor-used-slots" class="text-2xl font-bold text-slate-900 dark:text-slate-100">--</span>
-                            <span class="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-0.5"><span th:text="#{main.totalSuffix}">/</span> <span id="pipeline-monitor-total-slots">--</span> <span th:text="#{main.totalLabel}">total</span></span>
+                        <div class="mn-module-meta">
+                            <p id="pipeline-monitor-slot-label" class="mn-tone-label" data-tone="none" th:text="#{main.notProvided}">暂未提供</p>
+                            <p class="mn-kv mn-kv-big">
+                                <span id="pipeline-monitor-used-slots" class="mn-kv-value">--</span>
+                                <span class="mn-kv-total">
+                                    <span th:text="#{main.totalSuffix}">/</span>
+                                    <span id="pipeline-monitor-total-slots">--</span>
+                                    <span th:text="#{main.totalLabel}">共计</span>
+                                </span>
+                            </p>
+                            <p class="mn-kv">
+                                <span th:text="#{main.availableLabel}">可用:</span>
+                                <span id="pipeline-monitor-available-slots" class="mn-kv-value">--</span>
+                            </p>
                         </div>
-                        <p class="mt-2 text-[10px] text-slate-500 dark:text-slate-400 dark:text-slate-500" th:text="#{main.availableLabel}">Available:</p>
-                        <span id="pipeline-monitor-available-slots">--</span>
                     </div>
                 </article>
 
-                <article id="pipeline-monitor-realtime-card" class="sc-summary-card xl:col-span-2 flex flex-col justify-between" data-summary-tone="realtime">
-                    <div class="flex flex-wrap items-center justify-between gap-2">
-                        <h3 class="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm font-medium mr-2" th:text="#{main.realtime.title}">Realtime trend</h3>
-                        <div id="pipeline-monitor-realtime-legend" class="flex flex-shrink-0 items-center justify-end gap-3 text-[10px] font-medium">
-                            <span id="pipeline-monitor-realtime-legend-input" class="inline-flex items-center gap-1 text-blue-600">
-                                <span class="sc-status-swatch bg-blue-400"></span>
-                                <span>IN: <span id="pipeline-monitor-total-input" class="font-semibold text-slate-800 dark:text-slate-200">0</span></span>
+                <article class="mn-module mn-module-wide mn-rise" style="--d:320ms">
+                    <header class="mn-module-head mn-module-head-wide">
+                        <div class="mn-module-head-copy">
+                            <span class="mn-tag">RT-01</span>
+                            <h3 class="mn-module-title" th:text="#{main.realtime.title}">实时单秒趋势</h3>
+                        </div>
+                        <div id="pipeline-monitor-realtime-legend" class="mn-legend">
+                            <span id="pipeline-monitor-realtime-legend-input" class="mn-legend-item" data-series="in">
+                                <span class="mn-swatch mn-swatch-in"></span>
+                                <span>IN: <span id="pipeline-monitor-total-input" class="mn-legend-value">0</span></span>
                             </span>
-                            <span id="pipeline-monitor-realtime-legend-output" class="inline-flex items-center gap-1 text-cyan-600">
-                                <span class="sc-status-swatch bg-cyan-400"></span>
-                                <span>OUT: <span id="pipeline-monitor-total-output" class="font-semibold text-slate-800 dark:text-slate-200">0</span></span>
+                            <span id="pipeline-monitor-realtime-legend-output" class="mn-legend-item" data-series="out">
+                                <span class="mn-swatch mn-swatch-out"></span>
+                                <span>OUT: <span id="pipeline-monitor-total-output" class="mn-legend-value">0</span></span>
                             </span>
                         </div>
-                    </div>
+                    </header>
 
-                    <div id="pipeline-monitor-realtime-plot" class="sc-panel-muted relative mt-4 min-h-[140px] flex-1 overflow-hidden px-2 py-3 sm:min-h-[160px]">
-                        <div id="pipeline-monitor-realtime-y-axis" class="pointer-events-none absolute left-2 top-4 bottom-10 w-8 text-[9px] uppercase text-slate-400 dark:text-slate-500 whitespace-nowrap">
-                            <span th:text="#{main.recordsLabel}">Records</span>
+                    <div id="pipeline-monitor-realtime-plot" class="mn-plot">
+                        <div id="pipeline-monitor-realtime-y-axis" class="mn-plot-y">
+                            <span th:text="#{main.recordsLabel}">记录数</span>
                         </div>
-                        <div class="ml-10 mr-1 h-24">
-                            <svg id="pipeline-monitor-realtime-svg" class="h-full w-full" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"></svg>
+                        <div class="mn-plot-canvas">
+                            <svg id="pipeline-monitor-realtime-svg" class="mn-plot-svg" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"></svg>
                         </div>
-                        <div id="pipeline-monitor-realtime-crosshair" class="pointer-events-none absolute inset-y-4 hidden w-px bg-cyan-400/60"></div>
-                        <div id="pipeline-monitor-realtime-tooltip" class="pointer-events-none absolute right-2 top-4 hidden sc-card-strong px-2 py-1.5 text-[10px] text-slate-800 dark:text-slate-200 shadow-sm z-10 w-max"></div>
-                        <div id="pipeline-monitor-realtime-empty" class="absolute inset-x-2 top-1/2 -translate-y-1/2 text-center text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 z-0" th:text="#{main.realtime.empty}">
-                            No realtime data yet
-                        </div>
-                        <div id="pipeline-monitor-realtime-x-axis" class="ml-10 mr-1 mt-1 border-t border-slate-200 dark:border-slate-800 pt-1 text-[9px] uppercase text-slate-400 dark:text-slate-500" th:text="#{main.timeLabel}">
-                            Time
+                        <div id="pipeline-monitor-realtime-crosshair" class="mn-crosshair hidden"></div>
+                        <div id="pipeline-monitor-realtime-tooltip" class="mn-tooltip hidden"></div>
+                        <div id="pipeline-monitor-realtime-empty" class="mn-plot-empty" th:text="#{main.realtime.empty}">暂无实时趋势数据</div>
+                        <div id="pipeline-monitor-realtime-x-axis" class="mn-plot-x">
+                            <span th:text="#{main.timeLabel}">时间</span>
                         </div>
                     </div>
-                    <p id="pipeline-monitor-realtime-status" class="hidden mt-2 text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1"></p>
+                    <p id="pipeline-monitor-realtime-status" class="mn-plot-status hidden"></p>
                 </article>
             </div>
 
-            <section data-collection-panel="monitor-cards" class="sc-card-strong flex flex-col overflow-hidden">
-                <header class="sc-surface flex items-center justify-between rounded-none border-b-0 px-4 py-4 sm:px-5">
-                    <div>
-                        <p class="sc-subtle-label" th:text="#{main.hero.label}">Operations</p>
-                        <h3 class="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-200" th:text="#{main.cards.title}">Task cards</h3>
+            <section data-collection-panel="monitor-cards" class="mn-panel mn-rise" style="--d:360ms">
+                <header class="mn-panel-head">
+                    <div class="mn-panel-head-copy">
+                        <p class="mn-eyebrow-sm">
+                            <span aria-hidden="true">//</span>
+                            <span th:text="#{main.hero.label}">运维</span>
+                        </p>
+                        <h3 class="mn-panel-title" th:text="#{main.cards.title}">任务监控卡片</h3>
                     </div>
-                    <i data-lucide="layout-grid" class="sc-icon sc-icon-sm text-slate-400 dark:text-slate-500" aria-hidden="true"></i>
+                    <i data-lucide="layout-grid" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
                 </header>
-                <div class="flex-1 overflow-y-auto">
-                    <div id="pipeline-monitor-cards" class="sc-monitor-card-grid grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-3"></div>
+                <div class="mn-panel-body">
+                    <div id="pipeline-monitor-cards" class="mn-cards"></div>
                 </div>
             </section>
         </section>
     </div>
+
+    <footer class="mn-statusbar">
+        <span class="mn-statusbar-left">STREAMCRAFT // <span th:text="#{nav.pipelineMonitor}">任务监控</span></span>
+        <span class="mn-statusbar-right">
+            <span>POLL:5S</span>
+            <span class="mn-live-dot" aria-hidden="true"></span>
+            <span id="mn-clock">--:--:--</span>
+        </span>
+    </footer>
 </main>
 
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&display=swap');
+
+    .sc-main-page {
+        --mn-font-display: 'Syne', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        --mn-font-mono: 'Fira Code', 'SFMono-Regular', Consolas, monospace;
+        --mn-ease: cubic-bezier(0.22, 1, 0.36, 1);
+        position: relative;
+    }
+
+    /* ---------- shell integration ---------- */
+
+    .sc-main-page .sc-page-frame {
+        position: relative;
+        z-index: 1;
+        background: transparent;
+    }
+
+    .sc-main-page .sc-shell-sidebar {
+        background: color-mix(in srgb, var(--sc-sidebar) 88%, transparent);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+    }
+
+    .sc-main-page .sc-shell-topbar {
+        background: color-mix(in srgb, var(--sc-bg) 72%, transparent);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom-color: var(--sc-border-soft);
+    }
+
+    .sc-main-page .sc-topbar-context {
+        display: none;
+    }
+
+    .sc-main-page .sc-brand-copy {
+        font-family: var(--mn-font-mono);
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+    }
+
+    .sc-main-page .sc-shell-sidebar > div:last-child {
+        font-family: var(--mn-font-mono);
+        font-size: 9.5px;
+        letter-spacing: 0.18em;
+    }
+
+    .sc-main-page .sc-shell-sidebar nav {
+        counter-reset: mn-nav;
+    }
+
+    .sc-main-page .sc-nav-link {
+        counter-increment: mn-nav;
+    }
+
+    .sc-main-page .sc-nav-link span::before {
+        content: counter(mn-nav, decimal-leading-zero);
+        margin-right: 9px;
+        color: var(--sc-muted-soft);
+        font-family: var(--mn-font-mono);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+    }
+
+    .sc-main-page .sc-nav-link-active span::before {
+        color: var(--sc-accent);
+    }
+
+    /* ---------- layered background ---------- */
+
+    .mn-bg {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        pointer-events: none;
+    }
+
+    .mn-bg-grid {
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(circle, color-mix(in srgb, var(--sc-muted-soft) 52%, transparent) 1px, transparent 1.4px);
+        background-size: 26px 26px;
+        -webkit-mask-image: radial-gradient(ellipse 92% 78% at 40% -6%, #000 0%, transparent 72%);
+        mask-image: radial-gradient(ellipse 92% 78% at 40% -6%, #000 0%, transparent 72%);
+    }
+
+    .mn-bg-aurora {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(70px);
+        will-change: transform;
+    }
+
+    .mn-bg-aurora-a {
+        top: -24%;
+        left: -10%;
+        width: 52vw;
+        height: 52vw;
+        background: radial-gradient(circle, color-mix(in srgb, var(--sc-accent) 15%, transparent), transparent 65%);
+        animation: mn-drift-a 32s ease-in-out infinite alternate;
+    }
+
+    .mn-bg-aurora-b {
+        bottom: -30%;
+        right: -14%;
+        width: 44vw;
+        height: 44vw;
+        background: radial-gradient(circle, color-mix(in srgb, var(--sc-accent) 10%, transparent), transparent 65%);
+        animation: mn-drift-b 38s ease-in-out infinite alternate;
+    }
+
+    @keyframes mn-drift-a {
+        to { transform: translate(7%, 9%) scale(1.1); }
+    }
+
+    @keyframes mn-drift-b {
+        to { transform: translate(-8%, -7%) scale(0.94); }
+    }
+
+    .mn-bg-noise {
+        position: absolute;
+        inset: 0;
+        opacity: 0.05;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* ---------- entry animation ---------- */
+
+    @keyframes mn-rise {
+        from { opacity: 0; transform: translateY(16px); }
+        to { opacity: 1; transform: none; }
+    }
+
+    .mn-rise {
+        animation: mn-rise 0.6s var(--mn-ease) both;
+        animation-delay: var(--d, 0ms);
+    }
+
+    @keyframes mn-dot {
+        0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--sc-success) 42%, transparent); }
+        70% { box-shadow: 0 0 0 7px transparent; }
+        100% { box-shadow: 0 0 0 0 transparent; }
+    }
+
+    /* ---------- content scaffolding ---------- */
+
+    .mn-content {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    /* ---------- hero ---------- */
+
+    .mn-hero {
+        position: relative;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 22px;
+        padding: 26px 28px 22px;
+        border: 1px solid var(--sc-border);
+        border-radius: 16px;
+        background: color-mix(in srgb, var(--sc-card-strong) 55%, transparent);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        overflow: hidden;
+    }
+
+    .mn-hero::before,
+    .mn-hero::after {
+        position: absolute;
+        width: 22px;
+        height: 22px;
+        border: 1px solid color-mix(in srgb, var(--sc-accent) 52%, transparent);
+        content: "";
+        opacity: 0.7;
+        pointer-events: none;
+        z-index: 2;
+    }
+
+    .mn-hero::before {
+        top: 16px;
+        left: 16px;
+        border-right: 0;
+        border-bottom: 0;
+    }
+
+    .mn-hero::after {
+        right: 16px;
+        bottom: 16px;
+        border-left: 0;
+        border-top: 0;
+    }
+
+    .mn-wordmark {
+        position: absolute;
+        right: -0.06em;
+        top: -0.34em;
+        z-index: 0;
+        color: transparent;
+        font-family: var(--mn-font-display);
+        font-weight: 800;
+        font-size: clamp(80px, 10vw, 170px);
+        letter-spacing: -0.04em;
+        line-height: 0.75;
+        pointer-events: none;
+        user-select: none;
+        -webkit-text-stroke: 1px color-mix(in srgb, var(--sc-text) 11%, transparent);
+    }
+
+    @supports not (-webkit-text-stroke: 1px black) {
+        .mn-wordmark {
+            color: color-mix(in srgb, var(--sc-text) 4%, transparent);
+        }
+    }
+
+    .mn-hero-copy {
+        position: relative;
+        z-index: 1;
+        min-width: 0;
+        max-width: 40rem;
+    }
+
+    .mn-eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--sc-accent);
+        font-family: var(--mn-font-mono);
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        margin-bottom: 14px;
+    }
+
+    .mn-title {
+        margin: 0;
+        color: var(--sc-text);
+        font-family: var(--mn-font-display);
+        font-size: clamp(2rem, 3.6vw, 3rem);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 1.05;
+    }
+
+    .mn-caret {
+        display: inline-block;
+        width: 0.14em;
+        height: 0.72em;
+        margin-left: 0.12em;
+        background: var(--sc-accent);
+        animation: mn-blink 1.1s step-end infinite;
+    }
+
+    @keyframes mn-blink {
+        0%, 49% { opacity: 1; }
+        50%, 100% { opacity: 0; }
+    }
+
+    .mn-lead {
+        max-width: 46rem;
+        margin: 12px 0 0;
+        color: var(--sc-muted);
+        font-size: 14px;
+        line-height: 1.7;
+    }
+
+    .mn-lead:empty {
+        display: none;
+    }
+
+    /* ---------- hero console ---------- */
+
+    .mn-console {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: 300px;
+        flex: 0 0 auto;
+        padding: 16px 18px;
+        border: 1px solid var(--sc-border);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--sc-card-strong) 82%, transparent);
+        box-shadow: var(--sc-shadow-soft);
+    }
+
+    .mn-console-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .mn-console-title {
+        color: var(--sc-muted-soft);
+        font-family: var(--mn-font-mono);
+        font-size: 9.5px;
+        font-weight: 600;
+        letter-spacing: 0.24em;
+    }
+
+    .mn-console-live {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--sc-success);
+        font-family: var(--mn-font-mono);
+        font-size: 9.5px;
+        font-weight: 600;
+        letter-spacing: 0.2em;
+    }
+
+    .mn-live-dot {
+        width: 6px;
+        height: 6px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: var(--sc-success);
+        animation: mn-dot 2.6s ease-out infinite;
+    }
+
+    .mn-console-time {
+        margin: 0;
+        color: var(--sc-muted);
+        font-family: var(--mn-font-mono);
+        font-size: 11.5px;
+        letter-spacing: 0.04em;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .mn-console-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .mn-console-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 38px;
+        padding: 9px 16px;
+        border: 1px solid var(--sc-border);
+        border-radius: 9px;
+        background: var(--sc-secondary);
+        color: var(--sc-secondary-foreground);
+        font-size: 12.5px;
+        font-weight: 600;
+        line-height: 1;
+        cursor: pointer;
+        transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+    }
+
+    .mn-console-btn:hover {
+        border-color: color-mix(in srgb, var(--sc-accent) 46%, var(--sc-border) 54%);
+        background: var(--sc-card-strong);
+        transform: translateY(-1px);
+    }
+
+    .mn-console-btn:disabled,
+    .mn-console-btn[aria-busy="true"] {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .mn-console-btn:focus-visible {
+        outline: 2px solid var(--sc-accent);
+        outline-offset: 2px;
+    }
+
+    /* ---------- metric grid ---------- */
+
+    .mn-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    @media (min-width: 768px) {
+        .mn-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .mn-module-wide {
+            grid-column: span 2;
+        }
+    }
+
+    @media (min-width: 1280px) {
+        .mn-grid {
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+        }
+
+        .mn-module-wide {
+            grid-column: span 2;
+        }
+    }
+
+    .mn-module {
+        display: flex;
+        flex-direction: column;
+        padding: 18px 20px;
+        border: 1px solid var(--sc-border);
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--sc-card-strong) 82%, transparent);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: var(--sc-shadow-soft);
+    }
+
+    .mn-module-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .mn-module-head-wide {
+        flex-wrap: wrap;
+        justify-content: space-between;
+        row-gap: 10px;
+    }
+
+    .mn-module-head-copy {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+
+    .mn-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 8px;
+        border: 1px solid var(--sc-border);
+        border-radius: 5px;
+        color: var(--sc-muted);
+        font-family: var(--mn-font-mono);
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        white-space: nowrap;
+    }
+
+    .mn-module-title {
+        margin: 0;
+        min-width: 0;
+        color: var(--sc-text);
+        font-size: 13.5px;
+        font-weight: 600;
+        line-height: 1.35;
+    }
+
+    .mn-module-body {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .mn-module-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    /* ---------- rings ---------- */
+
+    .mn-ring-box {
+        position: relative;
+        width: 96px;
+        height: 96px;
+        flex: 0 0 auto;
+    }
+
+    .mn-ring {
+        width: 100%;
+        height: 100%;
+        transform: rotate(-90deg);
+    }
+
+    .mn-ring-track {
+        fill: none;
+        stroke: var(--sc-border);
+        stroke-width: 3;
+    }
+
+    .mn-ring-value {
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 3;
+        stroke-linecap: round;
+    }
+
+    .mn-ring-center {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+    }
+
+    .mn-ring-score {
+        color: var(--sc-text);
+        font-family: var(--mn-font-mono);
+        font-size: 19px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+    }
+
+    .mn-ring-caption {
+        color: var(--sc-muted-soft);
+        font-family: var(--mn-font-mono);
+        font-size: 9px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+    }
+
+    /* ---------- module meta text ---------- */
+
+    .mn-tone-label {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.4;
+    }
+
+    .mn-tone-label[data-tone="good"],
+    .mn-tone-label[data-tone="running"],
+    .mn-tone-label[data-tone="ok"] {
+        color: var(--sc-success);
+    }
+
+    .mn-tone-label[data-tone="warn"],
+    .mn-tone-label[data-tone="degraded"],
+    .mn-tone-label[data-tone="partial"] {
+        color: var(--sc-warning);
+    }
+
+    .mn-tone-label[data-tone="bad"],
+    .mn-tone-label[data-tone="failed"],
+    .mn-tone-label[data-tone="err"] {
+        color: var(--sc-danger);
+    }
+
+    .mn-tone-label[data-tone="none"] {
+        color: var(--sc-muted);
+    }
+
+    .mn-kv {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin: 0;
+        color: var(--sc-muted);
+        font-size: 12px;
+        line-height: 1.45;
+    }
+
+    .mn-kv-value {
+        color: var(--sc-text);
+        font-family: var(--mn-font-mono);
+        font-size: 13px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        overflow-wrap: anywhere;
+    }
+
+    .mn-kv-big {
+        align-items: baseline;
+    }
+
+    .mn-kv-big .mn-kv-value {
+        font-size: 24px;
+        font-weight: 600;
+    }
+
+    .mn-kv-total {
+        color: var(--sc-muted-soft);
+        font-size: 11.5px;
+    }
+
+    /* ---------- status chips ---------- */
+
+    .mn-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+    }
+
+    .mn-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 4px 9px;
+        border: 1px solid var(--sc-border-soft);
+        border-radius: 9999px;
+        background: var(--sc-card);
+        font-family: var(--mn-font-mono);
+        font-size: 10px;
+        letter-spacing: 0.05em;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .mn-chip-dot {
+        width: 6px;
+        height: 6px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: var(--sc-muted-soft);
+    }
+
+    .mn-chip-label {
+        color: var(--sc-text-body);
+    }
+
+    .mn-chip-count {
+        color: var(--sc-muted-soft);
+    }
+
+    .mn-chip[data-tone="running"] .mn-chip-dot { background: var(--sc-success); }
+    .mn-chip[data-tone="running"] .mn-chip-label { color: var(--sc-success); }
+    .mn-chip[data-tone="degraded"] .mn-chip-dot { background: var(--sc-warning); }
+    .mn-chip[data-tone="degraded"] .mn-chip-label { color: var(--sc-warning); }
+    .mn-chip[data-tone="failed"] .mn-chip-dot { background: var(--sc-danger); }
+    .mn-chip[data-tone="failed"] .mn-chip-label { color: var(--sc-danger); }
+
+    /* ---------- realtime chart ---------- */
+
+    .mn-legend {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .mn-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--sc-muted);
+        font-family: var(--mn-font-mono);
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .mn-legend-item[data-series="in"] { color: var(--sc-accent); }
+    .mn-legend-item[data-series="out"] { color: var(--sc-success); }
+
+    .mn-legend-value {
+        color: var(--sc-text);
+        font-weight: 600;
+    }
+
+    .mn-swatch {
+        display: inline-block;
+        width: 14px;
+        height: 3px;
+        flex: 0 0 auto;
+        border-radius: 1.5px;
+    }
+
+    .mn-swatch-in { background: var(--sc-accent); }
+    .mn-swatch-out { background: var(--sc-success); }
+
+    .mn-plot {
+        position: relative;
+        flex: 1;
+        min-height: 150px;
+        margin-top: 2px;
+        padding: 8px 8px 6px 44px;
+        border: 1px solid var(--sc-border-soft);
+        border-radius: 10px;
+        background:
+            linear-gradient(to right, color-mix(in srgb, var(--sc-border-soft) 55%, transparent) 1px, transparent 1px),
+            linear-gradient(to bottom, color-mix(in srgb, var(--sc-border-soft) 55%, transparent) 1px, transparent 1px);
+        background-size: 25% 25%;
+        background-color: color-mix(in srgb, var(--sc-surface) 60%, transparent);
+        overflow: hidden;
+    }
+
+    .mn-plot-y {
+        position: absolute;
+        left: 8px;
+        top: 10px;
+        bottom: 30px;
+        width: 30px;
+        color: var(--sc-muted-soft);
+        font-family: var(--mn-font-mono);
+        font-size: 9px;
+        letter-spacing: 0.05em;
+        font-variant-numeric: tabular-nums;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .mn-plot-y > span {
+        display: block;
+        transform: rotate(180deg);
+        writing-mode: vertical-rl;
+    }
+
+    .mn-axis-y {
+        display: flex;
+        height: 100%;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding-right: 6px;
+    }
+
+    .mn-plot-canvas {
+        height: 108px;
+        margin-right: 2px;
+    }
+
+    .mn-plot-svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+    }
+
+    .mn-crosshair {
+        position: absolute;
+        top: 10px;
+        bottom: 30px;
+        left: 44px;
+        width: 1px;
+        background: color-mix(in srgb, var(--sc-accent) 55%, transparent);
+        pointer-events: none;
+    }
+
+    .mn-tooltip {
+        position: absolute;
+        top: 12px;
+        left: 44px;
+        z-index: 10;
+        min-width: 132px;
+        padding: 7px 10px;
+        border: 1px solid var(--sc-border);
+        border-radius: 8px;
+        background: var(--sc-card-strong);
+        box-shadow: var(--sc-shadow-soft);
+        pointer-events: none;
+        transform: translateX(-50%);
+    }
+
+    .mn-tooltip-time {
+        color: var(--sc-text);
+        font-family: var(--mn-font-mono);
+        font-size: 10.5px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .mn-tooltip-row {
+        margin-top: 3px;
+        font-family: var(--mn-font-mono);
+        font-size: 9.5px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .mn-tooltip-row[data-series="in"] { color: var(--sc-accent); }
+    .mn-tooltip-row[data-series="out"] { color: var(--sc-success); }
+
+    .mn-plot-empty {
+        position: absolute;
+        inset-inline: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 0;
+        color: var(--sc-muted-soft);
+        font-size: 12px;
+        text-align: center;
+        pointer-events: none;
+    }
+
+    .mn-plot-x {
+        margin: 6px 2px 0 0;
+        padding-top: 6px;
+        border-top: 1px solid var(--sc-border-soft);
+        color: var(--sc-muted-soft);
+        font-family: var(--mn-font-mono);
+        font-size: 9px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .mn-axis-x {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .mn-plot-status {
+        margin: 8px 0 0;
+        font-size: 11px;
+        line-height: 1.4;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+    }
+
+    .mn-plot-status[data-tone="warning"] { color: var(--sc-warning); }
+    .mn-plot-status[data-tone="error"] { color: var(--sc-danger); }
+    .mn-plot-status[data-tone="success"] { color: var(--sc-success); }
+    .mn-plot-status[data-tone="default"] { color: var(--sc-muted); }
+
+    /* ---------- task cards panel ---------- */
+
+    .mn-panel {
+        border: 1px solid var(--sc-border);
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--sc-card-strong) 82%, transparent);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: var(--sc-shadow-soft);
+        overflow: hidden;
+    }
+
+    .mn-panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--sc-border-soft);
+        background: color-mix(in srgb, var(--sc-surface) 55%, transparent);
+    }
+
+    .mn-panel-head-copy {
+        min-width: 0;
+    }
+
+    .mn-eyebrow-sm {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--sc-accent);
+        font-family: var(--mn-font-mono);
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+    }
+
+    .mn-panel-title {
+        margin: 6px 0 0;
+        color: var(--sc-text);
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.35;
+    }
+
+    .mn-panel-head > .sc-icon {
+        color: var(--sc-muted-soft);
+    }
+
+    .mn-panel-body {
+        padding: 16px;
+    }
+
+    .mn-cards {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 14px;
+        align-items: stretch;
+    }
+
+    @media (min-width: 768px) {
+        .mn-cards {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (min-width: 1280px) {
+        .mn-cards {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    /* ---------- task card ---------- */
+
+    .mn-card {
+        --tone: var(--sc-muted-soft);
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        border: 1px solid var(--sc-border);
+        border-radius: 12px;
+        background: var(--sc-card-strong);
+        box-shadow: var(--sc-shadow-soft);
+        overflow: hidden;
+        transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    }
+
+    .mn-card[data-tone="running"] { --tone: var(--sc-success); }
+    .mn-card[data-tone="degraded"] { --tone: var(--sc-warning); }
+    .mn-card[data-tone="failed"] { --tone: var(--sc-danger); }
+
+    .mn-card::before {
+        position: absolute;
+        inset: 0 0 auto 0;
+        height: 2px;
+        background: var(--tone);
+        opacity: 0.85;
+        content: "";
+    }
+
+    .mn-card:hover {
+        border-color: color-mix(in srgb, var(--tone) 38%, var(--sc-border) 62%);
+        box-shadow: var(--sc-shadow);
+        transform: translateY(-2px);
+    }
+
+    .mn-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 15px 16px 9px;
+    }
+
+    .mn-card-id {
+        display: flex;
+        align-items: baseline;
+        gap: 9px;
+        min-width: 0;
+    }
+
+    .mn-card-index {
+        color: var(--tone);
+        font-family: var(--mn-font-mono);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        white-space: nowrap;
+    }
+
+    .mn-card-name {
+        margin: 0;
+        min-width: 0;
+        overflow: hidden;
+        color: var(--sc-text);
+        font-size: 14.5px;
+        font-weight: 600;
+        line-height: 1.3;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .mn-card-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        flex: 0 0 auto;
+        min-height: 32px;
+        padding: 4px 8px;
+        border-radius: 7px;
+        color: var(--sc-accent);
+        font-family: var(--mn-font-mono);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-decoration: none;
+        transition: background-color 0.18s ease, color 0.18s ease;
+    }
+
+    .mn-card-link:hover {
+        background: var(--sc-accent-soft);
+        color: var(--sc-text);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+
+    .mn-card-link-icon {
+        width: 13px;
+        height: 13px;
+    }
+
+    .mn-card-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        margin: 0 16px 11px;
+        color: var(--tone);
+        font-family: var(--mn-font-mono);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+    }
+
+    .mn-card-status-dot {
+        width: 6px;
+        height: 6px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: var(--tone);
+    }
+
+    .mn-card[data-tone="running"] .mn-card-status-dot {
+        animation: mn-dot 2.4s ease-out infinite;
+    }
+
+    .mn-card-rows {
+        display: grid;
+        gap: 8px;
+        padding: 2px 16px 16px;
+    }
+
+    .mn-row {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .mn-row-label {
+        flex: 0 0 auto;
+        max-width: 42%;
+        color: var(--sc-muted);
+        font-size: 11.5px;
+        line-height: 1.35;
+    }
+
+    .mn-row-leader {
+        flex: 1;
+        min-width: 12px;
+        border-bottom: 1px dotted var(--sc-border);
+        transform: translateY(-3px);
+    }
+
+    .mn-row-value {
+        flex: 0 1 auto;
+        max-width: 60%;
+        color: var(--sc-text);
+        font-family: var(--mn-font-mono);
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+        overflow-wrap: anywhere;
+    }
+
+    .mn-row-value[data-tone="ok"] { color: var(--sc-success); }
+    .mn-row-value[data-tone="warn"] { color: var(--sc-warning); }
+    .mn-row-value[data-tone="bad"] { color: var(--sc-danger); }
+    .mn-row-value[data-tone="none"] { color: var(--sc-muted); }
+
+    .mn-empty {
+        grid-column: 1 / -1;
+        padding: 32px 24px;
+        border: 1px dashed var(--sc-border);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--sc-surface) 55%, transparent);
+        color: var(--sc-muted);
+        font-size: 13px;
+        text-align: center;
+    }
+
+    /* ---------- loading / error ---------- */
+
+    .mn-loading {
+        padding: 34px 28px;
+        border: 1px solid var(--sc-border-soft);
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--sc-card-strong) 55%, transparent);
+    }
+
+    .mn-loading-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 22px;
+        color: var(--sc-muted);
+        font-size: 13px;
+    }
+
+    .mn-loading-head p {
+        margin: 0;
+    }
+
+    .mn-loading-grid {
+        display: grid;
+        gap: 12px;
+    }
+
+    @media (min-width: 640px) {
+        .mn-loading-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    .mn-loading-lines {
+        display: grid;
+        gap: 12px;
+        margin-top: 18px;
+    }
+
+    .mn-skeleton {
+        position: relative;
+        border-radius: 6px;
+        background: var(--sc-border);
+        overflow: hidden;
+    }
+
+    .mn-skeleton::after {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--sc-card-strong) 45%, transparent) 50%, transparent 70%);
+        content: "";
+        transform: translateX(-130%);
+        animation: mn-shimmer 1.6s ease-in-out infinite;
+    }
+
+    @keyframes mn-shimmer {
+        to { transform: translateX(130%); }
+    }
+
+    .mn-skeleton-block {
+        height: 76px;
+    }
+
+    .mn-skeleton-line {
+        height: 10px;
+        width: min(100%, 420px);
+    }
+
+    .mn-skeleton-short {
+        width: min(72%, 240px);
+    }
+
+    .mn-error {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding: 34px 28px;
+        text-align: center;
+        border: 1px solid color-mix(in srgb, var(--sc-danger) 34%, transparent);
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--sc-danger) 8%, transparent);
+    }
+
+    .mn-error .sc-icon {
+        color: var(--sc-danger);
+    }
+
+    .mn-error h3 {
+        margin: 0;
+        color: var(--sc-danger);
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .mn-error p {
+        margin: 0;
+        color: var(--sc-muted);
+        font-size: 13px;
+        line-height: 1.55;
+    }
+
+    /* ---------- statusbar ---------- */
+
+    .mn-statusbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex: 0 0 auto;
+        padding: 10px clamp(20px, 4vw, 48px);
+        border-top: 1px solid var(--sc-border-soft);
+        background: color-mix(in srgb, var(--sc-bg) 72%, transparent);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        color: var(--sc-muted-soft);
+        font-family: var(--mn-font-mono);
+        font-size: 9.5px;
+        letter-spacing: 0.16em;
+    }
+
+    .mn-statusbar-left {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .mn-statusbar-left > span {
+        color: var(--sc-muted);
+    }
+
+    .mn-statusbar-right {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        flex: 0 0 auto;
+        color: var(--sc-muted);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    /* ---------- responsive ---------- */
+
+    @media (max-width: 1023px) {
+        .mn-console {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 639px) {
+        .mn-hero {
+            padding: 22px 20px 18px;
+        }
+
+        .mn-module-body {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 16px;
+        }
+    }
+
+    /* ---------- reduced motion ---------- */
+
+    @media (prefers-reduced-motion: reduce) {
+        .mn-rise,
+        .mn-bg-aurora,
+        .mn-live-dot,
+        .mn-caret,
+        .mn-card-status-dot,
+        .mn-skeleton::after {
+            animation: none !important;
+            transition: none !important;
+        }
+
+        .mn-caret {
+            opacity: 1;
+        }
+    }
+</style>
 
 <script>
     const t = window.StreamCraftI18n?.t || ((key, fallback) => fallback ?? key);
@@ -212,11 +1512,15 @@
     let monitorRefreshIntervalId = null;
 
     const monitorStatusMeta = {
-        FAILED: { label: 'Failed', ringColor: '#dc2626', barClass: 'bg-red-600', textClass: 'text-red-600', dotClass: 'bg-red-600', cardClass: 'border-red-200', badgeClass: 'bg-red-50 text-red-600 border-red-200' },
-        DEGRADED: { label: 'Degraded', ringColor: '#f59e0b', barClass: 'bg-amber-500', textClass: 'text-amber-600', dotClass: 'bg-amber-500', cardClass: 'border-amber-200', badgeClass: 'bg-amber-50 text-amber-600 border-amber-200' },
-        RUNNING: { label: 'Running', ringColor: '#10b981', barClass: 'bg-emerald-500', textClass: 'text-emerald-600', dotClass: 'bg-emerald-500', cardClass: 'border-emerald-200', badgeClass: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
-        STOPPED: { label: 'Stopped', ringColor: '#64748b', barClass: 'bg-slate-600', textClass: 'text-slate-700 dark:text-slate-300', dotClass: 'bg-slate-500', cardClass: 'border-slate-300 dark:border-slate-700', badgeClass: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-500/20' }
+        FAILED: { tone: 'failed', labelKey: 'main.status.failed', fallback: 'Failed', color: 'var(--sc-danger)' },
+        DEGRADED: { tone: 'degraded', labelKey: 'main.status.degraded', fallback: 'Degraded', color: 'var(--sc-warning)' },
+        RUNNING: { tone: 'running', labelKey: 'main.status.running', fallback: 'Running', color: 'var(--sc-success)' },
+        STOPPED: { tone: 'stopped', labelKey: 'main.status.stopped', fallback: 'Stopped', color: 'var(--sc-muted-soft)' }
     };
+
+    function monitorStatusMetaLabel(meta) {
+        return t(meta.labelKey, meta.fallback);
+    }
 
     function showMonitorState(state) {
         const isLoading = state === 'loading';
@@ -292,14 +1596,28 @@
             .replace(/'/g, '&#39;');
     }
 
+    function monitorRow(label, value, tone) {
+        const toneAttr = tone ? ` data-tone="${tone}"` : '';
+        return `
+            <div class="mn-row">
+                <span class="mn-row-label">${label}</span>
+                <span class="mn-row-leader" aria-hidden="true"></span>
+                <span class="mn-row-value"${toneAttr}>${value}</span>
+            </div>
+        `;
+    }
+
     function renderSummary(summary = {}, metadata = {}) {
         const safeSummary = summary && typeof summary === 'object' ? summary : {};
         const safeMetadata = metadata && typeof metadata === 'object' ? metadata : {};
 
         const hasHealthScore = Number.isFinite(safeSummary.healthScore);
         const clampedHealthScore = hasHealthScore ? Math.max(0, Math.min(100, safeSummary.healthScore)) : 0;
+        const healthTone = !hasHealthScore ? 'none' : (clampedHealthScore >= 80 ? 'good' : clampedHealthScore >= 50 ? 'warn' : 'bad');
         monitorHealthScore.textContent = hasHealthScore ? `${clampedHealthScore}` : '--';
         monitorHealthRing.setAttribute('stroke-dasharray', `${clampedHealthScore}, 100`);
+        monitorHealthRing.style.color = healthTone === 'good' ? 'var(--sc-success)' : healthTone === 'warn' ? 'var(--sc-warning)' : 'var(--sc-danger)';
+        monitorHealthLabel.dataset.tone = healthTone;
         monitorHealthLabel.textContent = hasHealthScore
             ? (clampedHealthScore >= 80 ? t('main.health.good', 'Overall healthy') : clampedHealthScore >= 50 ? t('main.health.warn', 'Keep watching') : t('main.health.critical', 'Check immediately'))
             : t('main.notProvided', 'Not provided');
@@ -324,9 +1642,9 @@
         monitorAvailableSlots.textContent = hasAvailableSlots ? `${safeSummary.availableSlots}` : '--';
         monitorSlotRate.textContent = hasSlotCapacity ? `${Math.round(slotUsagePercent)}%` : '--';
         monitorSlotRing.setAttribute('stroke-dasharray', `${slotUsagePercent}, 100`);
-        monitorSlotRing.setAttribute('class', slotTone.ringClass);
+        monitorSlotRing.style.color = slotTone.color;
+        monitorSlotLabel.dataset.tone = slotTone.tone;
         monitorSlotLabel.textContent = slotTone.label;
-        monitorSlotLabel.className = `text-xs mb-2 ${slotTone.labelClass}`;
 
         const refreshText = safeMetadata.lastRefreshAt
             ? formatMonitorTimestamp(safeMetadata.lastRefreshAt)
@@ -337,31 +1655,31 @@
     function resolveMonitorSlotTone(slotUsagePercent, hasSlotCapacity) {
         if (!hasSlotCapacity) {
             return {
-                ringClass: 'text-slate-300 dark:text-slate-700',
-                labelClass: 'text-slate-500 dark:text-slate-400',
+                tone: 'none',
+                color: 'var(--sc-muted-soft)',
                 label: t('main.notProvided', 'Not provided')
             };
         }
 
         if (slotUsagePercent >= 90) {
             return {
-                ringClass: 'text-red-500',
-                labelClass: 'text-red-600 dark:text-red-200',
+                tone: 'bad',
+                color: 'var(--sc-danger)',
                 label: t('main.slot.nearCapacity', 'Close to capacity limit')
             };
         }
 
         if (slotUsagePercent >= 70) {
             return {
-                ringClass: 'text-amber-500',
-                labelClass: 'text-amber-600 dark:text-amber-200',
+                tone: 'warn',
+                color: 'var(--sc-warning)',
                 label: t('main.slot.warn', 'Capacity level needs attention')
             };
         }
 
         return {
-            ringClass: 'text-emerald-500',
-            labelClass: 'text-emerald-600 dark:text-emerald-200',
+            tone: 'good',
+            color: 'var(--sc-success)',
             label: t('main.slot.good', 'Capacity remains sufficient')
         };
     }
@@ -381,7 +1699,7 @@
             }
 
             const share = Math.max(0, (count / totalTasks) * 100);
-            const segment = `<path stroke="${meta.ringColor}" stroke-width="3.25" stroke-dasharray="${share} ${100 - share}" stroke-dashoffset="${-offset}" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>`;
+            const segment = `<path stroke="${meta.color}" stroke-width="3.25" stroke-dasharray="${share} ${100 - share}" stroke-dashoffset="${-offset}" stroke-linecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>`;
             offset += share;
             return segment;
         }).join('');
@@ -402,8 +1720,8 @@
 
         if (totalTasks === 0) {
             const emptyLegend = document.createElement('span');
-            emptyLegend.className = 'text-slate-500 dark:text-slate-400 dark:text-slate-500';
-            emptyLegend.textContent = t('main.status.noTasks', 'No tasks yet');
+            emptyLegend.className = 'mn-chip';
+            emptyLegend.innerHTML = `<span class="mn-chip-label">${t('main.status.noTasks', 'No tasks yet')}</span>`;
             monitorStatusLegend.appendChild(emptyLegend);
             return;
         }
@@ -416,10 +1734,11 @@
             const count = Number.isFinite(safeBucket.count) ? safeBucket.count : 0;
             const ratio = Math.round((count / totalTasks) * 100);
 
-            const legend = document.createElement('span');
-            legend.className = `${meta.textClass} flex items-center`;
-            legend.innerHTML = `<span class="sc-status-swatch ${meta.dotClass} mr-1.5"></span>${meta.label} (${count} ${t('main.status.shareSeparator', '/')} ${ratio}%)`;
-            monitorStatusLegend.appendChild(legend);
+            const chip = document.createElement('span');
+            chip.className = 'mn-chip';
+            chip.dataset.tone = meta.tone;
+            chip.innerHTML = `<span class="mn-chip-dot" aria-hidden="true"></span><span class="mn-chip-label">${monitorStatusMetaLabel(meta)}</span><span class="mn-chip-count">${count}${t('main.status.shareSeparator', '/')} ${ratio}%</span>`;
+            monitorStatusLegend.appendChild(chip);
         });
     }
 
@@ -449,18 +1768,18 @@
         }
     }
 
-    function metricsStatusClass(collectionStatus) {
+    function metricsStatusTone(collectionStatus) {
         switch (collectionStatus) {
             case 'AVAILABLE':
-                return 'text-emerald-600 dark:text-emerald-200';
-            case 'UNAVAILABLE':
-                return 'text-red-600 dark:text-red-200';
+                return 'ok';
             case 'PARTIAL':
-                return 'text-amber-700 dark:text-amber-200';
+                return 'warn';
+            case 'UNAVAILABLE':
+                return 'bad';
             case 'NO_DATA':
             case 'NOT_REQUESTED':
             default:
-                return 'text-slate-500 dark:text-slate-400';
+                return 'none';
         }
     }
 
@@ -468,20 +1787,20 @@
         const safeCards = Array.isArray(cards) ? cards : [];
         if (safeCards.length === 0) {
             monitorCards.innerHTML = `
-                <article class="col-span-full sc-empty-state p-8 text-center text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500" role="status">
+                <article class="mn-empty" role="status">
                     ${t('main.cards.empty', 'No task cards to display right now.')}
                 </article>
             `;
             return;
         }
 
-        monitorCards.innerHTML = safeCards.map((card) => {
+        monitorCards.innerHTML = safeCards.map((card, index) => {
             const safeCard = card && typeof card === 'object' ? card : {};
             const statusKey = (safeCard.monitorStatus || 'STOPPED').toUpperCase();
             const meta = monitorStatusMeta[statusKey] ?? monitorStatusMeta.STOPPED;
             const metricsAvailable = !!safeCard.metricsAvailable;
             const collectionStatus = metricsCollectionStatus(safeCard);
-            const collectionStatusClass = metricsStatusClass(collectionStatus);
+            const collectionTone = metricsStatusTone(collectionStatus);
             const inputRecords = metricsAvailable ? formatCompactCount(safeCard.totalInputRecords) : t('main.notProvided', 'Not provided');
             const outputRecords = metricsAvailable ? formatCompactCount(safeCard.totalOutputRecords) : t('main.notProvided', 'Not provided');
             const duration = metricsAvailable ? formatDuration(safeCard.durationMillis) : t('main.notProvided', 'Not provided');
@@ -497,30 +1816,37 @@
             const safeJobId = escapeHtml(safeJobIdRaw);
             const safeRunStatus = escapeHtml(runStatusRaw);
             const linkHref = safePipelineId !== null ? `/pipelines/${safePipelineId}/monitor` : '#';
+            const cardIndex = `T-${String(index + 1).padStart(2, '0')}`;
 
             return `
-                <article class="sc-monitor-card sc-card-interactive sc-card-strong overflow-hidden flex flex-col border ${meta.cardClass}">
-                    <header class="px-4 py-3 flex items-center justify-between gap-3 border-b border-[var(--sc-border-soft)]">
-                        <div class="min-w-0">
-                            <h4 class="font-semibold text-slate-900 dark:text-slate-100 truncate">${safeName}</h4>
-                            <p class="text-[10px] text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase tracking-[0.18em]">${meta.label}</p>
+                <article class="mn-card" data-tone="${meta.tone}">
+                    <header class="mn-card-head">
+                        <div class="mn-card-id">
+                            <span class="mn-card-index">${cardIndex}</span>
+                            <h4 class="mn-card-name" title="${safeName}">${safeName}</h4>
                         </div>
-                        <a href="${linkHref}" class="sc-monitor-card-link shrink-0 px-2" aria-label="${t('main.cards.view', 'View')} ${safeName}">${t('main.cards.view', 'View')}</a>
+                        <a href="${linkHref}" class="mn-card-link" aria-label="${t('main.cards.view', 'View')} ${safeName}">
+                            <span>${t('main.cards.view', 'View')}</span>
+                            <i data-lucide="arrow-up-right" class="mn-card-link-icon" aria-hidden="true"></i>
+                        </a>
                     </header>
-                    <div class="p-4 space-y-3 text-sm">
-                        <div class="flex items-start justify-between gap-4"><span class="sc-muted">${t('main.records.input', 'Input')}</span><span class="sc-monitor-card-value text-slate-700 dark:text-slate-300">${inputRecords}</span></div>
-                        <div class="flex items-start justify-between gap-4"><span class="sc-muted">${t('main.records.output', 'Output')}</span><span class="sc-monitor-card-value text-slate-700 dark:text-slate-300">${outputRecords}</span></div>
-                        <div class="flex items-start justify-between gap-4"><span class="sc-muted">${t('main.records.runtime', 'Runtime')}</span><span class="sc-monitor-card-value text-slate-700 dark:text-slate-300">${duration}</span></div>
-                        <div class="flex items-start justify-between gap-4"><span class="sc-muted">${t('main.records.nodes', 'Nodes')}</span><span class="sc-monitor-card-value text-slate-700 dark:text-slate-300">${Number.isFinite(safeCard.nodeCount) ? safeCard.nodeCount : '--'}</span></div>
-                        <div class="flex items-start justify-between gap-4"><span class="sc-muted">${t('main.records.status', 'Metrics status')}</span><span class="sc-monitor-card-value ${collectionStatusClass}">${collectionStatusCopy}</span></div>
-                        <div class="flex items-start justify-between gap-4"><span class="sc-muted">${t('main.records.updatedAt', 'Updated at')}</span><span class="sc-monitor-card-value text-slate-700 dark:text-slate-300">${updatedAt}</span></div>
-                        <div class="flex items-start justify-between gap-4"><span class="sc-muted">${t('main.records.runtimeTarget', 'Runtime target')}</span><span class="sc-monitor-card-value text-slate-700 dark:text-slate-300">${safeRuntimeTarget}</span></div>
-                        <div class="flex items-start justify-between gap-4"><span class="sc-muted">${t('main.records.jobId', 'Job ID')}</span><span class="sc-monitor-card-value text-slate-700 dark:text-slate-300">${safeJobId}</span></div>
-                        <div class="flex items-start justify-between gap-4"><span class="sc-muted">${t('main.records.runStatus', 'Run status')}</span><span class="sc-monitor-card-value text-slate-700 dark:text-slate-300">${safeRunStatus}</span></div>
+                    <p class="mn-card-status"><span class="mn-card-status-dot" aria-hidden="true"></span>${monitorStatusMetaLabel(meta)}</p>
+                    <div class="mn-card-rows">
+                        ${monitorRow(t('main.records.input', 'Input'), inputRecords)}
+                        ${monitorRow(t('main.records.output', 'Output'), outputRecords)}
+                        ${monitorRow(t('main.records.runtime', 'Runtime'), duration)}
+                        ${monitorRow(t('main.records.nodes', 'Nodes'), Number.isFinite(safeCard.nodeCount) ? safeCard.nodeCount : '--')}
+                        ${monitorRow(t('main.records.status', 'Metrics status'), collectionStatusCopy, collectionTone)}
+                        ${monitorRow(t('main.records.updatedAt', 'Updated at'), updatedAt)}
+                        ${monitorRow(t('main.records.runtimeTarget', 'Runtime target'), safeRuntimeTarget)}
+                        ${monitorRow(t('main.records.jobId', 'Job ID'), safeJobId)}
+                        ${monitorRow(t('main.records.runStatus', 'Run status'), safeRunStatus)}
                     </div>
                 </article>
             `;
         }).join('');
+
+        window.StreamCraftIcons?.refresh();
     }
 
     function appendMonitorRealtimeSample(snapshot, sampledAt = Date.now()) {
@@ -572,33 +1898,8 @@
 
         const hasMessage = Boolean(message);
         status.textContent = message || '';
+        status.dataset.tone = tone;
         status.classList.toggle('hidden', !hasMessage);
-        status.classList.remove(
-            'text-slate-500',
-            'dark:text-slate-400',
-            'text-amber-700',
-            'dark:text-amber-200',
-            'text-red-700',
-            'dark:text-red-200',
-            'text-emerald-600',
-            'dark:text-emerald-200'
-        );
-        if (!hasMessage) {
-            return;
-        }
-        if (tone === 'warning') {
-            status.classList.add('text-amber-700', 'dark:text-amber-200');
-            return;
-        }
-        if (tone === 'error') {
-            status.classList.add('text-red-700', 'dark:text-red-200');
-            return;
-        }
-        if (tone === 'success') {
-            status.classList.add('text-emerald-600', 'dark:text-emerald-200');
-            return;
-        }
-        status.classList.add('text-slate-500', 'dark:text-slate-400');
     }
 
     function getMonitorRealtimeGeometry(plot, svg) {
@@ -674,7 +1975,7 @@
 
         const fixedXAxisLabels = ['-5m', '-4m', '-3m', '-2m', '-1m', '0m'];
         xAxis.innerHTML = `
-            <div class="flex items-center justify-between text-[9px] text-slate-400 dark:text-slate-500">
+            <div class="mn-axis-x">
                 ${fixedXAxisLabels.map(label => `<span>${label}</span>`).join('')}
             </div>
         `;
@@ -683,12 +1984,8 @@
             svg.innerHTML = '';
             empty.classList.remove('hidden');
             yAxis.innerHTML = `
-                <div class="flex h-full flex-col justify-between text-[9px] text-slate-400 dark:text-slate-500">
-                    <span>0</span>
-                    <span>0</span>
-                    <span>0</span>
-                    <span>0</span>
-                    <span>0</span>
+                <div class="mn-axis-y">
+                    ${Array.from({ length: 5 }, () => '<span>0</span>').join('')}
                 </div>
             `;
             hideMonitorRealtimePoint();
@@ -705,7 +2002,7 @@
             return Math.round(maxValue * ratio);
         });
         yAxis.innerHTML = `
-            <div class="flex h-full flex-col justify-between text-[9px] text-slate-500 dark:text-slate-400 dark:text-slate-500">
+            <div class="mn-axis-y">
                 ${yAxisTickValues.map((value) => `<span>${formatCompactCount(value)}</span>`).join('')}
             </div>
         `;
@@ -713,8 +2010,8 @@
         const inputPath = buildMonitorRealtimePath(monitorRealtimeSamples, 'totalInputRecords', maxValue);
         const outputPath = buildMonitorRealtimePath(monitorRealtimeSamples, 'totalOutputRecords', maxValue);
         svg.innerHTML = `
-            <path d="${inputPath}" fill="none" stroke="#60a5fa" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
-            <path d="${outputPath}" fill="none" stroke="#22d3ee" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="${inputPath}" fill="none" stroke="var(--sc-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="${outputPath}" fill="none" stroke="var(--sc-success)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
         `;
 
         const activeIndex = monitorRealtimeActiveSampleTimestamp === null
@@ -754,9 +2051,9 @@
         crosshair.style.left = `${xPosition}px`;
         crosshair.classList.remove('hidden');
         tooltip.innerHTML = `
-            <div class="font-semibold text-slate-900 dark:text-slate-100">${new Date(sample.timestamp).toLocaleTimeString('zh-CN', { hour12: false })}</div>
-            <div class="mt-1 text-blue-600">${t('main.records.input', 'Input')}: ${Number(sample.totalInputRecords ?? 0).toLocaleString('zh-CN')}</div>
-            <div class="text-cyan-600">${t('main.records.output', 'Output')}: ${Number(sample.totalOutputRecords ?? 0).toLocaleString('zh-CN')}</div>
+            <div class="mn-tooltip-time">${new Date(sample.timestamp).toLocaleTimeString('zh-CN', { hour12: false })}</div>
+            <div class="mn-tooltip-row" data-series="in">${t('main.records.input', 'Input')}: ${Number(sample.totalInputRecords ?? 0).toLocaleString('zh-CN')}</div>
+            <div class="mn-tooltip-row" data-series="out">${t('main.records.output', 'Output')}: ${Number(sample.totalOutputRecords ?? 0).toLocaleString('zh-CN')}</div>
         `;
         tooltip.classList.remove('hidden');
 
@@ -910,6 +2207,17 @@
 
     monitorRefreshButton.addEventListener('click', () => {
         loadPipelineMonitor();
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const clock = document.getElementById('mn-clock');
+        if (clock) {
+            const updateClock = () => {
+                clock.textContent = new Date().toLocaleTimeString('en-GB');
+            };
+            updateClock();
+            setInterval(updateClock, 1000);
+        }
     });
 
     loadPipelineMonitor();
