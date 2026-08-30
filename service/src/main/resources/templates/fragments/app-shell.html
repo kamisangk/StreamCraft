@@ -27,31 +27,31 @@
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Fira+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --sc-bg: #f5f5f5;
-            --sc-surface: #ebebeb;
-            --sc-card: #fafafa;
+            --sc-bg: #fbfcfe;
+            --sc-surface: #eef1f6;
+            --sc-card: #fcfdfe;
             --sc-card-strong: #ffffff;
-            --sc-border: #d4d4d4;
-            --sc-border-soft: #e5e5e5;
-            --sc-text: #111111;
-            --sc-text-body: #3f3f46;
-            --sc-muted: #737373;
-            --sc-muted-soft: #a3a3a3;
-            --sc-primary: #111111;
+            --sc-border: #d6dce5;
+            --sc-border-soft: #e8ecf3;
+            --sc-text: #111827;
+            --sc-text-body: #3d4654;
+            --sc-muted: #6e7684;
+            --sc-muted-soft: #98a1b0;
+            --sc-primary: #111827;
             --sc-primary-foreground: #ffffff;
             --sc-secondary: #ffffff;
-            --sc-secondary-foreground: #111111;
-            --sc-sidebar: #ebebeb;
-            --sc-sidebar-foreground: #111111;
-            --sc-sidebar-active: #dcdcdc;
-            --sc-accent: #111111;
-            --sc-accent-soft: rgba(17, 17, 17, 0.10);
-            --sc-focus-ring: rgba(17, 17, 17, 0.18);
+            --sc-secondary-foreground: #111827;
+            --sc-sidebar: #f4f6fa;
+            --sc-sidebar-foreground: #111827;
+            --sc-sidebar-active: #e7ecf4;
+            --sc-accent: #33507c;
+            --sc-accent-soft: rgba(51, 80, 124, 0.12);
+            --sc-focus-ring: rgba(51, 80, 124, 0.28);
             --sc-success: #0b9f6e;
             --sc-warning: #bf7a00;
             --sc-danger: #d83b4c;
-            --sc-shadow: 0 12px 30px rgba(17, 17, 17, 0.07);
-            --sc-shadow-soft: 0 3px 12px rgba(17, 17, 17, 0.05);
+            --sc-shadow: 0 12px 30px rgba(23, 32, 48, 0.08);
+            --sc-shadow-soft: 0 3px 12px rgba(23, 32, 48, 0.06);
         }
 
         html.dark {
@@ -272,7 +272,7 @@
             position: absolute;
             inset: 0;
             z-index: 0;
-            background-image: radial-gradient(color-mix(in srgb, var(--sc-text) 9%, transparent) 1px, transparent 1.5px);
+            background-image: radial-gradient(color-mix(in srgb, var(--sc-accent) 12%, transparent) 1px, transparent 1.5px);
             background-size: 20px 20px;
             -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
             mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
@@ -547,7 +547,7 @@
         }
 
         html.dark .sc-shell-topbar {
-            background: rgba(19, 19, 19, 0.92);
+            background: rgba(8, 13, 23, 0.92);
         }
 
         .sc-topbar-title {
