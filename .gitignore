@@ -23,8 +23,8 @@ service/security-red.txt
 # Local worktrees and temporary files
 .worktrees/
 temp/
-docs/
-.docs/
+/docs/
+/.docs/
 
 # Local agent configuration
 /.agents/
