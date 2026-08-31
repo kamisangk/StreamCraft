@@ -14,13 +14,45 @@
 </div>
 
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&display=swap');
+
+    body[data-studio-shell="editor"] {
+        display: flex;
+        flex-direction: column;
+        height: 100dvh;
+        width: 100%;
+        overflow: hidden;
+    }
+    .studio-shell {
+        --st-font-mono: 'Fira Code', 'SFMono-Regular', Consolas, monospace;
+        --st-font-display: 'Syne', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        position: relative;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .studio-shell::before {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        background:
+            radial-gradient(ellipse 620px 420px at 12% -8%, color-mix(in srgb, var(--sc-accent) 9%, transparent), transparent 65%),
+            radial-gradient(ellipse 700px 500px at 96% 108%, color-mix(in srgb, var(--sc-accent) 7%, transparent), transparent 65%);
+        content: "";
+        pointer-events: none;
+    }
+
     .studio-shell-grid {
+        position: relative;
+        z-index: 1;
         display: grid;
+        height: 100%;
         grid-template-columns: minmax(0, 1fr);
         grid-template-rows: minmax(360px, 46dvh) minmax(0, 1fr);
         gap: 12px;
-        padding: 12px;
-        background: var(--sc-surface);
+        padding: 12px 12px 0;
+        background: transparent;
         overflow-y: auto;
     }
     @media (min-width: 768px) {
@@ -37,44 +69,68 @@
             grid-template-columns: 260px minmax(0, 1fr) 388px;
         }
     }
-    .dark .studio-shell-grid {
-        background: var(--sc-bg);
-    }
     .studio-workbench-header {
-        background: var(--sc-bg);
+        background: color-mix(in srgb, var(--sc-bg) 88%, transparent);
         box-shadow: 0 1px 0 var(--sc-border-soft);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
     }
-    .dark .studio-workbench-header {
-        background: var(--sc-bg);
+    .studio-workbench-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--sc-muted-soft);
+        font-family: var(--st-font-mono);
+        font-size: 9.5px;
+        font-weight: 500;
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+    }
+    .studio-workbench-eyebrow::before {
+        color: var(--sc-accent);
+        content: "//";
+        letter-spacing: 0;
     }
     .studio-rail {
         min-width: 0;
+        display: flex;
+        flex-direction: column;
         border: 1px solid var(--sc-border);
-        border-radius: 10px;
-        background: var(--sc-card-strong);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    }
-    .dark .studio-rail {
-        border-color: var(--sc-border);
-        background: var(--sc-card-strong);
-        box-shadow: none;
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--sc-card-strong) 82%, transparent);
+        box-shadow: var(--sc-shadow-soft);
+        overflow: hidden;
     }
     .studio-rail-header {
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
         gap: 12px;
-        padding: 14px 16px;
-        border-bottom: 1px solid var(--sc-border);
-        background: var(--sc-surface);
-    }
-    .dark .studio-rail-header {
-        border-color: var(--sc-border);
-        background: var(--sc-surface);
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--sc-border-soft);
+        background: color-mix(in srgb, var(--sc-surface) 55%, transparent);
     }
     .studio-rail-body {
         min-height: 0;
         padding: 16px;
+        flex: 1 1 auto;
+        overflow-y: auto;
+    }
+    .studio-rail-body .studio-operator-group + .studio-operator-group {
+        margin-top: 24px;
+    }
+    .studio-rail-head-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        min-width: 0;
+    }
+    .studio-rail-title {
+        margin-top: 4px;
+        color: var(--sc-text);
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.3;
     }
     .studio-rail-mark {
         width: 30px;
@@ -83,88 +139,144 @@
         align-items: center;
         justify-content: center;
         flex: 0 0 auto;
-        border: 1px solid var(--sc-border);
+        border: 1px solid color-mix(in srgb, var(--sc-accent) 45%, transparent);
         border-radius: 8px;
-        background: var(--sc-card-strong);
-        color: var(--sc-muted);
+        background: var(--sc-accent-soft);
+        color: var(--sc-accent);
     }
     .studio-operator-group {
         display: flex;
         flex-direction: column;
         gap: 8px;
     }
+    .studio-operator-group {
+        counter-reset: studio-op;
+    }
     .studio-operator-group-label {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 2px;
-        color: var(--sc-muted);
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: .14em;
+        margin-bottom: 4px;
+        color: var(--sc-muted-soft);
+        font-family: var(--st-font-mono);
+        font-size: 9.5px;
+        font-weight: 600;
+        letter-spacing: .22em;
         line-height: 1;
         text-transform: uppercase;
     }
+    .studio-operator-group-label::before {
+        color: var(--sc-accent);
+        content: "//";
+        letter-spacing: 0;
+    }
+    .studio-operator-group-label::after {
+        flex: 1 1 auto;
+        height: 1px;
+        background: linear-gradient(to right, var(--sc-border-soft), transparent);
+        content: "";
+    }
     .studio-operator-item {
-        min-height: 42px;
+        position: relative;
+        min-height: 40px;
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 10px 12px;
-        border: 1px solid var(--sc-border);
+        padding: 9px 12px 9px 10px;
+        border: 1px solid var(--sc-border-soft);
         border-radius: 8px;
         background: var(--sc-bg);
         color: var(--sc-text);
         font-size: 12px;
         font-weight: 600;
-        transition: border-color .18s ease, background-color .18s ease, color .18s ease;
+        cursor: grab;
+        transition: border-color .18s ease, background-color .18s ease, color .18s ease, transform .18s ease;
+    }
+    .studio-operator-item::before {
+        counter-increment: studio-op;
+        flex: 0 0 auto;
+        min-width: 32px;
+        padding: 2px 0;
+        border-radius: 5px;
+        background: var(--sc-surface);
+        color: var(--sc-muted);
+        font-family: var(--st-font-mono);
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: .04em;
+        text-align: center;
+        content: counter(studio-op, decimal-leading-zero);
+        transition: background-color .18s ease, color .18s ease;
+    }
+    .studio-operator-group[data-op-group="source"] .studio-operator-item::before {
+        content: "S" counter(studio-op, decimal-leading-zero);
+    }
+    .studio-operator-group[data-op-group="transform"] .studio-operator-item::before {
+        content: "T" counter(studio-op, decimal-leading-zero);
+    }
+    .studio-operator-group[data-op-group="sink"] .studio-operator-item::before {
+        content: "K" counter(studio-op, decimal-leading-zero);
     }
     .studio-operator-item:hover {
         border-color: var(--sc-accent);
-        background: var(--sc-surface);
-        color: var(--sc-accent);
+        background: var(--sc-accent-soft);
+        color: var(--sc-text);
+        transform: translateX(2px);
+    }
+    .studio-operator-item:hover::before {
+        background: var(--sc-accent);
+        color: var(--sc-bg);
     }
     .studio-operator-item:active {
-        background: var(--sc-accent-soft);
-    }
-    .dark .studio-operator-item {
-        border-color: var(--sc-border);
-        background: var(--sc-card-strong);
-        color: var(--sc-text);
-    }
-    .dark .studio-operator-item:hover {
-        border-color: var(--sc-text);
-        background: var(--sc-card);
+        cursor: grabbing;
+        background: color-mix(in srgb, var(--sc-accent) 22%, var(--sc-bg));
     }
     .studio-canvas-frame {
         position: relative;
         min-width: 0;
+        display: flex;
         border: 1px solid var(--sc-border);
-        border-radius: 16px;
-        background: var(--sc-card-strong);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--sc-card-strong) 82%, transparent);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: var(--sc-shadow-soft);
+        overflow: hidden;
     }
-    .dark .studio-canvas-frame {
-        border-color: var(--sc-border);
-        background: var(--sc-card-strong);
-        box-shadow: none;
+    .studio-canvas-frame::before,
+    .studio-canvas-frame::after {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border: 1px solid color-mix(in srgb, var(--sc-accent) 55%, transparent);
+        content: "";
+        opacity: .75;
+        pointer-events: none;
+        z-index: 5;
+    }
+    .studio-canvas-frame::before {
+        top: 13px;
+        left: 13px;
+        border-right: 0;
+        border-bottom: 0;
+    }
+    .studio-canvas-frame::after {
+        right: 13px;
+        bottom: 13px;
+        border-left: 0;
+        border-top: 0;
     }
     .studio-stage {
         border-radius: 10px;
         border: 1px solid var(--sc-border-soft);
         overflow: hidden;
     }
-    .dark .studio-stage {
-        border-color: var(--sc-border);
-    }
     .canvas-bg {
-        background: var(--sc-surface);
-        background-image: radial-gradient(rgba(107, 114, 128, 0.35) 1px, transparent 1px);
-        background-size: 22px 22px;
-    }
-    .dark .canvas-bg {
-        background: var(--sc-surface);
-        background-image: radial-gradient(rgba(163, 163, 163, 0.28) 1px, transparent 1px);
+        background-color: var(--sc-surface);
+        background-image:
+            radial-gradient(circle, color-mix(in srgb, var(--sc-muted-soft) 40%, transparent) 1px, transparent 1.3px),
+            radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--sc-accent) 6%, transparent), transparent 55%);
+        background-size: 22px 22px, 100% 100%;
     }
     .dark .node-port {
         border-color: var(--sc-card-strong);
@@ -370,13 +482,11 @@
         gap: 16px;
     }
     .studio-inspector-section {
+        position: relative;
         border: 1px solid var(--sc-border);
-        border-radius: 10px;
-        background: var(--sc-card-strong);
-    }
-    .dark .studio-inspector-section {
-        border-color: var(--sc-border);
-        background: var(--sc-card-strong);
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--sc-card-strong) 88%, transparent);
+        box-shadow: var(--sc-shadow-soft);
     }
     .studio-inspector-note {
         background: var(--sc-surface);
@@ -666,6 +776,129 @@
             padding-bottom: 2px;
         }
     }
+
+    /* ---------- node badge tones (JS renderNodeHtml) ---------- */
+
+    .studio-node-badge {
+        color: var(--sc-accent);
+    }
+    .studio-node-badge.tone-source { color: var(--sc-accent); }
+    .studio-node-badge.tone-sink { color: var(--sc-success); }
+    .studio-node-badge.tone-transform { color: var(--sc-warning); }
+    .studio-node-title {
+        color: var(--sc-text);
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.3;
+    }
+    .studio-node-tag {
+        font-family: var(--st-font-mono);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: .04em;
+    }
+    .studio-node-tag.tone-source { color: var(--sc-accent); }
+    .studio-node-tag.tone-sink { color: var(--sc-success); }
+    .studio-node-tag.tone-transform { color: var(--sc-warning); }
+
+    /* ---------- header extras ---------- */
+
+    .studio-user-label {
+        display: none;
+        color: var(--sc-muted);
+        font-family: var(--st-font-mono);
+        font-size: 11px;
+        letter-spacing: .06em;
+    }
+    @media (min-width: 768px) {
+        .studio-user-label {
+            display: inline;
+        }
+    }
+    .studio-toast {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        right: 14px;
+        z-index: 40;
+    }
+    @media (min-width: 768px) {
+        .studio-toast {
+            right: auto;
+            width: 420px;
+        }
+    }
+
+    /* ---------- status bar ---------- */
+
+    .studio-statusbar {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 10px 18px 12px;
+        color: var(--sc-muted-soft);
+        font-family: var(--st-font-mono);
+        font-size: 9.5px;
+        letter-spacing: .18em;
+        text-transform: uppercase;
+    }
+    .studio-statusbar-left,
+    .studio-statusbar-right {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        white-space: nowrap;
+    }
+    .studio-statusbar-right {
+        color: var(--sc-muted);
+    }
+    .studio-status-live {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--sc-success);
+    }
+    .studio-status-live-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: var(--sc-success);
+        box-shadow: 0 0 6px color-mix(in srgb, var(--sc-success) 60%, transparent);
+        animation: studio-breathe 2.4s ease-in-out infinite;
+    }
+    @keyframes studio-breathe {
+        0%, 100% { opacity: 1; }
+        50% { opacity: .35; }
+    }
+    .studio-statusbar strong {
+        color: var(--sc-text);
+        font-weight: 600;
+    }
+
+    /* ---------- entry animations ---------- */
+
+    @media (prefers-reduced-motion: no-preference) {
+        .studio-panel-rise {
+            animation: studio-rise .5s cubic-bezier(.22, .8, .32, 1) both;
+        }
+        .studio-panel-rise:nth-child(1) { animation-delay: 40ms; }
+        .studio-panel-rise:nth-child(2) { animation-delay: 120ms; }
+        .studio-panel-rise:nth-child(3) { animation-delay: 200ms; }
+        @keyframes studio-rise {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    }
 </style>
 
 <header data-studio-header="workbench" class="studio-workbench-header border-b border-[var(--sc-border)] px-4 lg:px-6 py-3 shrink-0">
@@ -679,7 +912,11 @@
                     <h1 id="studio-title" class="text-lg font-semibold text-[var(--sc-text)] truncate" th:text="#{studio.title.new}">New pipeline</h1>
                     <span id="studio-status" class="sc-pill" th:text="#{studio.status.new}">Unsaved</span>
                 </div>
-                <p class="mt-1 text-sm text-[var(--sc-muted)] truncate" th:text="#{studio.subtitle}">Drag operators into the canvas, arrange the DAG, then save and run.</p>
+                <p class="mt-1 text-sm text-[var(--sc-muted)] truncate">
+                    <span class="studio-workbench-eyebrow" th:text="#{studio.workbench.label}">Workbench</span>
+                    <span aria-hidden="true"> / </span>
+                    <span th:text="#{studio.subtitle}">Drag operators into the canvas, arrange the DAG, then save and run.</span>
+                </p>
             </div>
         </div>
         <div data-studio-actionbar class="studio-actionbar shrink-0">
@@ -687,7 +924,7 @@
                 <i id="theme-toggle-light-icon" data-lucide="sun" class="hidden sc-icon" aria-hidden="true"></i>
                 <i id="theme-toggle-dark-icon" data-lucide="moon" class="hidden sc-icon" aria-hidden="true"></i>
             </button>
-            <span class="hidden md:block text-xs text-[var(--sc-muted)]" th:text="${displayName}">admin</span>
+            <span class="studio-user-label" th:text="${displayName}">admin</span>
             <button id="save-pipeline-button" type="button" class="sc-btn-secondary px-3 lg:px-4 py-2 text-xs">
                 <i data-lucide="save" class="sc-icon sc-icon-sm" aria-hidden="true"></i>
                 <span th:text="#{studio.action.save}">Save pipeline</span>
@@ -708,23 +945,23 @@
     </div>
 </header>
 
-<div class="flex-1 min-h-0 overflow-hidden">
+<div class="flex-1 min-h-0 overflow-hidden studio-shell">
     <div class="studio-shell-grid h-full min-h-0" data-studio-shell="editor">
-        <aside id="operator-palette" data-studio-panel="palette" data-studio-rail="palette" class="studio-rail min-h-0 hidden md:flex flex-col overflow-hidden">
+        <aside id="operator-palette" data-studio-panel="palette" data-studio-rail="palette" class="studio-rail studio-panel-rise min-h-0">
             <div class="studio-rail-header">
-                <div class="flex items-start gap-3 min-w-0">
+                <div class="studio-rail-head-row">
                     <span class="studio-rail-mark" aria-hidden="true">
                         <i data-lucide="panel-left" class="sc-icon sc-icon-sm"></i>
                     </span>
                     <div class="min-w-0">
-                        <div class="sc-subtle-label">Palette</div>
-                        <h2 class="text-sm font-semibold text-[var(--sc-text)] mt-1 truncate" th:text="#{studio.palette.title}">Operator palette</h2>
+                        <div class="sc-subtle-label">OPS-01</div>
+                        <h2 class="studio-rail-title truncate" th:text="#{studio.palette.title}">Operator palette</h2>
                     </div>
                 </div>
             </div>
             <div class="studio-rail-body flex-1 overflow-y-auto sc-scroll space-y-6">
-                <div class="studio-operator-group">
-                    <div class="text-[11px] font-medium uppercase tracking-[0.2em] text-[var(--sc-muted)]" th:text="#{studio.palette.input}">Input</div>
+                <div class="studio-operator-group" data-op-group="source">
+                    <div class="studio-operator-group-label" th:text="#{studio.palette.input}">Input</div>
                     <button type="button"
                             class="operator-palette-item studio-operator-item w-full text-left"
                             draggable="true"
@@ -746,8 +983,8 @@
                             draggable="true"
                             data-operator-key="hdfsFileSource" th:text="#{studio.operator.hdfsFileSource}">HDFS File Source</button>
                 </div>
-                <div class="studio-operator-group">
-                    <div class="text-[11px] font-medium uppercase tracking-[0.2em] text-[var(--sc-muted)]" th:text="#{studio.palette.transform}">Transform</div>
+                <div class="studio-operator-group" data-op-group="transform">
+                    <div class="studio-operator-group-label" th:text="#{studio.palette.transform}">Transform</div>
                     <button type="button"
                             class="operator-palette-item studio-operator-item w-full text-left"
                             draggable="true"
@@ -837,8 +1074,8 @@
                             draggable="true"
                             data-operator-key="customCode" th:text="#{studio.operator.customCode}">Custom code</button>
                 </div>
-                <div class="studio-operator-group">
-                    <div class="text-[11px] font-medium uppercase tracking-[0.2em] text-[var(--sc-muted)]" th:text="#{studio.palette.output}">Output</div>
+                <div class="studio-operator-group" data-op-group="sink">
+                    <div class="studio-operator-group-label" th:text="#{studio.palette.output}">Output</div>
                     <button type="button"
                             class="operator-palette-item studio-operator-item w-full text-left"
                             draggable="true"
@@ -863,9 +1100,9 @@
             </div>
         </aside>
 
-        <main id="canvas-container" data-studio-canvas-frame class="studio-canvas-frame min-h-0 relative overflow-hidden">
+        <main id="canvas-container" data-studio-canvas-frame class="studio-canvas-frame studio-panel-rise min-h-0">
             <div data-studio-stage class="studio-stage canvas-bg absolute inset-3 overflow-hidden">
-                <div id="studio-message" class="hidden absolute top-4 left-4 right-4 md:right-auto md:w-[420px] sc-card-strong border px-4 py-3 text-sm z-40"></div>
+                <div id="studio-message" class="studio-toast hidden sc-card-strong border px-4 py-3 text-sm"></div>
                 <div id="canvas-drop-zone" class="absolute inset-0">
                     <svg id="edges-layer" class="absolute inset-0 w-full h-full pointer-events-none z-0">
                         <path id="temp-connection-path" fill="none" stroke="#60a5fa" stroke-width="2.5" class="opacity-0"></path>
@@ -875,15 +1112,15 @@
             </div>
         </main>
 
-        <aside data-studio-panel="inspector" data-studio-select-root data-studio-rail="inspector" class="studio-rail min-h-0 flex flex-col overflow-hidden">
+        <aside data-studio-panel="inspector" data-studio-select-root data-studio-rail="inspector" class="studio-rail studio-panel-rise min-h-0">
             <div class="studio-rail-header">
-                <div class="flex items-start gap-3 min-w-0">
+                <div class="studio-rail-head-row">
                     <span class="studio-rail-mark" aria-hidden="true">
                         <i data-lucide="sliders-horizontal" class="sc-icon sc-icon-sm"></i>
                     </span>
                     <div class="min-w-0">
-                        <div class="sc-subtle-label">Properties</div>
-                        <h2 class="text-sm font-semibold text-[var(--sc-text)] mt-1" th:text="#{studio.inspector.title}">Pipeline and node configuration</h2>
+                        <div class="sc-subtle-label">CFG-01</div>
+                        <h2 class="studio-rail-title" th:text="#{studio.inspector.title}">Pipeline and node configuration</h2>
                     </div>
                 </div>
             </div>
@@ -3061,8 +3298,51 @@
     </div>
 </div>
 
+<footer class="studio-statusbar shrink-0">
+    <div class="studio-statusbar-left">
+        <span>STREAMCRAFT // STUDIO</span>
+        <span class="studio-status-live" id="studio-status-live">
+            <span class="studio-status-live-dot" aria-hidden="true"></span>
+            <span th:text="#{studio.statusbar.live}">LIVE</span>
+        </span>
+    </div>
+    <div class="studio-statusbar-right">
+        <span th:text="#{studio.statusbar.nodes}">NODES</span>
+        <strong id="studio-node-count">0</strong>
+        <span th:text="#{studio.statusbar.edges}">EDGES</span>
+        <strong id="studio-edge-count">0</strong>
+        <span aria-hidden="true">//</span>
+        <time id="studio-clock">--:--:--</time>
+    </div>
+</footer>
+
 <script th:src="@{/js/studio-select.js}" src="/js/studio-select.js"></script>
 <script th:src="@{/js/pipeline-port-contract.js}" src="/js/pipeline-port-contract.js"></script>
 <script th:src="@{/js/studio-editor.js}" src="/js/studio-editor.js"></script>
+<script>
+    (function () {
+        var clock = document.getElementById("studio-clock");
+        if (clock) {
+            var pad = function (n) { return String(n).padStart(2, "0"); };
+            var tick = function () {
+                var d = new Date();
+                clock.textContent = pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+            };
+            tick();
+            setInterval(tick, 1000);
+        }
+        var nodeCount = document.getElementById("studio-node-count");
+        var edgeCount = document.getElementById("studio-edge-count");
+        if (nodeCount && edgeCount && "MutationObserver" in window) {
+            var sync = function () {
+                nodeCount.textContent = String(document.querySelectorAll(".draggable-node").length);
+                edgeCount.textContent = String(document.querySelectorAll("[data-edge-id]").length);
+            };
+            sync();
+            var observedRoot = document.getElementById("canvas-drop-zone") || document.body;
+            new MutationObserver(sync).observe(observedRoot, { childList: true, subtree: true });
+        }
+    })();
+</script>
 </body>
 </html>

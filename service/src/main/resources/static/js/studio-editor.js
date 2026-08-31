@@ -3711,21 +3711,21 @@ function nodeTone(type) {
     if (type === "SOURCE") {
         return {
             icon: "database",
-            badgeClass: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300",
-            tagClass: "text-blue-700 dark:text-blue-300"
+            badgeClass: "tone-source",
+            tagClass: "tone-source"
         };
     }
     if (type === "SINK") {
         return {
             icon: "arrow-down-to-line",
-            badgeClass: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300",
-            tagClass: "text-emerald-700 dark:text-emerald-300"
+            badgeClass: "tone-sink",
+            tagClass: "tone-sink"
         };
     }
     return {
         icon: "wand-sparkles",
-        badgeClass: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300",
-        tagClass: "text-amber-700 dark:text-amber-300"
+        badgeClass: "tone-transform",
+        tagClass: "tone-transform"
     };
 }
 
@@ -3852,20 +3852,20 @@ function renderNodeHtml(node) {
         `).join("");
 
     return `
-        <div class="draggable-node studio-node-card ${isSelected ? "node-active" : ""} bg-white dark:bg-neutral-900/95 border border-slate-300 dark:border-neutral-700 rounded-lg shadow-xl"
+        <div class="draggable-node studio-node-card ${isSelected ? "node-active" : ""}"
              data-node-id="${node.id}"
              style="left:${left}px;top:${top}px;">
             ${inputPortsMarkup}
             ${outputPortsMarkup}
-            <div class="drag-handle studio-node-header bg-slate-50 dark:bg-neutral-900 border-b border-slate-200 dark:border-neutral-700 rounded-t-lg flex items-center px-3">
+            <div class="drag-handle studio-node-header flex items-center px-3">
                 <span class="studio-node-badge ${tone.badgeClass}" aria-hidden="true">
                     <i data-lucide="${tone.icon}" class="sc-icon sc-icon-sm"></i>
                 </span>
-                <span class="text-slate-900 dark:text-neutral-100 flex-1 truncate studio-node-title ml-2 min-w-0 text-sm font-semibold">${escapeHtml(nodeDisplayTitle(node))}</span>
+                <span class="studio-node-title flex-1 truncate ml-2 min-w-0">${escapeHtml(nodeDisplayTitle(node))}</span>
             </div>
             <div class="studio-node-body p-3">
-                <div class="font-mono text-[10px] ${tone.tagClass}">${escapeHtml(node.operator)}</div>
-                <div class="text-[11px] text-slate-500 dark:text-neutral-400 mt-2 studio-node-type">${escapeHtml(node.type)}</div>
+                <div class="studio-node-tag ${tone.tagClass}">${escapeHtml(node.operator)}</div>
+                <div class="studio-node-type mt-2">${escapeHtml(node.type)}</div>
                 ${monitorBlock}
             </div>
         </div>
