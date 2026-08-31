@@ -1,28 +1,100 @@
-# StreamCraft
+<p align="center">
+  <img src="service/src/main/resources/static/brand-logo.png" alt="StreamCraft logo" width="88" height="88">
+</p>
 
-StreamCraft is a visual stream-processing workbench for Apache Flink. It provides a Spring Boot management service, a browser-based DAG studio, and a Flink runtime JAR that converts saved pipeline definitions into executable Flink jobs.
+<h1 align="center">StreamCraft</h1>
+
+<p align="center">
+  A visual stream-processing workbench for Apache Flink
+</p>
+
+<p align="center">
+  English | <a href="README_CN.md">简体中文</a>
+</p>
+
+---
+
+## Overview
+
+StreamCraft turns stream-processing jobs from hand-written code into diagrams: drag operators, connect them into a DAG, and configure parameters in the browser-based DAG Studio. Save the pipeline, submit it to a Flink cluster with one click, and watch job status and metrics on the built-in monitoring pages.
+
+It consists of two parts:
+
+- **service** —— Spring Boot management service providing REST APIs, Thymeleaf pages, and pipeline metadata storage
+- **core** —— Flink runtime JAR that compiles saved pipeline definitions into executable Flink jobs
+
+## Features
+
+- **Visual DAG Studio**: drag-and-drop authoring, port-based connections, per-node configuration, context-menu copy/delete
+- **30+ built-in operators**: covering Source / Transform / Sink layers, from field-level processing to windowed aggregation
+- **Pipeline lifecycle management**: save, preview, run, stop, and delete in one place
+- **Runtime monitoring**: job status, Flink metrics, and runtime data in real time
+- **Database support**: SQLite out of the box, switchable to MySQL
+
+## Screenshots
+
+<p align="center">
+  <img src=".github/docs/assets/monitor-light.png" alt="Task monitoring (light mode)" width="100%">
+  <img src=".github/docs/assets/dag-light.png" alt="DAG Studio (light mode)" width="100%">
+  <img src=".github/docs/assets/monitor-dark.png" alt="Task monitoring (dark mode)" width="100%">
+  <img src=".github/docs/assets/dag-dark.png" alt="DAG Studio (dark mode)" width="100%">
+</p>
+
+## Getting Started
+
+### Requirements
+
+- Java 17
+- Maven 3.6+
+- (Optional) An Apache Flink standalone cluster for running jobs
+
+### Build
+
+Build all modules and generate the binary package from the repository root:
+
+```bash
+mvn clean package -DskipTests
+```
+
+Expected artifacts:
+
+```text
+streamcraft-dist/target/streamcraft-0.2.0-bin.tar.gz
+streamcraft-dist/target/streamcraft-0.2.0-bin.zip
+```
+
+### Start
+
+Extract the package and run the startup script (on Windows, `bin\start-service.bat` also works):
+
+```bash
+bin/start-service.sh
+```
+
+Then open <http://localhost:8080>.
+
+### Run Tests
+
+```bash
+# full core test suite
+mvn -pl core test
+
+# compile service and its tests only
+mvn -pl service -DskipTests test-compile
+```
 
 ## Repository Layout
 
 ```text
 StreamCraft/
-  core/        Flink runtime entrypoint, connector factories, transforms, and shared parser code
-  service/     Spring Boot web application, REST APIs, Thymeleaf pages, and static frontend assets
-  streamcraft-dist/
-               Binary distribution module with assembly descriptor, scripts, config, and empty data/log directories
-  .docs/       Architecture, API, and operator documentation
+  core/            Flink runtime entrypoint, connector factories, transforms, and shared parser code
+  service/         Spring Boot web application, REST APIs, Thymeleaf pages, and static frontend assets
+  streamcraft-dist/  Binary distribution module (assembly descriptor, startup scripts, config)
+  .docs/           Architecture, API, and operator documentation
+  .github/docs/assets/  README screenshot assets
 ```
 
-The root `pom.xml` builds `core`, `service`, and `streamcraft-dist`. The distribution module uses `streamcraft-dist/src/main/assembly/bin.xml` to assemble the deployable package. Shared validation and connector parser code lives under `core/src/shared/java` and is compiled into both runtime and service modules.
-
-
-## Screenshots
-
-<img width="2285" height="681" alt="monitor" src=".github/docs/assets/monitor-light.png" />
-<img width="2540" height="1333" alt="DAG" src=".github/docs/assets/dag-light.png" />
-<img width="2281" height="1037" alt="monitor" src=".github/docs/assets/monitor-dark.png" />
-<img width="2267" height="1333" alt="DAG" src=".github/docs/assets/dag-dark.png" />
-
+The root `pom.xml` builds the `core`, `service`, and `streamcraft-dist` modules; shared validation and connector parser code lives under `core/src/shared/java` and is compiled into both the runtime and the service.
 
 ## Supported Operators
 
@@ -40,18 +112,18 @@ The root `pom.xml` builds `core`, `service`, and `streamcraft-dist`. The distrib
 
 | Operator | Purpose |
 |---|---|
-| `PUT`, `PRUNE`, `RENAME` | Add, remove, and rename fields |
-| `DESERIALIZE`, `SERIALIZE` | Parse and serialize record payloads |
-| `FILTER`, `ROUTE`, `CASE_WHEN` | Filter records, split branches, and derive conditional values |
-| `CAST`, `EVAL`, `GROK`, `CUSTOM_CODE` | Convert types, evaluate expressions, extract patterns, and run custom Java logic |
-| `FLATTEN`, `EXPLODE` | Flatten nested objects and expand arrays into multiple records |
+| `PUT` / `PRUNE` / `RENAME` | Add, remove, and rename fields |
+| `DESERIALIZE` / `SERIALIZE` | Parse and serialize record payloads |
+| `FILTER` / `ROUTE` / `CASE_WHEN` | Filter records, split branches, and derive conditional values |
+| `CAST` / `EVAL` / `GROK` / `CUSTOM_CODE` | Convert types, evaluate expressions, extract patterns, and run custom Java logic |
+| `FLATTEN` / `EXPLODE` | Flatten nested objects and expand arrays into multiple records |
 | `DEDUPLICATE` | Deduplicate by key with TTL or window controls |
-| `LOOKUP_ENRICH`, `LOOKUP_JOIN` | Enrich records through static lookup data and lookup joins |
-| `STREAM_JOIN` | Join two upstream streams through explicit left and right input ports |
+| `LOOKUP_ENRICH` / `LOOKUP_JOIN` | Enrich records through static lookup data and lookup joins |
+| `STREAM_JOIN` | Join two upstream streams through explicit left/right input ports |
 | `DATA_QUALITY` | Validate required fields, types, ranges, enums, and regular expressions |
 | `TIME_DERIVE` | Parse, format, convert, and derive time partition fields |
 | `MASK_HASH` | Mask sensitive values or hash them before writing downstream |
-| `AGGREGATE` | Aggregate over count or time windows with count, sum, min, max, avg, count distinct, first/last value, top N, collect list, and collect set |
+| `AGGREGATE` | Count/time windows with count, sum, min, max, avg, count distinct, first/last, top N, collect list/set |
 
 ### Sinks
 
@@ -63,79 +135,22 @@ The root `pom.xml` builds `core`, `service`, and `streamcraft-dist`. The distrib
 | `INFLUXDB_SINK` | Write points to InfluxDB |
 | `HDFS_FILE_SINK` | Write files to HDFS |
 
-## Requirements
-
-- Java 17
-- Maven 3.6+
-
-Build all modules and create the binary package from the repository root:
-
-```bash
-mvn clean package -DskipTests
-```
-
-Expected package artifacts:
-
-```text
-streamcraft-dist/target/streamcraft-0.2.0-bin.tar.gz
-streamcraft-dist/target/streamcraft-0.2.0-bin.zip
-```
-
-Run the core test suite:
-
-```bash
-mvn -pl core test
-```
-
-Compile the service and tests without running service tests:
-
-```bash
-mvn -pl service -DskipTests test-compile
-```
-
-## Binary Package
-
-The assembled package layout is:
-
-```text
-streamcraft-<version>-bin/
-  bin/
-    start-service.sh
-    stop-service.sh
-    status-service.sh
-    streamcraft-env.sh
-    start-service.bat
-    stop-service.bat
-  conf/
-    application.properties
-  libs/
-    streamcraft-service-<version>.jar
-    *.jar
-  flink-libs/
-    streamcraft-core.jar
-  logs/
-  data/
-  docs/
-    README.md
-    README_CN.md
-```
+> Pipeline edges use semantic ports: ordinary operators use `records`; Filter uses `matched` / `rejected`; Data Quality uses `clean` / `dirty`; Stream Join uses `left` / `right`; Route output ports are defined by its route configuration.
 
 ## Configuration
 
-Common properties:
+Common properties (`conf/application.properties`):
 
 | Property | Default | Description |
 |---|---|---|
-| `server.port` | `8080` | HTTP port |
-| `SERVER_PORT` | `8080` | Environment variable override for the HTTP port |
+| `server.port` | `8080` | HTTP port (overridable via the `SERVER_PORT` environment variable) |
 | `streamcraft.datasource.type` | `sqlite` | Database type: `sqlite` or `mysql` |
 | `spring.datasource.url` | `jdbc:sqlite:streamcraft-service.db` | Database connection URL |
-| `spring.jpa.hibernate.ddl-auto` | `validate` | Flyway owns schema changes; Hibernate validates the schema only |
+| `spring.jpa.hibernate.ddl-auto` | `validate` | Flyway owns the schema; Hibernate validates only |
 | `spring.datasource.hikari.maximum-pool-size` | `1` | Database pool size |
 | `streamcraft.auth.remember-me-validity-seconds` | `1209600` | Remember-me cookie validity in seconds |
 | `streamcraft.internal.token` | `streamcraft-local-internal-token` | Token for protected internal service calls |
 | `logging.file.name` | `./logs/streamcraft-service.log` | Log file path |
-| `logging.level.root` | `INFO` | Log level |
 | `streamcraft.flink.core-jar-path` | `../core/target/streamcraft-core.jar` | Core JAR path |
 | `streamcraft.flink.connect-timeout` | `2s` | Flink REST connection timeout |
 | `streamcraft.flink.read-timeout` | `3s` | Flink REST read timeout |
@@ -143,13 +158,7 @@ Common properties:
 | `streamcraft.pipeline.runtime.service-base-url` | `http://localhost:8080` | Base URL used by Flink jobs to call the service |
 | `streamcraft.pipeline.runtime.parallelism` | `1` | Default pipeline parallelism |
 
-Flyway owns database schema migrations. A fresh database receives the initial schema migration; an existing database is baselined before later migrations run. Back up the database before upgrading.
-
-Pipeline edges use semantic ports: ordinary Sources, Transforms, and Sinks use `records`; Filter uses `matched` / `rejected`; Data Quality uses `clean` / `dirty`; Stream Join uses `left` / `right`; Route output ports are defined by its route configuration. Legacy persisted port identifiers are converted by the Flyway migration.
-
-The Windows distribution can be started with `bin\start-service.bat`. `JAVA_OPTS` is optional and may contain JVM options; an empty value is supported. See [CHANGELOG.md](CHANGELOG.md) for the complete `v0.2.0` release notes.
-
-Use MySQL by setting the datasource type and URL:
+### Switching to MySQL
 
 ```bash
 export STREAMCRAFT_DATASOURCE_TYPE=mysql
@@ -159,17 +168,32 @@ export SPRING_DATASOURCE_PASSWORD=streamcraft
 bin/start-service.sh
 ```
 
+Database schemas are managed by Flyway migrations: a fresh database receives the initial migration, while an existing database is baselined first. **Back up your database before upgrading.**
+
+## Package Layout
+
+```text
+streamcraft-<version>-bin/
+  bin/            start/stop/status scripts (sh and bat) plus streamcraft-env.sh
+  conf/           application.properties
+  libs/           streamcraft-service-<version>.jar and dependencies
+  flink-libs/     streamcraft-core.jar
+  logs/           runtime logs
+  data/           database files
+  docs/           README.md / README_CN.md
+```
+
 ## Main Pages
 
 | Path | Page |
 |---|---|
 | `/login` | Login |
 | `/main` | Overview |
-| `/runtime-target` | Flink runtime target |
-| `/pipelines` | pipeline list |
-| `/pipelines/{id}/monitor` | pipeline monitor detail |
+| `/pipelines` | Pipeline list |
+| `/pipelines/{id}/monitor` | Pipeline monitor detail |
 | `/studio` | Create pipeline |
 | `/studio/{id}` | Edit pipeline |
+| `/runtime-target` | Flink runtime target |
 | `/settings` | Account settings |
 
 ## Main APIs
@@ -190,3 +214,7 @@ bin/start-service.sh
 | `GET` | `/api/runtime-target` | Read the Flink target |
 | `PUT` | `/api/runtime-target/standalone` | Save the Flink target |
 | `POST` | `/api/settings/password` | Change the admin password |
+
+## License
+
+[Apache License 2.0](LICENSE)
