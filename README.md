@@ -34,8 +34,6 @@ It consists of two parts:
 ## Screenshots
 
 <p align="center">
-  <img src=".github/docs/assets/monitor-light.png" alt="Task monitoring (light mode)" width="100%">
-  <img src=".github/docs/assets/dag-light.png" alt="DAG Studio (light mode)" width="100%">
   <img src=".github/docs/assets/monitor-dark.png" alt="Task monitoring (dark mode)" width="100%">
   <img src=".github/docs/assets/dag-dark.png" alt="DAG Studio (dark mode)" width="100%">
 </p>

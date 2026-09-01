@@ -34,8 +34,6 @@ StreamCraft 把流处理作业的搭建从写代码变成画图：在浏览器 D
 ## 截图
 
 <p align="center">
-  <img src=".github/docs/assets/monitor-light.png" alt="任务监控（日间模式）" width="100%">
-  <img src=".github/docs/assets/dag-light.png" alt="DAG Studio（日间模式）" width="100%">
   <img src=".github/docs/assets/monitor-dark.png" alt="任务监控（夜间模式）" width="100%">
   <img src=".github/docs/assets/dag-dark.png" alt="DAG Studio（夜间模式）" width="100%">
 </p>
