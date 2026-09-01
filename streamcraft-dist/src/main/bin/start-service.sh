@@ -10,6 +10,11 @@ if [ -n "${JAVA_HOME}" ]; then
   JAVA_BIN="${JAVA_HOME}/bin/java"
 fi
 
+if ! command -v "${JAVA_BIN}" >/dev/null 2>&1; then
+  echo "Error: java executable not found. Set JAVA_HOME or add java to PATH." >&2
+  exit 1
+fi
+
 mkdir -p "${STREAMCRAFT_LOG_DIR}" "${STREAMCRAFT_DATA_DIR}"
 
 if [ -f "${STREAMCRAFT_PID_FILE}" ] && kill -0 "$(cat "${STREAMCRAFT_PID_FILE}")" >/dev/null 2>&1; then
