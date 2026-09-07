@@ -71,6 +71,7 @@ const OPERATOR_CATALOG = {
             topics: [],
             groupId: "",
             consumeMode: "earliest",
+            commitOnCheckpoint: true,
             authType: "NONE",
             username: "",
             password: "",
@@ -2309,6 +2310,10 @@ function updateSourceAuthUI(authType) {
     byId("source-scram-mechanism-wrapper")?.classList.toggle("hidden", authType !== "SASL_SCRAM");
 }
 
+function updateKafkaCommitModeUI(commitOnCheckpoint) {
+    byId("source-commit-on-checkpoint-warning")?.classList.toggle("hidden", commitOnCheckpoint);
+}
+
 function updateSinkAuthUI(authType) {
     const showCredentials = authType !== "NONE";
     byId("sink-auth-credentials")?.classList.toggle("hidden", !showCredentials);
@@ -2436,6 +2441,7 @@ function syncSelectedNodeConfigFromInspector() {
             selectedNode.config.topics = splitTopics(byId("source-topics")?.value || "");
             selectedNode.config.groupId = byId("source-group-id")?.value?.trim?.() || "";
             selectedNode.config.consumeMode = byId("source-consume-mode")?.value || "earliest";
+            selectedNode.config.commitOnCheckpoint = Boolean(byId("source-commit-on-checkpoint")?.checked);
             const authConfig = readKafkaAuthConfig(
                 "source-auth-type",
                 "source-auth-username",
@@ -2761,6 +2767,10 @@ function fillInspectorFromSelectedNode() {
         if (byId("source-consume-mode")) {
             byId("source-consume-mode").value = selectedNode.config.consumeMode || "earliest";
             refreshStudioSelectValue("source-consume-mode");
+        }
+        if (byId("source-commit-on-checkpoint")) {
+            byId("source-commit-on-checkpoint").checked = selectedNode.config.commitOnCheckpoint ?? true;
+            updateKafkaCommitModeUI(byId("source-commit-on-checkpoint").checked);
         }
         if (byId("source-auth-type")) {
             byId("source-auth-type").value = selectedNode.config.authType || "NONE";
@@ -5718,6 +5728,7 @@ function bindInspectorInputs() {
         "source-topics",
         "source-group-id",
         "source-consume-mode",
+        "source-commit-on-checkpoint",
         "source-auth-type",
         "source-auth-username",
         "source-auth-password",
@@ -6595,6 +6606,10 @@ function bindInspectorInputs() {
 
     byId("source-auth-type")?.addEventListener("change", () => {
         updateSourceAuthUI(byId("source-auth-type")?.value || "NONE");
+    });
+
+    byId("source-commit-on-checkpoint")?.addEventListener("change", () => {
+        updateKafkaCommitModeUI(Boolean(byId("source-commit-on-checkpoint")?.checked));
     });
 
     byId("jdbc-read-mode")?.addEventListener("change", () => {

@@ -1215,6 +1215,13 @@
                                         <option value="committed">none</option>
                                     </select>
                                 </div>
+                                <div class="space-y-2">
+                                    <label class="inline-flex items-center gap-3 text-sm text-slate-700 dark:text-neutral-300">
+                                        <input id="source-commit-on-checkpoint" type="checkbox" checked class="w-4 h-4 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-[var(--sc-accent)] focus:ring-blue-500/50 cursor-pointer">
+                                        <span th:text="#{studio.field.commitOnCheckpoint}">Commit offsets on checkpoint</span>
+                                    </label>
+                                    <p id="source-commit-on-checkpoint-warning" class="hidden text-xs text-amber-700 dark:text-amber-300" role="status" th:text="#{studio.field.commitOnCheckpoint.autoCommitWarning}">Kafka auto-commit can advance offsets before downstream processing or checkpoint completion, which can cause data loss or duplicates after a failure.</p>
+                                </div>
                                 <div>
                                     <label for="source-format" class="sc-form-label" th:text="#{studio.field.format}">Format</label>
                                     <select id="source-format" class="sc-input">

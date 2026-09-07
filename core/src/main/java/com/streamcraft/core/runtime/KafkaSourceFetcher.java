@@ -35,8 +35,6 @@ interface KafkaSourceFetcherClient extends AutoCloseable {
 
     void submitCheckpointCommit(long checkpointId, Map<TopicPartition, OffsetAndMetadata> offsets);
 
-    void submitPollCommit(Map<TopicPartition, OffsetAndMetadata> offsets);
-
     default void abortCheckpointCommit(long checkpointId) {
         // Implementations that queue Kafka operations may cancel a queued request.
     }
@@ -128,12 +126,6 @@ final class KafkaSourceFetcher implements KafkaSourceFetcherClient {
     @Override
     public void submitCheckpointCommit(long checkpointId, Map<TopicPartition, OffsetAndMetadata> offsets) {
         commitRequests.add(new CommitRequest(checkpointId, Map.copyOf(offsets)));
-        wakeup();
-    }
-
-    @Override
-    public void submitPollCommit(Map<TopicPartition, OffsetAndMetadata> offsets) {
-        commitRequests.add(new CommitRequest(-1L, Map.copyOf(offsets)));
         wakeup();
     }
 
@@ -236,7 +228,9 @@ final class KafkaSourceFetcher implements KafkaSourceFetcherClient {
         properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, config.autoOffsetReset());
-        properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+        properties.put(
+                ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
+                Boolean.toString(!config.commitOnCheckpoint()));
         KafkaAuthProperties.apply(config, properties);
         return properties;
     }
@@ -271,18 +265,6 @@ final class KafkaSourceFetcher implements KafkaSourceFetcherClient {
     private void drainCommitRequests(KafkaConsumer<String, String> activeConsumer) {
         CommitRequest request;
         while ((request = commitRequests.poll()) != null) {
-            if (request.checkpointId() < 0) {
-                try {
-                    activeConsumer.commitAsync(request.offsets(), (ignored, exception) -> {
-                        if (exception != null) {
-                            LOG.warn("Failed to commit Kafka Source poll offsets: {}", exception.getMessage());
-                        }
-                    });
-                } catch (RuntimeException exception) {
-                    LOG.warn("Failed to submit Kafka Source poll offsets: {}", exception.getMessage());
-                }
-                continue;
-            }
             long checkpointId = request.checkpointId();
             if (abortedCheckpointIds.remove(checkpointId)) {
                 commitResults.add(new CommitResult(checkpointId, false));

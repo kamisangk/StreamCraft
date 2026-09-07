@@ -86,9 +86,6 @@ final class KafkaSourceReader implements SourceReader<DataEntity, KafkaPartition
                             exception.getMessage());
                     currentOffsets.merge(partition, record.offset() + 1L, Math::max);
                 }
-                if (!config.commitOnCheckpoint()) {
-                    fetcher.submitPollCommit(currentOffsetSnapshot());
-                }
                 return InputStatus.MORE_AVAILABLE;
             }
 
@@ -107,9 +104,6 @@ final class KafkaSourceReader implements SourceReader<DataEntity, KafkaPartition
                         fields,
                         headers));
                 currentOffsets.merge(partition, record.offset() + 1L, Math::max);
-            }
-            if (!config.commitOnCheckpoint()) {
-                fetcher.submitPollCommit(currentOffsetSnapshot());
             }
             return InputStatus.MORE_AVAILABLE;
         }
@@ -246,14 +240,6 @@ final class KafkaSourceReader implements SourceReader<DataEntity, KafkaPartition
                     LOG.warn("Unable to reschedule Kafka Source checkpoint commit retry", wakeupException);
                 }
             }
-        }
-    }
-
-    private Map<TopicPartition, OffsetAndMetadata> currentOffsetSnapshot() {
-        synchronized (lock) {
-            Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-            currentOffsets.forEach((partition, offset) -> offsets.put(partition, new OffsetAndMetadata(offset)));
-            return Map.copyOf(offsets);
         }
     }
 
