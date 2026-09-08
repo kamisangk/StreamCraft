@@ -64,6 +64,14 @@ public class LocalCoreProcessClient implements CoreSubmissionClient {
         command.add("true");
         command.add("--ship-jar");
         command.add(request.coreJarPath());
+        if (request.jobId() != null && !request.jobId().isBlank()) {
+            command.add("--job-id");
+            command.add(request.jobId());
+        }
+        if (request.deploymentNamespace() != null && !request.deploymentNamespace().isBlank()) {
+            command.add("--deployment-namespace");
+            command.add(request.deploymentNamespace());
+        }
 
         try {
             ProcessExecutionResult result = processRunner.execute(command);

@@ -63,6 +63,38 @@ public class PipelineDefinitionService {
         validator.validateForRun(definitionJson);
     }
 
+    /** Returns whether a validated definition owns a Kafka transactional sink. */
+    public boolean containsExactlyOnceKafkaSink(String definitionJson) {
+        try {
+            JsonNode root = objectMapper.readTree(definitionJson);
+            for (JsonNode node : root.path("nodes")) {
+                if ("KAFKA_SINK".equals(node.path("operator").asText())
+                        && "EXACTLY_ONCE".equalsIgnoreCase(node.path("config")
+                                .path("deliveryGuarantee")
+                                .asText())) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (IOException exception) {
+            throw new IllegalStateException(messages.get("pipeline.error.storedDefinitionInvalidJson"), exception);
+        }
+    }
+
+    public String requirePipelineId(String definitionJson) {
+        try {
+            JsonNode root = objectMapper.readTree(definitionJson);
+            String pipelineId = root.path("pipelineId").asText(null);
+            if (pipelineId == null || pipelineId.isBlank()) {
+                throw new IllegalArgumentException(
+                        messages.get("pipeline.validation.pipelineId.required"));
+            }
+            return pipelineId.trim();
+        } catch (IOException exception) {
+            throw new IllegalStateException(messages.get("pipeline.error.storedDefinitionInvalidJson"), exception);
+        }
+    }
+
     @Transactional(readOnly = true)
     public JsonNode getDefinition(Long id) {
         Pipeline pipeline = repository.findById(id)

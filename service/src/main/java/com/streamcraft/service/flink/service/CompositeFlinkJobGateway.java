@@ -46,7 +46,9 @@ public class CompositeFlinkJobGateway implements FlinkJobGateway {
                 request.pipelineDefinitionUrl(),
                 Boolean.TRUE.equals(request.testMode()),
                 parallelism,
-                internalAccessProperties.token()));
+                internalAccessProperties.token(),
+                request.jobId(),
+                request.deploymentNamespace()));
     }
 
     @Override
