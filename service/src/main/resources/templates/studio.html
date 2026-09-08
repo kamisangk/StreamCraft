@@ -2969,6 +2969,8 @@
                                     <option value="AT_LEAST_ONCE">AT_LEAST_ONCE</option>
                                     <option value="EXACTLY_ONCE">EXACTLY_ONCE</option>
                                 </select>
+                                <p id="sink-delivery-guarantee-hint" class="text-xs text-slate-500 dark:text-slate-400"
+                                   th:text="#{studio.hint.deliveryGuarantee.exactlyOnce}">Exactly-Once uses Flink checkpoints and Kafka transactions; consumers should use read_committed.</p>
                             </div>
                             <div>
                                 <label for="sink-format" class="sc-form-label" th:text="#{studio.field.format}">Format</label>

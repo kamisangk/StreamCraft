@@ -2223,6 +2223,18 @@ function updateSinkFormatUI(format) {
     byId("sink-message-field-wrapper")?.classList.toggle("hidden", format !== "TEXT");
 }
 
+function updateKafkaDeliveryGuaranteeUI(deliveryGuarantee) {
+    const hintKey = deliveryGuarantee === "NONE"
+            ? "studio.hint.deliveryGuarantee.none"
+            : deliveryGuarantee === "AT_LEAST_ONCE"
+                    ? "studio.hint.deliveryGuarantee.atLeastOnce"
+                    : "studio.hint.deliveryGuarantee.exactlyOnce";
+    const hint = byId("sink-delivery-guarantee-hint");
+    if (hint) {
+        hint.textContent = t(hintKey, "Exactly-Once uses Flink checkpoints and Kafka transactions; consumers should use isolation.level=read_committed.");
+    }
+}
+
 function updateSinkConfigSections(operator) {
     byId("kafka-sink-config-section")?.classList.toggle("hidden", operator !== "KAFKA_SINK");
     byId("jdbc-sink-config-section")?.classList.toggle("hidden", operator !== "JDBC_SINK");
@@ -3660,6 +3672,7 @@ function fillInspectorFromSelectedNode() {
         }
         updateSinkAuthUI(selectedNode.config.authType || "NONE");
         updateSinkFormatUI(selectedNode.config.format || "JSON");
+        updateKafkaDeliveryGuaranteeUI(selectedNode.config.deliveryGuarantee || "AT_LEAST_ONCE");
         updateJdbcSinkWriteModeUI(selectedNode.config.writeMode || "INSERT");
         updateElasticsearchSinkAuthUI(selectedNode.config.authType || "NONE");
         updateHdfsFileSinkFilenameUI(Boolean(selectedNode.config.custom_filename));
@@ -6594,6 +6607,10 @@ function bindInspectorInputs() {
 
     byId("sink-format")?.addEventListener("change", () => {
         updateSinkFormatUI(byId("sink-format")?.value || "JSON");
+    });
+
+    byId("sink-delivery-guarantee")?.addEventListener("change", () => {
+        updateKafkaDeliveryGuaranteeUI(byId("sink-delivery-guarantee")?.value || "AT_LEAST_ONCE");
     });
 
     byId("deserialize-format")?.addEventListener("change", () => {
