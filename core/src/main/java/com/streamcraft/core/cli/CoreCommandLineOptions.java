@@ -12,7 +12,37 @@ public record CoreCommandLineOptions(
         boolean submitOnly,
         String shipJar,
         ExecutionMode executionMode,
-        String previewOutputFile) {
+        String previewOutputFile,
+        String deploymentNamespace,
+        String jobId) {
+
+    /** Keeps callers compiled against the pre-JobID option shape source-compatible. */
+    public CoreCommandLineOptions(
+            String url,
+            String file,
+            boolean testMode,
+            String definitionAuthToken,
+            String clusterBaseUrl,
+            Integer parallelism,
+            boolean submitOnly,
+            String shipJar,
+            ExecutionMode executionMode,
+            String previewOutputFile,
+            String deploymentNamespace) {
+        this(
+                url,
+                file,
+                testMode,
+                definitionAuthToken,
+                clusterBaseUrl,
+                parallelism,
+                submitOnly,
+                shipJar,
+                executionMode,
+                previewOutputFile,
+                deploymentNamespace,
+                null);
+    }
 
     public static CoreCommandLineOptions parse(String[] args) {
         String url = null;
@@ -25,6 +55,8 @@ public record CoreCommandLineOptions(
         String shipJar = null;
         ExecutionMode executionMode = ExecutionMode.RUN;
         String previewOutputFile = null;
+        String deploymentNamespace = null;
+        String jobId = null;
 
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
@@ -69,6 +101,14 @@ public record CoreCommandLineOptions(
                     ensureValueExists(args, i, "--preview-output-file");
                     previewOutputFile = args[++i];
                 }
+                case "--deployment-namespace" -> {
+                    ensureValueExists(args, i, "--deployment-namespace");
+                    deploymentNamespace = args[++i];
+                }
+                case "--job-id" -> {
+                    ensureValueExists(args, i, "--job-id");
+                    jobId = args[++i];
+                }
                 default -> throw new IllegalArgumentException("Unsupported option: " + arg);
             }
         }
@@ -78,6 +118,9 @@ public record CoreCommandLineOptions(
         }
         if (parallelism != null && parallelism < 1) {
             throw new IllegalArgumentException("--parallelism must be greater than 0.");
+        }
+        if (jobId != null && !jobId.matches("[0-9a-fA-F]{32}")) {
+            throw new IllegalArgumentException("--job-id must be a 32-character hexadecimal Flink JobID.");
         }
         return new CoreCommandLineOptions(
                 url,
@@ -89,7 +132,9 @@ public record CoreCommandLineOptions(
                 submitOnly,
                 shipJar,
                 executionMode,
-                previewOutputFile);
+                previewOutputFile,
+                deploymentNamespace,
+                jobId);
     }
 
     private static void ensureValueExists(String[] args, int index, String option) {

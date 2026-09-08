@@ -26,11 +26,14 @@ import com.streamcraft.shared.route.RouteConfigParser;
 import com.streamcraft.shared.streamjoin.StreamJoinConfigParser;
 import com.streamcraft.shared.timederive.TimeDeriveConfigParser;
 import java.util.Set;
+import java.util.Locale;
 
 public final class PipelineNodeConfigValidationSupport {
 
     private static final Set<String> SUPPORTED_CONSUME_MODES = Set.of("earliest", "latest", "committed");
     private static final Set<String> SUPPORTED_FORMATS = Set.of("JSON", "TEXT");
+    private static final Set<String> SUPPORTED_DELIVERY_GUARANTEES =
+            Set.of("NONE", "AT_LEAST_ONCE", "EXACTLY_ONCE");
     private static final Set<String> SUPPORTED_TRANSFORM_SERDE_FORMATS = Set.of("JSON", "KV", "CSV", "XML");
     private static final Set<String> SUPPORTED_AUTH_TYPES = Set.of("NONE", "SASL_PLAIN", "SASL_SCRAM");
     private static final Set<String> SUPPORTED_SCRAM_MECHANISMS = Set.of("SCRAM-SHA-256", "SCRAM-SHA-512");
@@ -210,7 +213,13 @@ public final class PipelineNodeConfigValidationSupport {
     private static void validateKafkaSink(JsonNode config, ValidationErrorFactory error) {
         requireText(config, "bootstrapServers", error);
         requireText(config, "topic", error);
-        requireText(config, "deliveryGuarantee", error);
+        String deliveryGuarantee = requireText(config, "deliveryGuarantee", error).toUpperCase(Locale.ROOT);
+        if (!SUPPORTED_DELIVERY_GUARANTEES.contains(deliveryGuarantee)) {
+            throw error.apply(new ValidationError(
+                    "pipeline.validation.deliveryGuarantee.oneOf",
+                    "Kafka Sink deliveryGuarantee must be one of: NONE, AT_LEAST_ONCE, EXACTLY_ONCE.",
+                    "NONE, AT_LEAST_ONCE, EXACTLY_ONCE"));
+        }
         validateKafkaAuth(config, "Kafka Sink", error);
         String format = validateFormat(requireText(config, "format", error), error);
         if ("TEXT".equals(format)) {

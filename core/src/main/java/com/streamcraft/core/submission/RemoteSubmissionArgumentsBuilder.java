@@ -34,6 +34,14 @@ public class RemoteSubmissionArgumentsBuilder {
             args.add("--parallelism");
             args.add(String.valueOf(options.parallelism()));
         }
+        if (hasText(options.deploymentNamespace())) {
+            args.add("--deployment-namespace");
+            args.add(options.deploymentNamespace());
+        }
+        if (hasText(options.jobId())) {
+            args.add("--job-id");
+            args.add(options.jobId());
+        }
         return args;
     }
 

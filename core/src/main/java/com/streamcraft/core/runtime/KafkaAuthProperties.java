@@ -48,6 +48,19 @@ final class KafkaAuthProperties {
         }
     }
 
+    static void apply(KafkaSinkConfig config, Properties properties) {
+        String authType = config.authType();
+        switch (authType) {
+            case AUTH_TYPE_NONE -> {
+                return;
+            }
+            case AUTH_TYPE_SASL_PLAIN -> applyPlain(config.username(), config.password(), properties);
+            case AUTH_TYPE_SASL_SCRAM -> applyScram(
+                    config.username(), config.password(), config.scramMechanism(), properties);
+            default -> throw new IllegalArgumentException("Unsupported authType: " + authType);
+        }
+    }
+
     private static void applyPlain(String username, String password, Properties properties) {
         properties.put(SECURITY_PROTOCOL, SASL_PLAINTEXT);
         properties.put(SASL_MECHANISM, "PLAIN");

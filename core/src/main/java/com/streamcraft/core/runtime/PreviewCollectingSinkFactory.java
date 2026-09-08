@@ -1,6 +1,5 @@
 package com.streamcraft.core.runtime;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streamcraft.core.model.DataEntity;
 import com.streamcraft.core.model.PipelineNode;
@@ -14,22 +13,35 @@ import org.apache.flink.api.common.functions.OpenContext;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.functions.sink.legacy.RichSinkFunction;
 
-public class PreviewCollectingSinkFactory extends KafkaSinkFactory {
+/** Offline collecting sink used by Preview; it never constructs a Kafka producer. */
+public class PreviewCollectingSinkFactory implements KafkaSinkAttacher {
 
     private static final Map<String, Map<String, List<String>>> RECORDS_BY_RUN_ID = new ConcurrentHashMap<>();
 
     private final String runId = UUID.randomUUID().toString();
 
-    @Override
+    /** Compatibility overload for preview callers that do not need runtime identity. */
     public void attach(DataStream<DataEntity> stream, PipelineNode sinkNode) {
-        JsonNode config = sinkNode.config();
+        attach(stream, sinkNode, null, null, false);
+    }
+
+    @Override
+    public void attach(
+            DataStream<DataEntity> stream,
+            PipelineNode sinkNode,
+            String pipelineId,
+            String deploymentNamespace,
+            boolean checkpointingEnabled) {
+        if (stream == null) {
+            throw new IllegalArgumentException("Preview sink input stream is required.");
+        }
+        if (sinkNode == null) {
+            throw new IllegalArgumentException("Preview sink node is required.");
+        }
+
+        KafkaSinkConfig config = previewConfig(sinkNode);
         recordsBySinkId().computeIfAbsent(sinkNode.id(), ignored -> Collections.synchronizedList(new ArrayList<>()));
-        stream.addSink(new PreviewCapturingSinkFunction(
-                        runId,
-                        sinkNode.id(),
-                        config.path("topic").asText("preview"),
-                        config.path("format").asText("JSON"),
-                        config.path("messageField").asText("_streamcraft_message")))
+        stream.addSink(new PreviewCapturingSinkFunction(runId, sinkNode.id(), config))
                 .name("preview-" + sinkNode.id());
     }
 
@@ -38,6 +50,10 @@ public class PreviewCollectingSinkFactory extends KafkaSinkFactory {
                 .sorted(Map.Entry.comparingByKey())
                 .map(entry -> new PreviewRunResult.PreviewOutput(entry.getKey(), List.copyOf(entry.getValue())))
                 .toList());
+    }
+
+    private KafkaSinkConfig previewConfig(PipelineNode sinkNode) {
+        return KafkaSinkConfig.fromPreview(sinkNode.config());
     }
 
     private Map<String, List<String>> recordsBySinkId() {
@@ -49,22 +65,13 @@ public class PreviewCollectingSinkFactory extends KafkaSinkFactory {
         private static final long serialVersionUID = 1L;
         private final String runId;
         private final String sinkId;
-        private final String topic;
-        private final String format;
-        private final String messageField;
+        private final KafkaSinkConfig config;
         private transient ObjectMapper objectMapper;
 
-        private PreviewCapturingSinkFunction(
-                String runId,
-                String sinkId,
-                String topic,
-                String format,
-                String messageField) {
+        private PreviewCapturingSinkFunction(String runId, String sinkId, KafkaSinkConfig config) {
             this.runId = runId;
             this.sinkId = sinkId;
-            this.topic = topic;
-            this.format = format;
-            this.messageField = messageField;
+            this.config = config;
         }
 
         @Override
@@ -74,15 +81,17 @@ public class PreviewCollectingSinkFactory extends KafkaSinkFactory {
 
         @Override
         public void invoke(DataEntity value, Context context) throws Exception {
-            String payload = buildPayloadOrSkip(format, messageField, topic, value, objectMapper, message -> {
-            });
-            if (payload == null) {
-                return;
+            try {
+                String payload = KafkaPayloadCodec.encode(config, value, objectMapper);
+                RECORDS_BY_RUN_ID.computeIfAbsent(runId, ignored -> new ConcurrentHashMap<>())
+                        .computeIfAbsent(sinkId, ignored -> Collections.synchronizedList(new ArrayList<>()))
+                        .add(payload);
+            } catch (Exception exception) {
+                if ("TEXT".equals(config.format())) {
+                    return;
+                }
+                throw exception;
             }
-
-            RECORDS_BY_RUN_ID.computeIfAbsent(runId, ignored -> new ConcurrentHashMap<>())
-                    .computeIfAbsent(sinkId, ignored -> Collections.synchronizedList(new ArrayList<>()))
-                    .add(payload);
         }
     }
 }

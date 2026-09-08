@@ -28,7 +28,7 @@ public class PipelineRuntime {
     private final InfluxDbSourceFactory influxDbSourceFactory;
     private final HdfsFileSourceFactory hdfsFileSourceFactory;
     private final JdbcSourceFactory jdbcSourceFactory;
-    private final KafkaSinkFactory kafkaSinkFactory;
+    private final KafkaSinkAttacher kafkaSinkFactory;
     private final JdbcSinkFactory jdbcSinkFactory;
     private final ElasticsearchSinkFactory elasticsearchSinkFactory;
     private final InfluxDbSinkFactory influxDbSinkFactory;
@@ -36,11 +36,20 @@ public class PipelineRuntime {
     private final TransformOperatorFactory transformFactory;
     private final boolean testMode;
     private final ExecutionMode executionMode;
+    private final String deploymentNamespace;
 
     public PipelineRuntime(StreamExecutionEnvironment env,
                            PipelineRuntimeDependencies dependencies,
                            boolean testMode,
                            ExecutionMode executionMode) {
+        this(env, dependencies, testMode, executionMode, null);
+    }
+
+    public PipelineRuntime(StreamExecutionEnvironment env,
+                           PipelineRuntimeDependencies dependencies,
+                           boolean testMode,
+                           ExecutionMode executionMode,
+                           String deploymentNamespace) {
         this.env = env;
         this.kafkaSourceFactory = dependencies.kafkaSourceFactory();
         this.mockSourceFactory = dependencies.mockSourceFactory();
@@ -56,6 +65,7 @@ public class PipelineRuntime {
         this.transformFactory = dependencies.transformFactory();
         this.testMode = testMode;
         this.executionMode = executionMode == null ? ExecutionMode.RUN : executionMode;
+        this.deploymentNamespace = deploymentNamespace;
     }
 
     public void run(PipelineDefinition definition) {
@@ -78,19 +88,19 @@ public class PipelineRuntime {
                 continue;
             }
             if (node.type() == PipelineNodeType.SINK) {
-                attachSink(node, mergeSinkInput(node, plan, streamsByOutputPort));
+                attachSink(node, mergeSinkInput(node, plan, streamsByOutputPort), definition.pipelineId());
             }
         }
     }
 
-    private void attachSink(PipelineNode sinkNode, DataStream<DataEntity> input) {
+    private void attachSink(PipelineNode sinkNode, DataStream<DataEntity> input, String pipelineId) {
         if (executionMode.interceptSinks()) {
-            kafkaSinkFactory.attach(input, sinkNode);
+            kafkaSinkFactory.attach(input, sinkNode, pipelineId, deploymentNamespace, checkpointingEnabled());
             return;
         }
 
         switch (sinkNode.operator()) {
-            case KAFKA_SINK -> kafkaSinkFactory.attach(input, sinkNode);
+            case KAFKA_SINK -> kafkaSinkFactory.attach(input, sinkNode, pipelineId, deploymentNamespace, checkpointingEnabled());
             case JDBC_SINK -> jdbcSinkFactory.attach(input, sinkNode);
             case ELASTICSEARCH_SINK -> elasticsearchSinkFactory.attach(input, sinkNode);
             case INFLUXDB_SINK -> influxDbSinkFactory.attach(input, sinkNode);
@@ -98,6 +108,11 @@ public class PipelineRuntime {
             default -> throw new IllegalArgumentException(
                     "Unsupported sink operator for runtime execution: " + sinkNode.operator());
         }
+    }
+
+    private boolean checkpointingEnabled() {
+        return env.getCheckpointConfig().isCheckpointingEnabled()
+                && env.getCheckpointConfig().getCheckpointInterval() > 0;
     }
 
     private DataStream<DataEntity> createSource(PipelineNode sourceNode) {

@@ -1,60 +1,133 @@
 package com.streamcraft.core.runtime;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streamcraft.core.model.DataEntity;
 import com.streamcraft.core.model.PipelineNode;
 import java.io.IOException;
-import java.time.Duration;
-import java.util.Map;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.Properties;
 import java.util.function.Consumer;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.flink.api.common.functions.OpenContext;
+import org.apache.flink.api.common.functions.RichFlatMapFunction;
+import org.apache.flink.connector.base.DeliveryGuarantee;
+import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
+import org.apache.flink.connector.kafka.sink.KafkaSink;
+import org.apache.flink.connector.kafka.sink.KafkaSinkBuilder;
 import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.functions.sink.legacy.RichSinkFunction;
-import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.flink.util.Collector;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class KafkaSinkFactory {
+/** Attaches the official Flink Kafka Sink and its checkpoint-aware delivery guarantee. */
+public class KafkaSinkFactory implements KafkaSinkAttacher {
 
+    private static final int MAX_TRANSACTIONAL_ID_PREFIX_LENGTH = 180;
+    private static final int TRANSACTIONAL_ID_HASH_LENGTH = 16;
+    private static final Logger LOG = LoggerFactory.getLogger(KafkaSinkFactory.class);
+
+    /**
+     * Compatibility overload for callers that do not provide an execution identity.
+     * Exactly-once sinks intentionally fail because they cannot be made recoverable
+     * without a stable identity and checkpointing capability.
+     */
     public void attach(DataStream<DataEntity> stream, PipelineNode sinkNode) {
-        JsonNode config = sinkNode.config();
-        String topic = config.path("topic").asText();
-        SinkDeliveryGuarantee guarantee = resolveGuarantee(config.path("deliveryGuarantee").asText());
-        stream.addSink(new LegacyKafkaSinkFunction(
-                        config.path("bootstrapServers").asText(),
-                        topic,
-                        guarantee,
-                        config.path("format").asText("JSON"),
-                        config.path("messageField").asText("_streamcraft_message"),
-                        config))
-                .name(sinkNode.name());
+        attach(stream, sinkNode, null, null, false);
     }
 
+    @Override
+    public void attach(
+            DataStream<DataEntity> stream,
+            PipelineNode sinkNode,
+            String pipelineId,
+            String deploymentNamespace,
+            boolean checkpointingEnabled) {
+        if (stream == null) {
+            throw new IllegalArgumentException("Kafka Sink input stream is required.");
+        }
+        if (sinkNode == null) {
+            throw new IllegalArgumentException("Kafka Sink node is required.");
+        }
+
+        KafkaSinkConfig config = KafkaSinkConfig.from(sinkNode.config());
+        requireCheckpointingForExactlyOnce(config, checkpointingEnabled);
+        if (config.deliveryGuarantee() == DeliveryGuarantee.EXACTLY_ONCE
+                && (pipelineId == null || pipelineId.isBlank())) {
+            throw new IllegalArgumentException("Kafka Sink EXACTLY_ONCE requires a stable pipelineId.");
+        }
+
+        DataStream<KafkaPayloadRecord> records = stream
+                .flatMap(new KafkaPayloadFlatMapFunction(config))
+                .name("kafka-payload-" + sinkNode.id())
+                ;
+
+        Properties producerProperties = buildProducerProperties(config);
+
+        KafkaSinkBuilder<KafkaPayloadRecord> builder = KafkaSink.<KafkaPayloadRecord>builder()
+                .setKafkaProducerConfig(producerProperties)
+                .setRecordSerializer(new KafkaPayloadSerializationSchema(config.topic()))
+                .setDeliveryGuarantee(config.deliveryGuarantee());
+        if (config.deliveryGuarantee() == DeliveryGuarantee.EXACTLY_ONCE) {
+            builder.setTransactionalIdPrefix(transactionalIdPrefix(deploymentNamespace, pipelineId, sinkNode.id()));
+        }
+        records.sinkTo(builder.build()).name(sinkNode.name());
+    }
+
+    static Properties buildProducerProperties(KafkaSinkConfig config) {
+        if (config == null) {
+            throw new IllegalArgumentException("Kafka Sink config is required.");
+        }
+
+        Properties properties = new Properties();
+        properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, config.bootstrapServers());
+        properties.put(
+                ProducerConfig.ACKS_CONFIG,
+                config.deliveryGuarantee() == DeliveryGuarantee.NONE ? "0" : "all");
+        if (config.deliveryGuarantee() == DeliveryGuarantee.NONE) {
+            // Kafka 3.x enables idempotence by default when no conflicting setting exists.
+            properties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "false");
+        }
+        KafkaAuthProperties.apply(config, properties);
+        return properties;
+    }
+
+    static void requireCheckpointingForExactlyOnce(KafkaSinkConfig config, boolean checkpointingEnabled) {
+        if (config.deliveryGuarantee() == DeliveryGuarantee.EXACTLY_ONCE && !checkpointingEnabled) {
+            throw new IllegalArgumentException(
+                    "Kafka Sink EXACTLY_ONCE requires Flink checkpointing to be enabled.");
+        }
+    }
+
+    static String transactionalIdPrefix(String deploymentNamespace, String pipelineId, String sinkNodeId) {
+        requireText(deploymentNamespace, "deployment namespace");
+        requireText(pipelineId, "pipelineId");
+        requireText(sinkNodeId, "sink node id");
+
+        String hash = shortHash(deploymentNamespace + "\u0000" + pipelineId + "\u0000" + sinkNodeId);
+        String base = "streamcraft-"
+                + sanitize(deploymentNamespace)
+                + "-"
+                + sanitize(pipelineId)
+                + "-"
+                + sanitize(sinkNodeId);
+        int maximumBaseLength = MAX_TRANSACTIONAL_ID_PREFIX_LENGTH - TRANSACTIONAL_ID_HASH_LENGTH - 1;
+        if (base.length() > maximumBaseLength) {
+            base = base.substring(0, maximumBaseLength);
+        }
+        return base + "-" + hash;
+    }
+
+    /** Retained as a package-level compatibility helper for existing codec tests. */
     static String buildPayload(String format, String messageField, DataEntity value, ObjectMapper objectMapper)
             throws IOException {
-        if ("JSON".equals(format)) {
-            return objectMapper.writeValueAsString(value.fields());
-        }
-
-        Object fieldValue = resolveMessageFieldValue(value.fields(), messageField);
-        if (fieldValue == null) {
-            throw new IllegalArgumentException("Kafka Sink TEXT format requires a non-null messageField value.");
-        }
-        if (fieldValue instanceof String stringValue) {
-            return stringValue;
-        }
-        if (fieldValue instanceof Number || fieldValue instanceof Boolean) {
-            return String.valueOf(fieldValue);
-        }
-        return objectMapper.writeValueAsString(fieldValue);
+        return KafkaPayloadCodec.encode(format, messageField, value, objectMapper);
     }
 
+    /** Retained as a package-level compatibility helper for existing skip-behavior tests. */
     static String buildPayloadOrSkip(
             String format,
             String messageField,
@@ -70,134 +143,88 @@ public class KafkaSinkFactory {
                     format,
                     topic,
                     messageField,
-                    value.id(),
+                    value == null ? null : value.id(),
                     exception.getMessage()));
             return null;
         }
     }
 
-    private static Object resolveMessageFieldValue(Map<String, Object> fields, String messageField) {
-        if (messageField == null || messageField.isBlank()) {
-            return null;
+    private static String sanitize(String value) {
+        String normalized = value.trim().replaceAll("[^A-Za-z0-9._-]+", "-");
+        normalized = normalized.replaceAll("-+", "-");
+        if (normalized.isBlank()) {
+            return "default";
         }
-        if (fields.containsKey(messageField)) {
-            return fields.get(messageField);
-        }
-
-        Object current = fields;
-        for (String segment : messageField.split("\\.", -1)) {
-            if (segment.isEmpty()) {
-                return null;
-            }
-            if (!(current instanceof Map<?, ?> currentMap)) {
-                return null;
-            }
-            current = currentMap.get(segment);
-            if (current == null) {
-                return null;
-            }
-        }
-        return current;
+        return normalized;
     }
 
-    private SinkDeliveryGuarantee resolveGuarantee(String value) {
-        return switch (value) {
-            case "NONE" -> SinkDeliveryGuarantee.NONE;
-            case "EXACTLY_ONCE" -> SinkDeliveryGuarantee.EXACTLY_ONCE;
-            default -> SinkDeliveryGuarantee.AT_LEAST_ONCE;
-        };
+    private static String shortHash(String value) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest).substring(0, TRANSACTIONAL_ID_HASH_LENGTH);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is required for Kafka transactional identity.", exception);
+        }
     }
 
-    private static final class LegacyKafkaSinkFunction extends RichSinkFunction<DataEntity> {
+    private static void requireText(String value, String label) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Kafka Sink " + label + " must not be blank.");
+        }
+    }
 
-        private static final long serialVersionUID = 1L;
-        private static final Logger LOG = LoggerFactory.getLogger(LegacyKafkaSinkFunction.class);
+    private static final class KafkaPayloadFlatMapFunction extends RichFlatMapFunction<DataEntity, KafkaPayloadRecord> {
 
-        private final String bootstrapServers;
-        private final String topic;
-        private final SinkDeliveryGuarantee guarantee;
-        private final String format;
-        private final String messageField;
-        private final JsonNode config;
-        private transient KafkaProducer<String, String> producer;
+        private final KafkaSinkConfig config;
         private transient ObjectMapper objectMapper;
-        private transient AtomicReference<RuntimeException> sendFailure;
 
-        private LegacyKafkaSinkFunction(
-                String bootstrapServers,
-                String topic,
-                SinkDeliveryGuarantee guarantee,
-                String format,
-                String messageField,
-                JsonNode config) {
-            this.bootstrapServers = bootstrapServers;
-            this.topic = topic;
-            this.guarantee = guarantee;
-            this.format = format;
-            this.messageField = messageField;
+        private KafkaPayloadFlatMapFunction(KafkaSinkConfig config) {
             this.config = config;
         }
 
         @Override
         public void open(OpenContext openContext) {
-            Properties properties = new Properties();
-            properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-            properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-            properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-            properties.put(ProducerConfig.ACKS_CONFIG, guarantee == SinkDeliveryGuarantee.NONE ? "0" : "all");
-            if (guarantee == SinkDeliveryGuarantee.EXACTLY_ONCE) {
-                properties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
-                properties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "1");
-            }
-            KafkaAuthProperties.apply(config, properties);
-            producer = new KafkaProducer<>(properties);
             objectMapper = new ObjectMapper();
-            sendFailure = new AtomicReference<>();
         }
 
         @Override
-        public void invoke(DataEntity value, Context context) throws Exception {
-            failIfSendFailed();
-            String payload = buildPayloadOrSkip(
-                    format,
-                    messageField,
-                    topic,
-                    value,
-                    objectMapper,
-                    message -> LOG.warn(message));
-            if (payload == null) {
-                return;
-            }
-
-            ProducerRecord<String, String> record = new ProducerRecord<>(topic, value.id(), payload);
-            producer.send(record, (metadata, exception) -> {
-                if (exception != null && guarantee != SinkDeliveryGuarantee.NONE) {
-                    sendFailure.compareAndSet(
-                            null, new IllegalStateException("Failed to publish record to Kafka.", exception));
+        public void flatMap(DataEntity value, Collector<KafkaPayloadRecord> out) throws Exception {
+            try {
+                out.collect(new KafkaPayloadRecord(value.id(), KafkaPayloadCodec.encode(config, value, objectMapper)));
+            } catch (Exception exception) {
+                if (config.deliveryGuarantee() != DeliveryGuarantee.EXACTLY_ONCE
+                        && "TEXT".equals(config.format())) {
+                    LOG.warn(
+                            "Skipping Kafka Sink TEXT record for topic '{}' with messageField '{}' and record id '{}' because {}",
+                            config.topic(),
+                            config.messageField(),
+                            value == null ? null : value.id(),
+                            exception.getMessage());
+                    return;
                 }
-            });
-        }
-
-        @Override
-        public void close() {
-            if (producer != null) {
-                producer.flush();
-                failIfSendFailed();
-                producer.close(Duration.ofSeconds(5));
-            }
-        }
-
-        private void failIfSendFailed() {
-            RuntimeException failure = sendFailure == null ? null : sendFailure.get();
-            if (failure != null) {
-                throw failure;
+                throw exception;
             }
         }
     }
 
-    private enum SinkDeliveryGuarantee {
-        NONE,
-        AT_LEAST_ONCE,
-        EXACTLY_ONCE
+    private static final class KafkaPayloadSerializationSchema
+            implements KafkaRecordSerializationSchema<KafkaPayloadRecord> {
+
+        private final String topic;
+
+        private KafkaPayloadSerializationSchema(String topic) {
+            this.topic = topic;
+        }
+
+        @Override
+        public ProducerRecord<byte[], byte[]> serialize(
+                KafkaPayloadRecord element,
+                KafkaSinkContext context,
+                Long timestamp) {
+            byte[] key = element.key() == null ? null : element.key().getBytes(StandardCharsets.UTF_8);
+            byte[] value = element.value().getBytes(StandardCharsets.UTF_8);
+            return new ProducerRecord<>(topic, key, value);
+        }
     }
 }

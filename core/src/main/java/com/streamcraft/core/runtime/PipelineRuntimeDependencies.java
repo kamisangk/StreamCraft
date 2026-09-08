@@ -17,7 +17,7 @@ public final class PipelineRuntimeDependencies {
     private final InfluxDbSourceFactory influxDbSourceFactory;
     private final HdfsFileSourceFactory hdfsFileSourceFactory;
     private final JdbcSourceFactory jdbcSourceFactory;
-    private final KafkaSinkFactory kafkaSinkFactory;
+    private final KafkaSinkAttacher kafkaSinkFactory;
     private final JdbcSinkFactory jdbcSinkFactory;
     private final ElasticsearchSinkFactory elasticsearchSinkFactory;
     private final InfluxDbSinkFactory influxDbSinkFactory;
@@ -85,7 +85,7 @@ public final class PipelineRuntimeDependencies {
         return jdbcSourceFactory;
     }
 
-    public KafkaSinkFactory kafkaSinkFactory() {
+    public KafkaSinkAttacher kafkaSinkFactory() {
         return kafkaSinkFactory;
     }
 
@@ -121,7 +121,7 @@ public final class PipelineRuntimeDependencies {
         private InfluxDbSourceFactory influxDbSourceFactory;
         private HdfsFileSourceFactory hdfsFileSourceFactory;
         private JdbcSourceFactory jdbcSourceFactory;
-        private KafkaSinkFactory kafkaSinkFactory;
+        private KafkaSinkAttacher kafkaSinkFactory;
         private JdbcSinkFactory jdbcSinkFactory;
         private ElasticsearchSinkFactory elasticsearchSinkFactory;
         private InfluxDbSinkFactory influxDbSinkFactory;
@@ -158,7 +158,7 @@ public final class PipelineRuntimeDependencies {
             return this;
         }
 
-        public Builder kafkaSinkFactory(KafkaSinkFactory value) {
+        public Builder kafkaSinkFactory(KafkaSinkAttacher value) {
             this.kafkaSinkFactory = value;
             return this;
         }

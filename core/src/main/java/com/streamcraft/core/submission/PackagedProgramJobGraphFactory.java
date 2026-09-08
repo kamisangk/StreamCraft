@@ -2,6 +2,7 @@ package com.streamcraft.core.submission;
 
 import java.io.File;
 import java.util.List;
+import org.apache.flink.api.common.JobID;
 import org.apache.flink.client.program.PackagedProgram;
 import org.apache.flink.client.program.PackagedProgramUtils;
 import org.apache.flink.configuration.Configuration;
@@ -14,6 +15,15 @@ public class PackagedProgramJobGraphFactory {
                            List<String> programArgs,
                            Configuration configuration,
                            int defaultParallelism) throws Exception {
+        return create(programJarPath, entryClassName, programArgs, configuration, defaultParallelism, null);
+    }
+
+    public JobGraph create(String programJarPath,
+                           String entryClassName,
+                           List<String> programArgs,
+                           Configuration configuration,
+                           int defaultParallelism,
+                           String jobId) throws Exception {
         if (programJarPath == null || programJarPath.isBlank()) {
             throw new IllegalArgumentException("Program jar path is required.");
         }
@@ -30,7 +40,12 @@ public class PackagedProgramJobGraphFactory {
                 .setArguments(programArgs == null ? new String[0] : programArgs.toArray(String[]::new))
                 .setConfiguration(configuration)
                 .build()) {
-            return PackagedProgramUtils.createJobGraph(packagedProgram, configuration, defaultParallelism, false);
+            JobGraph jobGraph = PackagedProgramUtils.createJobGraph(
+                    packagedProgram, configuration, defaultParallelism, false);
+            if (jobId != null && !jobId.isBlank()) {
+                jobGraph.setJobID(JobID.fromHexString(jobId));
+            }
+            return jobGraph;
         }
     }
 }

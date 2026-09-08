@@ -14,6 +14,7 @@ import com.streamcraft.core.runtime.InfluxDbSourceFactory;
 import com.streamcraft.core.runtime.JdbcSinkFactory;
 import com.streamcraft.core.runtime.JdbcSourceFactory;
 import com.streamcraft.core.runtime.KafkaSinkFactory;
+import com.streamcraft.core.runtime.KafkaSinkAttacher;
 import com.streamcraft.core.runtime.KafkaSourceFactory;
 import com.streamcraft.core.runtime.MockSourceFactory;
 import com.streamcraft.core.runtime.PipelineRuntime;
@@ -62,7 +63,7 @@ public class StreamCraftCoreApplication {
         PreviewCollectingSinkFactory previewSinkFactory = executionMode.interceptSinks()
                 ? new PreviewCollectingSinkFactory()
                 : null;
-        KafkaSinkFactory sinkFactory = previewSinkFactory != null ? previewSinkFactory : new KafkaSinkFactory();
+        KafkaSinkAttacher sinkFactory = previewSinkFactory != null ? previewSinkFactory : new KafkaSinkFactory();
 
         PipelineRuntimeDependencies dependencies = PipelineRuntimeDependencies.builder()
                 .kafkaSourceFactory(new KafkaSourceFactory())
@@ -79,7 +80,13 @@ public class StreamCraftCoreApplication {
                 .transformFactory(new TransformOperatorFactory())
                 .build();
 
-        new PipelineRuntime(env, dependencies, options.testMode(), executionMode).run(definition);
+        new PipelineRuntime(
+                        env,
+                        dependencies,
+                        options.testMode(),
+                        executionMode,
+                        options.deploymentNamespace())
+                .run(definition);
         String jobName = "StreamCraft_Job_" + definition.pipelineId();
         env.execute(jobName);
 
@@ -112,7 +119,8 @@ public class StreamCraftCoreApplication {
                 StreamCraftCoreApplication.class.getName(),
                 REMOTE_SUBMISSION_ARGUMENTS_BUILDER.build(options),
                 configuration,
-                parallelism);
+                parallelism,
+                options.jobId());
 
         try (RestClusterClient<StandaloneClusterId> clusterClient =
                      new RestClusterClient<>(configuration, StandaloneClusterId.getInstance())) {
