@@ -54,7 +54,7 @@ public class StreamCraftCoreApplication {
         PipelineDefinition definition = new PipelineDefinitionLoader().load(options);
         new PipelineRuntimeValidator().validate(definition, options.executionMode());
 
-        CheckpointRuntimeOptions checkpointOptions = CheckpointRuntimeOptions.fromEnvironment(System.getenv());
+        CheckpointRuntimeOptions checkpointOptions = options.checkpointOptions();
         StreamExecutionEnvironment env = createExecutionEnvironment(options, checkpointOptions);
         if (options.parallelism() != null) {
             env.setParallelism(options.parallelism());
@@ -139,7 +139,7 @@ public class StreamCraftCoreApplication {
             throw new IllegalArgumentException("Invalid --cluster-base-url host.");
         }
 
-        CheckpointRuntimeOptions checkpointOptions = CheckpointRuntimeOptions.fromEnvironment(System.getenv());
+        CheckpointRuntimeOptions checkpointOptions = options.checkpointOptions();
         checkpointOptions.validateForRemoteSubmission();
         Configuration configuration = new Configuration();
         configuration.addAll(checkpointOptions.toFlinkConfiguration());

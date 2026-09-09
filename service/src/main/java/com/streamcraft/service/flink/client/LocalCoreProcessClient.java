@@ -72,6 +72,11 @@ public class LocalCoreProcessClient implements CoreSubmissionClient {
             command.add("--deployment-namespace");
             command.add(request.deploymentNamespace());
         }
+        addCheckpointOption(command, "--checkpoint-storage", request.checkpointStorage());
+        addCheckpointOption(command, "--checkpoint-interval-ms", request.checkpointIntervalMs());
+        addCheckpointOption(command, "--checkpoint-timeout-ms", request.checkpointTimeoutMs());
+        addCheckpointOption(command, "--restart-attempts", request.restartAttempts());
+        addCheckpointOption(command, "--restart-delay-ms", request.restartDelayMs());
 
         try {
             ProcessExecutionResult result = processRunner.execute(command);
@@ -90,6 +95,13 @@ public class LocalCoreProcessClient implements CoreSubmissionClient {
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Interrupted while waiting for local core submission process.", exception);
+        }
+    }
+
+    private void addCheckpointOption(List<String> command, String option, Object value) {
+        if (value != null && (!(value instanceof String string) || !string.isBlank())) {
+            command.add(option);
+            command.add(String.valueOf(value));
         }
     }
 

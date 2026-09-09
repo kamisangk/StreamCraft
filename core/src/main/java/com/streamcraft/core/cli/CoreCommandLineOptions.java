@@ -1,5 +1,6 @@
 package com.streamcraft.core.cli;
 
+import com.streamcraft.core.config.CheckpointRuntimeOptions;
 import com.streamcraft.core.runtime.ExecutionMode;
 
 public record CoreCommandLineOptions(
@@ -14,7 +15,8 @@ public record CoreCommandLineOptions(
         ExecutionMode executionMode,
         String previewOutputFile,
         String deploymentNamespace,
-        String jobId) {
+        String jobId,
+        CheckpointRuntimeOptions checkpointOptions) {
 
     /** Keeps callers compiled against the pre-JobID option shape source-compatible. */
     public CoreCommandLineOptions(
@@ -41,7 +43,43 @@ public record CoreCommandLineOptions(
                 executionMode,
                 previewOutputFile,
                 deploymentNamespace,
-                null);
+                null,
+                CheckpointRuntimeOptions.defaults());
+    }
+
+    public CoreCommandLineOptions(
+            String url,
+            String file,
+            boolean testMode,
+            String definitionAuthToken,
+            String clusterBaseUrl,
+            Integer parallelism,
+            boolean submitOnly,
+            String shipJar,
+            ExecutionMode executionMode,
+            String previewOutputFile,
+            String deploymentNamespace,
+            String jobId) {
+        this(
+                url,
+                file,
+                testMode,
+                definitionAuthToken,
+                clusterBaseUrl,
+                parallelism,
+                submitOnly,
+                shipJar,
+                executionMode,
+                previewOutputFile,
+                deploymentNamespace,
+                jobId,
+                CheckpointRuntimeOptions.defaults());
+    }
+
+    public CoreCommandLineOptions {
+        checkpointOptions = checkpointOptions == null
+                ? CheckpointRuntimeOptions.defaults()
+                : checkpointOptions;
     }
 
     public static CoreCommandLineOptions parse(String[] args) {
@@ -57,6 +95,13 @@ public record CoreCommandLineOptions(
         String previewOutputFile = null;
         String deploymentNamespace = null;
         String jobId = null;
+        CheckpointRuntimeOptions environmentCheckpointOptions =
+                CheckpointRuntimeOptions.fromEnvironment(System.getenv());
+        String checkpointStorage = environmentCheckpointOptions.storage();
+        long checkpointIntervalMs = environmentCheckpointOptions.intervalMs();
+        long checkpointTimeoutMs = environmentCheckpointOptions.timeoutMs();
+        int restartAttempts = environmentCheckpointOptions.restartAttempts();
+        long restartDelayMs = environmentCheckpointOptions.restartDelayMs();
 
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
@@ -109,6 +154,26 @@ public record CoreCommandLineOptions(
                     ensureValueExists(args, i, "--job-id");
                     jobId = args[++i];
                 }
+                case "--checkpoint-storage" -> {
+                    ensureValueExists(args, i, "--checkpoint-storage");
+                    checkpointStorage = args[++i];
+                }
+                case "--checkpoint-interval-ms" -> {
+                    ensureValueExists(args, i, "--checkpoint-interval-ms");
+                    checkpointIntervalMs = parseLong(args[++i], "--checkpoint-interval-ms");
+                }
+                case "--checkpoint-timeout-ms" -> {
+                    ensureValueExists(args, i, "--checkpoint-timeout-ms");
+                    checkpointTimeoutMs = parseLong(args[++i], "--checkpoint-timeout-ms");
+                }
+                case "--restart-attempts" -> {
+                    ensureValueExists(args, i, "--restart-attempts");
+                    restartAttempts = parseInt(args[++i], "--restart-attempts");
+                }
+                case "--restart-delay-ms" -> {
+                    ensureValueExists(args, i, "--restart-delay-ms");
+                    restartDelayMs = parseLong(args[++i], "--restart-delay-ms");
+                }
                 default -> throw new IllegalArgumentException("Unsupported option: " + arg);
             }
         }
@@ -134,7 +199,29 @@ public record CoreCommandLineOptions(
                 executionMode,
                 previewOutputFile,
                 deploymentNamespace,
-                jobId);
+                jobId,
+                new CheckpointRuntimeOptions(
+                        checkpointIntervalMs,
+                        checkpointTimeoutMs,
+                        checkpointStorage,
+                        restartAttempts,
+                        restartDelayMs));
+    }
+
+    private static long parseLong(String raw, String option) {
+        try {
+            return Long.parseLong(raw);
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException(option + " must be a whole number.", exception);
+        }
+    }
+
+    private static int parseInt(String raw, String option) {
+        try {
+            return Integer.parseInt(raw);
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException(option + " must be a whole number.", exception);
+        }
     }
 
     private static void ensureValueExists(String[] args, int index, String option) {

@@ -42,7 +42,23 @@ public class RemoteSubmissionArgumentsBuilder {
             args.add("--job-id");
             args.add(options.jobId());
         }
+        addCheckpointOptions(args, options);
         return args;
+    }
+
+    private void addCheckpointOptions(List<String> args, CoreCommandLineOptions options) {
+        if (hasText(options.checkpointOptions().storage())) {
+            args.add("--checkpoint-storage");
+            args.add(options.checkpointOptions().storage());
+        }
+        args.add("--checkpoint-interval-ms");
+        args.add(String.valueOf(options.checkpointOptions().intervalMs()));
+        args.add("--checkpoint-timeout-ms");
+        args.add(String.valueOf(options.checkpointOptions().timeoutMs()));
+        args.add("--restart-attempts");
+        args.add(String.valueOf(options.checkpointOptions().restartAttempts()));
+        args.add("--restart-delay-ms");
+        args.add(String.valueOf(options.checkpointOptions().restartDelayMs()));
     }
 
     private boolean hasText(String value) {

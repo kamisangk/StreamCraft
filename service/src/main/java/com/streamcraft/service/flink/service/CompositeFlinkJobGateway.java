@@ -48,7 +48,12 @@ public class CompositeFlinkJobGateway implements FlinkJobGateway {
                 parallelism,
                 internalAccessProperties.token(),
                 request.jobId(),
-                request.deploymentNamespace()));
+                request.deploymentNamespace(),
+                flinkGatewayProperties.getCheckpointStorage(),
+                flinkGatewayProperties.getCheckpointIntervalMs(),
+                flinkGatewayProperties.getCheckpointTimeoutMs(),
+                flinkGatewayProperties.getRestartAttempts(),
+                flinkGatewayProperties.getRestartDelayMs()));
     }
 
     @Override

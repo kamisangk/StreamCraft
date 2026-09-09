@@ -21,6 +21,20 @@ public record CheckpointRuntimeOptions(
         int restartAttempts,
         Duration restartDelay) {
 
+    public CheckpointRuntimeOptions(
+            long intervalMs,
+            long timeoutMs,
+            String storage,
+            int restartAttempts,
+            long restartDelayMs) {
+        this(
+                storage,
+                Duration.ofMillis(intervalMs),
+                Duration.ofMillis(timeoutMs),
+                restartAttempts,
+                Duration.ofMillis(restartDelayMs));
+    }
+
     public static final String CHECKPOINT_STORAGE_ENV = "STREAMCRAFT_CHECKPOINT_STORAGE";
     public static final String CHECKPOINT_INTERVAL_ENV = "STREAMCRAFT_CHECKPOINT_INTERVAL_MS";
     public static final String CHECKPOINT_TIMEOUT_ENV = "STREAMCRAFT_CHECKPOINT_TIMEOUT_MS";
@@ -49,6 +63,22 @@ public record CheckpointRuntimeOptions(
                 DEFAULT_CHECKPOINT_TIMEOUT,
                 DEFAULT_RESTART_ATTEMPTS,
                 DEFAULT_RESTART_DELAY);
+    }
+
+    public String storage() {
+        return checkpointStorage;
+    }
+
+    public long intervalMs() {
+        return checkpointInterval.toMillis();
+    }
+
+    public long timeoutMs() {
+        return checkpointTimeout.toMillis();
+    }
+
+    public long restartDelayMs() {
+        return restartDelay.toMillis();
     }
 
     public static CheckpointRuntimeOptions fromEnvironment(Map<String, String> environment) {
