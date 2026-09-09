@@ -2,6 +2,7 @@ package com.streamcraft.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streamcraft.core.cli.CoreCommandLineOptions;
+import com.streamcraft.core.config.CheckpointRuntimeOptions;
 import com.streamcraft.core.config.PipelineDefinitionLoader;
 import com.streamcraft.core.model.PipelineDefinition;
 import com.streamcraft.core.runtime.ExecutionMode;
@@ -53,11 +54,11 @@ public class StreamCraftCoreApplication {
         PipelineDefinition definition = new PipelineDefinitionLoader().load(options);
         new PipelineRuntimeValidator().validate(definition, options.executionMode());
 
-        StreamExecutionEnvironment env = createExecutionEnvironment(options);
+        CheckpointRuntimeOptions checkpointOptions = CheckpointRuntimeOptions.fromEnvironment(System.getenv());
+        StreamExecutionEnvironment env = createExecutionEnvironment(options, checkpointOptions);
         if (options.parallelism() != null) {
             env.setParallelism(options.parallelism());
         }
-        env.enableCheckpointing(10_000L);
 
         ExecutionMode executionMode = options.executionMode();
         PreviewCollectingSinkFactory previewSinkFactory = executionMode.interceptSinks()
@@ -97,10 +98,39 @@ public class StreamCraftCoreApplication {
         }
     }
 
-    private static StreamExecutionEnvironment createExecutionEnvironment(CoreCommandLineOptions options) {
+    private static StreamExecutionEnvironment createExecutionEnvironment(
+            CoreCommandLineOptions options,
+            CheckpointRuntimeOptions checkpointOptions) {
+        Configuration configuration = checkpointOptions.toFlinkConfiguration();
         return options.testMode() || options.executionMode() == ExecutionMode.PREVIEW
-                ? StreamExecutionEnvironment.createLocalEnvironment()
-                : StreamExecutionEnvironment.getExecutionEnvironment();
+                ? createLocalEnvironment(configuration, checkpointOptions)
+                : createClusterEnvironment(configuration, checkpointOptions);
+    }
+
+    private static StreamExecutionEnvironment createLocalEnvironment(
+            Configuration configuration,
+            CheckpointRuntimeOptions checkpointOptions) {
+        StreamExecutionEnvironment environment =
+                StreamExecutionEnvironment.createLocalEnvironment(configuration);
+        configureCheckpointing(environment, checkpointOptions);
+        return environment;
+    }
+
+    private static StreamExecutionEnvironment createClusterEnvironment(
+            Configuration configuration,
+            CheckpointRuntimeOptions checkpointOptions) {
+        StreamExecutionEnvironment environment =
+                StreamExecutionEnvironment.getExecutionEnvironment(configuration);
+        configureCheckpointing(environment, checkpointOptions);
+        return environment;
+    }
+
+    private static void configureCheckpointing(
+            StreamExecutionEnvironment environment,
+            CheckpointRuntimeOptions checkpointOptions) {
+        environment.enableCheckpointing(checkpointOptions.checkpointInterval().toMillis());
+        environment.getCheckpointConfig().setCheckpointTimeout(
+                checkpointOptions.checkpointTimeout().toMillis());
     }
 
     private static void submitToCluster(CoreCommandLineOptions options) throws Exception {
@@ -109,7 +139,10 @@ public class StreamCraftCoreApplication {
             throw new IllegalArgumentException("Invalid --cluster-base-url host.");
         }
 
+        CheckpointRuntimeOptions checkpointOptions = CheckpointRuntimeOptions.fromEnvironment(System.getenv());
+        checkpointOptions.validateForRemoteSubmission();
         Configuration configuration = new Configuration();
+        configuration.addAll(checkpointOptions.toFlinkConfiguration());
         configuration.set(RestOptions.ADDRESS, clusterUri.getHost());
         configuration.set(RestOptions.PORT, clusterUri.getPort() > 0 ? clusterUri.getPort() : 8081);
         int parallelism = options.parallelism() == null || options.parallelism() < 1 ? 1 : options.parallelism();
