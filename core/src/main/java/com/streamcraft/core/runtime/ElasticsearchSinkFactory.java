@@ -16,13 +16,20 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.flink.api.common.functions.OpenContext;
+import org.apache.flink.api.common.state.CheckpointListener;
+import org.apache.flink.metrics.Counter;
+import org.apache.flink.runtime.state.FunctionInitializationContext;
+import org.apache.flink.runtime.state.FunctionSnapshotContext;
+import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.functions.sink.legacy.RichSinkFunction;
 
@@ -36,18 +43,28 @@ public class ElasticsearchSinkFactory {
                 .name(sinkNode.name());
     }
 
-    private static final class ElasticsearchSinkFunction extends RichSinkFunction<DataEntity> {
+    /**
+     * Checkpoint-aware legacy sink with at-least-once delivery semantics.
+     * Elasticsearch bulk responses are handled per input record.
+     */
+    static final class ElasticsearchSinkFunction extends RichSinkFunction<DataEntity>
+            implements CheckpointedFunction, CheckpointListener {
 
         private static final long serialVersionUID = 1L;
         private static final Pattern INDEX_PLACEHOLDER = Pattern.compile("\\$\\{([A-Za-z_][A-Za-z0-9_.]*)}");
 
         private final ElasticsearchSinkConfig config;
-        private final List<DataEntity> buffer = new ArrayList<>();
+        private transient List<DataEntity> buffer;
+        private transient Map<Long, List<DataEntity>> checkpointSnapshots;
         private transient HttpClient httpClient;
         private transient ObjectMapper objectMapper;
         private transient long lastFlushAt;
+        private transient Counter recordsFlushed;
+        private transient Counter checkpointFlushes;
+        private transient Counter writeRetries;
+        private transient Counter writeFailures;
 
-        private ElasticsearchSinkFunction(ElasticsearchSinkConfig config) {
+        ElasticsearchSinkFunction(ElasticsearchSinkConfig config) {
             this.config = config;
         }
 
@@ -57,38 +74,115 @@ public class ElasticsearchSinkFactory {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
             objectMapper = new ObjectMapper();
+            buffer = new ArrayList<>();
+            checkpointSnapshots = new HashMap<>();
             lastFlushAt = System.currentTimeMillis();
+            try {
+                recordsFlushed = getRuntimeContext().getMetricGroup().counter("records_flushed");
+                checkpointFlushes = getRuntimeContext().getMetricGroup().counter("checkpoint_flushes");
+                writeRetries = getRuntimeContext().getMetricGroup().counter("write_retries");
+                writeFailures = getRuntimeContext().getMetricGroup().counter("write_failures");
+            } catch (RuntimeException ignored) {
+                // Direct unit tests and local construction have no task metric group.
+            }
         }
 
         @Override
         public void invoke(DataEntity value, Context context) throws Exception {
-            buffer.add(value);
-            long now = System.currentTimeMillis();
-            if (buffer.size() >= config.maxBatchSize() || now - lastFlushAt >= config.flushIntervalMillis()) {
-                flush();
+            synchronized (this) {
+                buffer.add(value);
+                long now = System.currentTimeMillis();
+                if (buffer.size() >= config.maxBatchSize() || now - lastFlushAt >= config.flushIntervalMillis()) {
+                    flush();
+                }
             }
         }
 
         @Override
         public void close() throws Exception {
-            flush();
+            synchronized (this) {
+                if (buffer != null) {
+                    flush();
+                }
+            }
+        }
+
+        @Override
+        public void initializeState(FunctionInitializationContext context) {
+            // The live buffer is intentionally replayed from the upstream checkpoint.
+        }
+
+        @Override
+        public synchronized void snapshotState(FunctionSnapshotContext context) {
+            if (buffer == null || checkpointSnapshots == null) {
+                return;
+            }
+            checkpointSnapshots.put(context.getCheckpointId(), List.copyOf(buffer));
+        }
+
+        @Override
+        public synchronized void notifyCheckpointComplete(long checkpointId) throws Exception {
+            if (checkpointSnapshots == null) {
+                return;
+            }
+            List<DataEntity> snapshot = checkpointSnapshots.get(checkpointId);
+            if (snapshot == null) {
+                return;
+            }
+            List<DataEntity> recordsToFlush = recordsStillBuffered(snapshot);
+            if (!recordsToFlush.isEmpty()) {
+                try {
+                    executeBulkWithRetry(recordsToFlush);
+                } catch (Exception exception) {
+                    increment(writeFailures);
+                    throw exception;
+                }
+                removeByIdentity(recordsToFlush);
+                increment(recordsFlushed, recordsToFlush.size());
+            }
+            increment(checkpointFlushes);
+            checkpointSnapshots.entrySet().removeIf(entry -> entry.getKey() <= checkpointId);
+            lastFlushAt = System.currentTimeMillis();
+        }
+
+        @Override
+        public synchronized void notifyCheckpointAborted(long checkpointId) {
+            if (checkpointSnapshots != null) {
+                checkpointSnapshots.remove(checkpointId);
+            }
+        }
+
+        synchronized int bufferedRecordCount() {
+            return buffer == null ? 0 : buffer.size();
         }
 
         private void flush() throws Exception {
             if (buffer.isEmpty()) {
                 return;
             }
-            String bulkBody = bulkBody(buffer);
-            executeBulkWithRetry(bulkBody);
+            List<DataEntity> records = List.copyOf(buffer);
+            try {
+                executeBulkWithRetry(records);
+            } catch (Exception exception) {
+                increment(writeFailures);
+                throw exception;
+            }
             buffer.clear();
+            increment(recordsFlushed, records.size());
             lastFlushAt = System.currentTimeMillis();
         }
 
-        private String bulkBody(List<DataEntity> records) throws Exception {
+        private String bulkBody(List<DataEntity> records) {
             StringBuilder body = new StringBuilder();
-            for (DataEntity record : records) {
-                body.append(objectMapper.writeValueAsString(action(record))).append('\n');
-                body.append(objectMapper.writeValueAsString(document(record))).append('\n');
+            try {
+                for (DataEntity record : records) {
+                    body.append(objectMapper.writeValueAsString(action(record))).append('\n');
+                    body.append(objectMapper.writeValueAsString(document(record))).append('\n');
+                }
+            } catch (java.io.IOException exception) {
+                throw new ElasticsearchBulkResponseException(
+                        "Elasticsearch Sink record cannot be serialized to bulk JSON.",
+                        exception);
             }
             return body.toString();
         }
@@ -153,20 +247,27 @@ public class ElasticsearchSinkFactory {
             return String.join(config.keyDelimiter(), values);
         }
 
-        private void executeBulkWithRetry(String body) throws Exception {
+        private void executeBulkWithRetry(List<DataEntity> records) throws Exception {
+            List<DataEntity> pending = List.copyOf(records);
             int maxAttempts = config.maxRetryCount() + 1;
             Exception lastFailure = null;
             for (int attempt = 1; attempt <= maxAttempts; attempt++) {
                 try {
-                    executeBulk(body);
-                    return;
+                    List<DataEntity> retryRecords = executeBulk(pending);
+                    if (retryRecords.isEmpty()) {
+                        return;
+                    }
+                    pending = retryRecords;
+                    lastFailure = new ElasticsearchBulkResponseException(
+                            "Elasticsearch Sink bulk response contains retryable item failures.");
                 } catch (Exception exception) {
                     lastFailure = exception;
                     if (attempt == maxAttempts || !isRetryable(exception)) {
                         throw exception;
                     }
-                    Thread.sleep(Math.min(1_000L * attempt, 5_000L));
                 }
+                increment(writeRetries);
+                Thread.sleep(Math.min(1_000L * attempt, 5_000L));
             }
             if (lastFailure != null) {
                 throw lastFailure;
@@ -174,24 +275,153 @@ public class ElasticsearchSinkFactory {
         }
 
         private boolean isRetryable(Exception exception) {
-            String message = exception.getMessage();
-            return message == null || !message.contains("status 4");
+            if (exception instanceof ElasticsearchBulkException bulkException) {
+                int status = bulkException.statusCode();
+                return status == 429 || status >= 500;
+            }
+            return exception instanceof java.io.IOException;
         }
 
-        private void executeBulk(String body) throws Exception {
+        private List<DataEntity> executeBulk(List<DataEntity> records) throws Exception {
+            String body = bulkBody(records);
             HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(firstHost() + "/_bulk"))
                     .header("Content-Type", "application/x-ndjson")
                     .POST(HttpRequest.BodyPublishers.ofString(body));
             applyAuth(builder);
             HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new IllegalStateException(
+                throw new ElasticsearchBulkException(
+                        response.statusCode(),
                         "Elasticsearch Sink bulk request failed with status " + response.statusCode() + ": "
                                 + response.body());
             }
-            JsonNode root = objectMapper.readTree(response.body());
-            if (root.path("errors").asBoolean(false)) {
-                throw new IllegalStateException("Elasticsearch Sink bulk request contains item errors: " + response.body());
+            JsonNode root;
+            try {
+                root = objectMapper.readTree(response.body());
+            } catch (java.io.IOException exception) {
+                throw malformedResponse("response is not valid JSON", exception);
+            }
+            if (root == null || !root.isObject()) {
+                throw malformedResponse("response must be a JSON object");
+            }
+            JsonNode items = root.get("items");
+            if (items == null || !items.isArray()) {
+                throw malformedResponse("response is missing an items array");
+            }
+            if (items.size() != records.size()) {
+                throw malformedResponse(
+                        "response item count " + items.size() + " does not match request record count " + records.size());
+            }
+            List<DataEntity> retryRecords = new ArrayList<>();
+            for (int index = 0; index < records.size(); index++) {
+                JsonNode item = items.get(index);
+                if (item == null || !item.isObject() || item.size() != 1) {
+                    throw malformedResponse("item " + index + " must contain exactly one operation object");
+                }
+                String operationName = item.fieldNames().next();
+                if (!Set.of("index", "create", "update", "delete").contains(operationName)) {
+                    throw malformedResponse("item " + index + " has unsupported operation: " + operationName);
+                }
+                JsonNode operation = item.get(operationName);
+                if (operation == null || !operation.isObject()) {
+                    throw malformedResponse("item " + index + " operation is not an object");
+                }
+                JsonNode statusNode = operation.get("status");
+                if (statusNode == null || !statusNode.isIntegralNumber()) {
+                    throw malformedResponse("item " + index + " is missing a numeric status");
+                }
+                int status = statusNode.intValue();
+                if (status < 100 || status > 599) {
+                    throw malformedResponse("item " + index + " has invalid status " + status);
+                }
+                if (status >= 200 && status < 300) {
+                    continue;
+                }
+                if (status == 429 || status >= 500) {
+                    retryRecords.add(records.get(index));
+                    continue;
+                }
+                throw new ElasticsearchBulkResponseException(
+                        "Elasticsearch Sink bulk item " + index + " failed with status " + status + ": " + operation);
+            }
+            return retryRecords;
+        }
+
+        private ElasticsearchBulkResponseException malformedResponse(String detail) {
+            return malformedResponse(detail, null);
+        }
+
+        private ElasticsearchBulkResponseException malformedResponse(String detail, Throwable cause) {
+            return new ElasticsearchBulkResponseException(
+                    "Elasticsearch Sink bulk response is invalid: " + detail,
+                    cause);
+        }
+
+        private List<DataEntity> recordsStillBuffered(List<DataEntity> snapshot) {
+            IdentityHashMap<DataEntity, Integer> available = new IdentityHashMap<>();
+            for (DataEntity record : buffer) {
+                available.merge(record, 1, Integer::sum);
+            }
+            List<DataEntity> recordsToFlush = new ArrayList<>();
+            for (DataEntity snapshotRecord : snapshot) {
+                Integer count = available.get(snapshotRecord);
+                if (count != null && count > 0) {
+                    recordsToFlush.add(snapshotRecord);
+                    if (count == 1) {
+                        available.remove(snapshotRecord);
+                    } else {
+                        available.put(snapshotRecord, count - 1);
+                    }
+                }
+            }
+            return recordsToFlush;
+        }
+
+        private void removeByIdentity(List<DataEntity> records) {
+            for (DataEntity record : records) {
+                for (int index = 0; index < buffer.size(); index++) {
+                    if (buffer.get(index) == record) {
+                        buffer.remove(index);
+                        break;
+                    }
+                }
+            }
+        }
+
+        private static void increment(Counter counter) {
+            if (counter != null) {
+                counter.inc();
+            }
+        }
+
+        private static void increment(Counter counter, int amount) {
+            if (counter != null) {
+                counter.inc(amount);
+            }
+        }
+
+        private static final class ElasticsearchBulkException extends IllegalStateException {
+
+            private final int statusCode;
+
+            private ElasticsearchBulkException(int statusCode, String message) {
+                super(message);
+                this.statusCode = statusCode;
+            }
+
+            private int statusCode() {
+                return statusCode;
+            }
+        }
+
+        private static final class ElasticsearchBulkResponseException extends IllegalStateException {
+
+            private ElasticsearchBulkResponseException(String message) {
+                this(message, null);
+            }
+
+            private ElasticsearchBulkResponseException(String message, Throwable cause) {
+                super(message, cause);
             }
         }
 
