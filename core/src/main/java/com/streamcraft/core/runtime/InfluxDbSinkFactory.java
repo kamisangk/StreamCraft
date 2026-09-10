@@ -14,6 +14,7 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -21,6 +22,11 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.flink.api.common.functions.OpenContext;
+import org.apache.flink.api.common.state.CheckpointListener;
+import org.apache.flink.metrics.Counter;
+import org.apache.flink.runtime.state.FunctionInitializationContext;
+import org.apache.flink.runtime.state.FunctionSnapshotContext;
+import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.functions.sink.legacy.RichSinkFunction;
 
@@ -34,17 +40,27 @@ public class InfluxDbSinkFactory {
                 .name(sinkNode.name());
     }
 
-    private static final class InfluxDbSinkFunction extends RichSinkFunction<DataEntity> {
+    /**
+     * Checkpoint-aware legacy sink with at-least-once delivery semantics.
+     * InfluxDB's HTTP write is not atomically coupled to Flink checkpoints.
+     */
+    static final class InfluxDbSinkFunction extends RichSinkFunction<DataEntity>
+            implements CheckpointedFunction, CheckpointListener {
 
         private static final long serialVersionUID = 1L;
         private static final Pattern MEASUREMENT_PLACEHOLDER = Pattern.compile("\\$\\{([A-Za-z_][A-Za-z0-9_]*)}");
 
         private final InfluxDbSinkConfig config;
-        private final List<DataEntity> buffer = new ArrayList<>();
+        private transient List<DataEntity> buffer;
+        private transient Map<Long, List<DataEntity>> checkpointSnapshots;
         private transient HttpClient httpClient;
         private transient long lastFlushAt;
+        private transient Counter recordsFlushed;
+        private transient Counter checkpointFlushes;
+        private transient Counter writeRetries;
+        private transient Counter writeFailures;
 
-        private InfluxDbSinkFunction(InfluxDbSinkConfig config) {
+        InfluxDbSinkFunction(InfluxDbSinkConfig config) {
             this.config = config;
         }
 
@@ -53,30 +69,140 @@ public class InfluxDbSinkFactory {
             httpClient = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofMillis(config.connectTimeoutMillis()))
                     .build();
+            buffer = new ArrayList<>();
+            checkpointSnapshots = new HashMap<>();
             lastFlushAt = System.currentTimeMillis();
+            try {
+                recordsFlushed = getRuntimeContext().getMetricGroup().counter("records_flushed");
+                checkpointFlushes = getRuntimeContext().getMetricGroup().counter("checkpoint_flushes");
+                writeRetries = getRuntimeContext().getMetricGroup().counter("write_retries");
+                writeFailures = getRuntimeContext().getMetricGroup().counter("write_failures");
+            } catch (RuntimeException ignored) {
+                // Direct unit tests and local construction have no task metric group.
+            }
         }
 
         @Override
         public void invoke(DataEntity value, Context context) throws Exception {
-            buffer.add(value);
-            long now = System.currentTimeMillis();
-            if (buffer.size() >= config.batchSize() || now - lastFlushAt >= config.flushIntervalMillis()) {
-                flush();
+            synchronized (this) {
+                buffer.add(value);
+                long now = System.currentTimeMillis();
+                if (buffer.size() >= config.batchSize() || now - lastFlushAt >= config.flushIntervalMillis()) {
+                    flush();
+                }
             }
         }
 
         @Override
         public void close() throws Exception {
-            flush();
+            synchronized (this) {
+                if (buffer != null) {
+                    flush();
+                }
+            }
+        }
+
+        @Override
+        public void initializeState(FunctionInitializationContext context) {
+            // The live buffer is intentionally replayed from the upstream checkpoint.
+        }
+
+        @Override
+        public synchronized void snapshotState(FunctionSnapshotContext context) {
+            if (buffer == null || checkpointSnapshots == null) {
+                return;
+            }
+            checkpointSnapshots.put(context.getCheckpointId(), List.copyOf(buffer));
+        }
+
+        @Override
+        public synchronized void notifyCheckpointComplete(long checkpointId) throws Exception {
+            if (checkpointSnapshots == null) {
+                return;
+            }
+            List<DataEntity> snapshot = checkpointSnapshots.get(checkpointId);
+            if (snapshot == null) {
+                return;
+            }
+            List<DataEntity> recordsToFlush = recordsStillBuffered(snapshot);
+            if (!recordsToFlush.isEmpty()) {
+                try {
+                    executeWriteWithRetry(lineProtocol(recordsToFlush));
+                } catch (Exception exception) {
+                    increment(writeFailures);
+                    throw exception;
+                }
+                removeByIdentity(recordsToFlush);
+                increment(recordsFlushed, recordsToFlush.size());
+            }
+            increment(checkpointFlushes);
+            checkpointSnapshots.entrySet().removeIf(entry -> entry.getKey() <= checkpointId);
+            lastFlushAt = System.currentTimeMillis();
+        }
+
+        @Override
+        public synchronized void notifyCheckpointAborted(long checkpointId) {
+            if (checkpointSnapshots != null) {
+                checkpointSnapshots.remove(checkpointId);
+            }
+        }
+
+        synchronized int bufferedRecordCount() {
+            return buffer == null ? 0 : buffer.size();
         }
 
         private void flush() throws Exception {
             if (buffer.isEmpty()) {
                 return;
             }
-            executeWriteWithRetry(lineProtocol(buffer));
+            List<DataEntity> records = List.copyOf(buffer);
+            try {
+                executeWriteWithRetry(lineProtocol(records));
+            } catch (Exception exception) {
+                increment(writeFailures);
+                throw exception;
+            }
             buffer.clear();
+            increment(recordsFlushed, records.size());
             lastFlushAt = System.currentTimeMillis();
+        }
+
+        private List<DataEntity> recordsStillBuffered(List<DataEntity> snapshot) {
+            List<DataEntity> available = new ArrayList<>(buffer);
+            List<DataEntity> recordsToFlush = new ArrayList<>();
+            for (DataEntity snapshotRecord : snapshot) {
+                for (int index = 0; index < available.size(); index++) {
+                    if (available.get(index) == snapshotRecord) {
+                        recordsToFlush.add(snapshotRecord);
+                        available.remove(index);
+                        break;
+                    }
+                }
+            }
+            return recordsToFlush;
+        }
+
+        private void removeByIdentity(List<DataEntity> records) {
+            for (DataEntity record : records) {
+                for (int index = 0; index < buffer.size(); index++) {
+                    if (buffer.get(index) == record) {
+                        buffer.remove(index);
+                        break;
+                    }
+                }
+            }
+        }
+
+        private static void increment(Counter counter) {
+            if (counter != null) {
+                counter.inc();
+            }
+        }
+
+        private static void increment(Counter counter, int amount) {
+            if (counter != null) {
+                counter.inc(amount);
+            }
         }
 
         private String lineProtocol(List<DataEntity> records) {
@@ -188,6 +314,7 @@ public class InfluxDbSinkFactory {
                     if (attempt == maxAttempts || !isRetryable(exception)) {
                         throw exception;
                     }
+                    increment(writeRetries);
                     Thread.sleep(Math.min(config.retryBackoffMultiplierMillis() * attempt,
                             config.maxRetryBackoffMillis()));
                 }
@@ -198,19 +325,33 @@ public class InfluxDbSinkFactory {
         }
 
         private boolean isRetryable(Exception exception) {
-            String message = exception.getMessage();
-            return message == null || !message.contains("status 4");
+            return exception instanceof InfluxWriteException writeException
+                    && (writeException.statusCode() == 429 || writeException.statusCode() >= 500);
         }
 
         private void executeWrite(String body) throws Exception {
             HttpRequest request = HttpRequest.newBuilder(writeUri())
                     .header("Content-Type", "text/plain; charset=utf-8")
+                    .timeout(Duration.ofMillis(config.connectTimeoutMillis()))
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new IllegalStateException(
-                        "InfluxDB Sink write failed with status " + response.statusCode() + ": " + response.body());
+                throw new InfluxWriteException(response.statusCode(), response.body());
+            }
+        }
+
+        private static final class InfluxWriteException extends IllegalStateException {
+
+            private final int statusCode;
+
+            private InfluxWriteException(int statusCode, String body) {
+                super("InfluxDB Sink write failed with status " + statusCode + ": " + body);
+                this.statusCode = statusCode;
+            }
+
+            private int statusCode() {
+                return statusCode;
             }
         }
 
