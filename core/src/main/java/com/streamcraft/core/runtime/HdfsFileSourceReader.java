@@ -53,6 +53,10 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
     public InputStatus pollNext(ReaderOutput<DataEntity> output) throws Exception {
         synchronized (lock) {
             if (!started || split == null) return InputStatus.NOTHING_AVAILABLE;
+            if (split.state().completed() && config.readMode() == HdfsFileSourceConfig.ReadMode.FULL) {
+                exhausted = true;
+                return InputStatus.END_OF_INPUT;
+            }
             if (!records.isEmpty()) {
                 emit(output);
                 return records.isEmpty() ? InputStatus.NOTHING_AVAILABLE : InputStatus.MORE_AVAILABLE;
