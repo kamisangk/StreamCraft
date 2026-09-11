@@ -114,6 +114,27 @@ class HdfsFileSourceNativeExecutionTest {
     }
 
     @Test
+    void rejectsCheckpointWithDifferentFileFormat() throws Exception {
+        Path file = temp.resolve("format-mismatch.json");
+        Files.writeString(file, "{\"id\":\"o-1\"}\n");
+        org.apache.flink.core.fs.Path flinkPath = new org.apache.flink.core.fs.Path(file.toUri().toString());
+        HdfsFileSourceConfig config = new HdfsFileSourceConfig(
+                "file:///", file.toUri().toString(), HdfsFileFormatType.JSON, "{}", List.of(), "\001", "\n", 0,
+                false, "UTF-8", "none", false, "", HdfsFileSourceConfig.ReadMode.FULL, 1, 1,
+                "id", "", "", "", "");
+        HdfsFileSourceReader reader = new HdfsFileSourceReader(context(), config);
+        reader.start();
+
+        IllegalArgumentException exception = org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalArgumentException.class,
+                () -> reader.addSplits(List.of(new HdfsFileSourceSplit("format", new HdfsFileSourceState(
+                        flinkPath.toString(), fingerprint(flinkPath), 0, 0, "CSV", false, false)))));
+
+        assertTrue(exception.getMessage().contains("format"));
+        assertTrue(exception.getMessage().contains("JSON"));
+    }
+
+    @Test
     void boundedEnumeratorSignalsReadersWhenDiscoveryIsComplete() throws Exception {
         Path file = temp.resolve("only.json");
         Files.writeString(file, "{\"id\":\"o-1\"}\n");

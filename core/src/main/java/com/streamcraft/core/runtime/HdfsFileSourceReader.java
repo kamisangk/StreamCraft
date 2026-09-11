@@ -112,6 +112,7 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
     public void addSplits(List<HdfsFileSourceSplit> splits) {
         synchronized (lock) {
             for (HdfsFileSourceSplit candidate : splits) {
+                candidate.state().validateFor("HDFS File Source", config.fileFormatType().name());
                 if (split == null) {
                     split = candidate;
                 } else {
