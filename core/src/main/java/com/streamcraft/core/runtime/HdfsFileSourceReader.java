@@ -120,6 +120,8 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
             return;
         }
         long lineNumber = current.state().lineNumber();
+        long byteOffset = current.state().byteOffset();
+        byte[] rowDelimiter = config.rowDelimiter().getBytes(Charset.forName(config.encoding()));
         boolean headerSeen = current.state().headerSeen();
         List<String> fieldNames = new ArrayList<>(config.fieldNames());
         try (FSDataInputStream input = path.getFileSystem().open(path)) {
@@ -129,6 +131,7 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
                 String line;
                 while ((line = reader.readLine()) != null) {
                     lineNumber++;
+                    byteOffset += line.getBytes(Charset.forName(config.encoding())).length + rowDelimiter.length;
                     if (line.isBlank() || lineNumber <= config.skipHeaderRowNumber()) continue;
                     if (config.fileFormatType() == HdfsFileFormatType.CSV
                             && config.csvUseHeaderLine() && fieldNames.isEmpty()) {
@@ -144,7 +147,7 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
                             merged.putAll(fields);
                             fields = merged;
                         }
-                        records.add(new HdfsRecord(toEntity(path, lineNumber, fields), lineNumber));
+                        records.add(new HdfsRecord(toEntity(path, lineNumber, fields), lineNumber, byteOffset));
                     } catch (Exception exception) {
                         LOG.warn("Skipping HDFS line {}: {}", lineNumber, exception.getMessage());
                     }
@@ -155,7 +158,7 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
         // Until then snapshots retain the previous offset and Flink can replay.
         if (records.isEmpty()) {
             split = new HdfsFileSourceSplit(current.splitId(), new HdfsFileSourceState(
-                    path.toString(), fingerprint, status.getLen(), lineNumber,
+                path.toString(), fingerprint, status.getLen(), lineNumber,
                     config.fileFormatType().name(), headerSeen, true));
         }
         batchFullyRead = true;
@@ -167,7 +170,7 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
         output.collect(record.entity());
         HdfsFileSourceState state = split.state();
         split = new HdfsFileSourceSplit(split.splitId(), new HdfsFileSourceState(
-                state.path(), state.fingerprint(), state.byteOffset(), record.lineNumber(),
+                state.path(), state.fingerprint(), record.byteOffset(), record.lineNumber(),
                 state.format(), state.headerSeen(), records.isEmpty() && batchFullyRead));
     }
 
@@ -195,5 +198,5 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
         return partitions;
     }
 
-    private record HdfsRecord(DataEntity entity, long lineNumber) { }
+    private record HdfsRecord(DataEntity entity, long lineNumber, long byteOffset) { }
 }
