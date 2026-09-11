@@ -70,6 +70,12 @@ final class JdbcSourceReader implements SourceReader<DataEntity, JdbcSourceSplit
             if (exhausted) {
                 return InputStatus.END_OF_INPUT;
             }
+            if (config.readMode() == JdbcSourceConfig.ReadMode.INCREMENTAL
+                    && config.maxPolls() > 0
+                    && polls >= config.maxPolls()) {
+                exhausted = true;
+                return InputStatus.END_OF_INPUT;
+            }
             long now = System.currentTimeMillis();
             if (now < nextPollAtMillis) {
                 return InputStatus.NOTHING_AVAILABLE;
