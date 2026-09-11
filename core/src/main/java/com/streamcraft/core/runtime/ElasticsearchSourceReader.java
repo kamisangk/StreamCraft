@@ -299,12 +299,22 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
     }
 
     private void appendSourceFilter(ObjectNode body) {
-        List<String> filtered = config.sourceFields().stream().filter(field -> !"_id".equals(field)).toList();
+        List<String> filtered = new ArrayList<>(config.sourceFields().stream()
+                .filter(field -> !"_id".equals(field))
+                .toList());
+        addRequiredField(filtered, config.cursorField());
+        addRequiredField(filtered, config.idField());
         if (filtered.isEmpty()) {
             return;
         }
         ArrayNode source = body.putArray("_source");
         filtered.forEach(source::add);
+    }
+
+    private static void addRequiredField(List<String> fields, String field) {
+        if (field != null && !field.isBlank() && !"_id".equals(field) && !fields.contains(field)) {
+            fields.add(field);
+        }
     }
 
     private void clearScroll(String scrollId) {
