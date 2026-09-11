@@ -412,7 +412,13 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
         return switch (type) {
             case LONG -> Long.parseLong(value);
             case DOUBLE -> Double.parseDouble(value);
-            case TIMESTAMP -> Timestamp.from(Instant.parse(value));
+            case TIMESTAMP -> {
+                try {
+                    yield Timestamp.from(Instant.parse(value));
+                } catch (Exception exception) {
+                    yield Timestamp.from(Instant.ofEpochMilli(Long.parseLong(value)));
+                }
+            }
             case STRING -> value;
         };
     }
