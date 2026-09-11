@@ -46,6 +46,41 @@ class InfluxDbSourceNativeExecutionTest {
         }
     }
 
+    @Test
+    void ordersEqualCursorsByConfiguredIdFieldAcrossSeries() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/query", exchange -> {
+            byte[] response = ("{\"results\":[{\"series\":["
+                    + "{\"name\":\"cpu\",\"tags\":{\"host\":\"b\"},"
+                    + "\"columns\":[\"time\",\"value\"],\"values\":[[1000,2.0]]},"
+                    + "{\"name\":\"cpu\",\"tags\":{\"host\":\"a\"},"
+                    + "\"columns\":[\"time\",\"value\"],\"values\":[[1000,1.0]]}]}]}")
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.start();
+        try {
+            InfluxDbSourceConfig config = new InfluxDbSourceConfig(
+                    "http://127.0.0.1:" + server.getAddress().getPort(), "metrics", "select * from cpu", "{}", "ms",
+                    30, 1000, InfluxDbSourceConfig.ReadMode.INCREMENTAL, "time",
+                    InfluxDbSourceConfig.CursorType.TIMESTAMP, "1970-01-01T00:00:00Z", 1, 1,
+                    "host", "time", "", "");
+            InfluxDbSourceReader reader = new InfluxDbSourceReader(context(), config);
+            reader.start();
+            reader.addSplits(List.of(new InfluxDbSourceSplit("influx", new IncrementalSourceState(
+                    "TIMESTAMP", "1970-01-01T00:00:00Z", "host", null), 0)));
+            List<DataEntity> output = new ArrayList<>();
+            ReaderOutput<DataEntity> sink = output(output);
+            reader.pollNext(sink);
+            reader.pollNext(sink);
+            assertEquals(List.of("a", "b"), output.stream().map(DataEntity::id).toList());
+        } finally {
+            server.stop(0);
+        }
+    }
+
     private SourceReaderContext context() {
         return (SourceReaderContext) Proxy.newProxyInstance(
                 SourceReaderContext.class.getClassLoader(), new Class<?>[] {SourceReaderContext.class},
