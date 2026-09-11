@@ -1,6 +1,7 @@
 package com.streamcraft.core.runtime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.streamcraft.core.model.DataEntity;
 import com.streamcraft.shared.elasticsearch.ElasticsearchSourceConfig;
@@ -52,6 +53,24 @@ class ElasticsearchSourceNativeExecutionTest {
         } finally {
             server.stop(0);
         }
+    }
+
+    @Test
+    void rejectsCheckpointWithDifferentIdField() {
+        ElasticsearchSourceConfig config = new ElasticsearchSourceConfig(
+                List.of("http://127.0.0.1:9200"), "orders", List.of(), "{}",
+                ElasticsearchSourceConfig.ReadMode.INCREMENTAL, "updated_at",
+                ElasticsearchSourceConfig.CursorType.LONG, "", 1, 10, "1m", 1,
+                "id", "", ElasticsearchSourceConfig.AuthType.NONE, "", "", "");
+        ElasticsearchSourceReader reader = new ElasticsearchSourceReader(context(), config);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> reader.addSplits(List.of(new ElasticsearchSourceSplit(
+                        "es", new IncrementalSourceState("LONG", "100", "legacy_id", "1"), "", 0))));
+
+        assertEquals(
+                "Elasticsearch Source checkpoint state version 1 idField changed from legacy_id to id.",
+                exception.getMessage());
     }
 
     private SourceReaderContext context() {

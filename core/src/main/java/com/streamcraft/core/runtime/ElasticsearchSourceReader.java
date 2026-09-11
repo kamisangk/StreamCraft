@@ -120,6 +120,8 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
     public void addSplits(List<ElasticsearchSourceSplit> splits) {
         synchronized (lock) {
             for (ElasticsearchSourceSplit candidate : splits) {
+                candidate.state().validateFor(
+                        "Elasticsearch Source", config.cursorType().name(), config.idField());
                 if (split == null || split.state().cursorValue() == null || candidate.state().cursorValue() != null) {
                     split = candidate;
                 }

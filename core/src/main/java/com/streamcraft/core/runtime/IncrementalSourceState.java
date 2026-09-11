@@ -1,6 +1,7 @@
 package com.streamcraft.core.runtime;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * Versioned progress shared by cursor based sources.
@@ -46,5 +47,30 @@ record IncrementalSourceState(
 
     boolean hasUniqueId() {
         return uniqueIdField != null;
+    }
+
+    void validateFor(String sourceName, String expectedCursorType, String expectedUniqueIdField) {
+        String normalizedExpectedType = expectedCursorType == null ? "" : expectedCursorType.trim();
+        if (!cursorType.equalsIgnoreCase(normalizedExpectedType)) {
+            throw new IllegalArgumentException(sourceName + " checkpoint state version " + stateVersion()
+                    + " cursorType changed from " + cursorType + " to " + normalizedExpectedType + ".");
+        }
+        String normalizedExpectedId = normalizeOptional(expectedUniqueIdField);
+        if (!Objects.equals(uniqueIdField, normalizedExpectedId)) {
+            throw new IllegalArgumentException(sourceName + " checkpoint state version " + stateVersion()
+                    + " idField changed from " + display(uniqueIdField) + " to "
+                    + display(normalizedExpectedId) + ".");
+        }
+    }
+
+    private static String normalizeOptional(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private static String display(String value) {
+        return value == null ? "<none>" : value;
     }
 }

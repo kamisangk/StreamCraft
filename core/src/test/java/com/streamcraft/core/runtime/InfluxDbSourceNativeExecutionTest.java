@@ -1,6 +1,7 @@
 package com.streamcraft.core.runtime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.streamcraft.core.model.DataEntity;
 import com.streamcraft.shared.influxdb.InfluxDbSourceConfig;
@@ -79,6 +80,24 @@ class InfluxDbSourceNativeExecutionTest {
         } finally {
             server.stop(0);
         }
+    }
+
+    @Test
+    void rejectsCheckpointWithDifferentCursorType() {
+        InfluxDbSourceConfig config = new InfluxDbSourceConfig(
+                "http://127.0.0.1:8086", "metrics", "select * from cpu", "{}", "ms",
+                30, 1000, InfluxDbSourceConfig.ReadMode.INCREMENTAL, "time",
+                InfluxDbSourceConfig.CursorType.TIMESTAMP, "", 1, 1,
+                "host", "time", "", "");
+        InfluxDbSourceReader reader = new InfluxDbSourceReader(context(), config);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> reader.addSplits(List.of(new InfluxDbSourceSplit(
+                        "influx", new IncrementalSourceState("LONG", "1000", "host", "a"), 0))));
+
+        assertEquals(
+                "InfluxDB Source checkpoint state version 1 cursorType changed from LONG to TIMESTAMP.",
+                exception.getMessage());
     }
 
     private SourceReaderContext context() {

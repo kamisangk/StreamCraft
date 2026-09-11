@@ -1,6 +1,7 @@
 package com.streamcraft.core.runtime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.streamcraft.core.model.DataEntity;
 import com.streamcraft.shared.jdbc.JdbcSourceConfig;
@@ -45,6 +46,29 @@ class JdbcSourceNativeExecutionTest {
         reader.pollNext(sink);
         reader.pollNext(sink);
         assertEquals(List.of(2L), output.stream().map(value -> value.fields().get("ID")).toList());
+    }
+
+    @Test
+    void rejectsCheckpointWithDifferentCursorType() {
+        JdbcSourceConfig config = new JdbcSourceConfig(
+                "jdbc:h2:mem:restore", "org.h2.Driver", "", "", "select id from events", "",
+                JdbcSourceConfig.ReadMode.INCREMENTAL, "id", JdbcSourceConfig.CursorType.LONG, "", 1, 100, 1,
+                "id", "");
+        JdbcSourceReader reader = new JdbcSourceReader(context(), config);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> reader.addSplits(List.of(new JdbcSourceSplit(
+                        "jdbc", new IncrementalSourceState("STRING", "1", "id", "1")))));
+
+        assertEquals(
+                "JDBC Source checkpoint state version 1 cursorType changed from STRING to LONG.",
+                exception.getMessage());
+    }
+
+    private SourceReaderContext context() {
+        return (SourceReaderContext) Proxy.newProxyInstance(
+                SourceReaderContext.class.getClassLoader(), new Class<?>[] {SourceReaderContext.class},
+                (ignored, method, args) -> null);
     }
 
 }
