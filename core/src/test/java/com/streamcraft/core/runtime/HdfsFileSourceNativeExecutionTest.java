@@ -11,8 +11,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import org.apache.flink.api.connector.source.ReaderInfo;
 import org.apache.flink.api.connector.source.ReaderOutput;
 import org.apache.flink.api.connector.source.SourceReaderContext;
+import org.apache.flink.api.connector.source.SplitEnumeratorContext;
+import org.apache.flink.api.connector.source.SplitsAssignment;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -109,9 +113,59 @@ class HdfsFileSourceNativeExecutionTest {
         assertEquals("b", output.get(0).fields().get("value"));
     }
 
+    @Test
+    void boundedEnumeratorSignalsReadersWhenDiscoveryIsComplete() throws Exception {
+        Path file = temp.resolve("only.json");
+        Files.writeString(file, "{\"id\":\"o-1\"}\n");
+        HdfsFileSourceConfig config = new HdfsFileSourceConfig(
+                "file:///", file.toUri().toString(), HdfsFileFormatType.JSON, "{}", List.of(), "\001", "\n", 0,
+                false, "UTF-8", "none", false, "", HdfsFileSourceConfig.ReadMode.FULL, 1, 1,
+                "id", "", "", "", "");
+        List<SplitsAssignment<HdfsFileSourceSplit>> assignments = new ArrayList<>();
+        List<Integer> noMoreSplits = new ArrayList<>();
+        SplitEnumeratorContext<HdfsFileSourceSplit> context = enumeratorContext(assignments, noMoreSplits);
+        HdfsFileEnumerator enumerator = new HdfsFileEnumerator(
+                context, config, new HdfsFileEnumeratorState(List.of(), java.util.Set.of()));
+        enumerator.addReader(0);
+        enumerator.addReader(1);
+
+        enumerator.start();
+
+        assertEquals(1, assignments.stream()
+                .flatMap(assignment -> assignment.assignment().values().stream())
+                .mapToInt(List::size)
+                .sum());
+        assertEquals(List.of(0, 1), noMoreSplits.stream().sorted().toList());
+    }
+
     private String fingerprint(org.apache.flink.core.fs.Path path) throws Exception {
         org.apache.flink.core.fs.FileStatus status = path.getFileSystem().getFileStatus(path);
         return path + ":" + status.getLen() + ":" + status.getModificationTime();
+    }
+
+    @SuppressWarnings("unchecked")
+    private SplitEnumeratorContext<HdfsFileSourceSplit> enumeratorContext(
+            List<SplitsAssignment<HdfsFileSourceSplit>> assignments,
+            List<Integer> noMoreSplits) {
+        Map<Integer, ReaderInfo> readers = Map.of(
+                0, new ReaderInfo(0, "reader-0"),
+                1, new ReaderInfo(1, "reader-1"));
+        return (SplitEnumeratorContext<HdfsFileSourceSplit>) Proxy.newProxyInstance(
+                SplitEnumeratorContext.class.getClassLoader(),
+                new Class<?>[] {SplitEnumeratorContext.class},
+                (ignored, method, args) -> switch (method.getName()) {
+                    case "registeredReaders" -> readers;
+                    case "currentParallelism" -> 2;
+                    case "assignSplits" -> {
+                        assignments.add((SplitsAssignment<HdfsFileSourceSplit>) args[0]);
+                        yield null;
+                    }
+                    case "signalNoMoreSplits" -> {
+                        noMoreSplits.add((Integer) args[0]);
+                        yield null;
+                    }
+                    default -> null;
+                });
     }
 
     private SourceReaderContext context() { return (SourceReaderContext) Proxy.newProxyInstance(
