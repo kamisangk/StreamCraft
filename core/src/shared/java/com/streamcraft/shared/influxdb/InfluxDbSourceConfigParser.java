@@ -86,6 +86,9 @@ public final class InfluxDbSourceConfigParser {
         if (!idField.isBlank()) {
             validateField(idField, "idField", error);
         }
+        if (readMode == ReadMode.INCREMENTAL && !idField.isBlank() && sql.contains("${cursor}")) {
+            throw error.apply(ValidationError.scalarCursorTemplateDoesNotSupportIdField());
+        }
         String timestampField = text(safeConfig, "timestampField", "");
         if (!timestampField.isBlank()) {
             validateField(timestampField, "timestampField", error);
@@ -254,6 +257,12 @@ public final class InfluxDbSourceConfigParser {
             return new ValidationError(
                     "pipeline.validation.influxDbSource.cursorFieldRequired",
                     "InfluxDB Source config cursorField is required for INCREMENTAL read mode.");
+        }
+
+        static ValidationError scalarCursorTemplateDoesNotSupportIdField() {
+            return new ValidationError(
+                    "pipeline.validation.influxDbSource.scalarCursorTemplateDoesNotSupportIdField",
+                    "InfluxDB Source config sql ${cursor} placeholder cannot be used with idField.");
         }
 
         static ValidationError invalidField(String label, String field) {
