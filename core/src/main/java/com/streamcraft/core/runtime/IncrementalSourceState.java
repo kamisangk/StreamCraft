@@ -1,7 +1,6 @@
 package com.streamcraft.core.runtime;
 
 import java.io.Serializable;
-import java.util.Objects;
 
 /**
  * Versioned progress shared by cursor based sources.
@@ -19,10 +18,10 @@ record IncrementalSourceState(
     private static final long serialVersionUID = 1L;
 
     IncrementalSourceState {
-        cursorType = Objects.requireNonNull(cursorType, "cursorType").trim();
-        if (cursorType.isEmpty()) {
+        if (cursorType == null || cursorType.trim().isEmpty()) {
             throw new IllegalArgumentException("Incremental source cursorType must not be blank.");
         }
+        cursorType = cursorType.trim();
         if (uniqueIdField != null) {
             uniqueIdField = uniqueIdField.trim();
             if (uniqueIdField.isEmpty()) {
