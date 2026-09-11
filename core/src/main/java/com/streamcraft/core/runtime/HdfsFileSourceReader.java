@@ -36,6 +36,7 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
     private boolean started;
     private boolean exhausted;
     private boolean batchFullyRead;
+    private int polls;
     private long nextPoll;
 
     HdfsFileSourceReader(SourceReaderContext context, HdfsFileSourceConfig config) {
@@ -53,9 +54,17 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
     public InputStatus pollNext(ReaderOutput<DataEntity> output) throws Exception {
         synchronized (lock) {
             if (!started || split == null) return InputStatus.NOTHING_AVAILABLE;
-            if (split.state().completed() && config.readMode() == HdfsFileSourceConfig.ReadMode.FULL) {
-                exhausted = true;
-                return InputStatus.END_OF_INPUT;
+            if (split.state().completed()) {
+                if (config.readMode() == HdfsFileSourceConfig.ReadMode.FULL
+                        || (config.maxPolls() > 0 && polls >= config.maxPolls())) {
+                    exhausted = true;
+                    return InputStatus.END_OF_INPUT;
+                }
+                if (System.currentTimeMillis() < nextPoll) return InputStatus.NOTHING_AVAILABLE;
+                polls++;
+                nextPoll = System.currentTimeMillis() + config.pollIntervalMillis();
+                context.sendSplitRequest();
+                return InputStatus.NOTHING_AVAILABLE;
             }
             if (!records.isEmpty()) {
                 emit(output);
@@ -150,6 +159,7 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
                     config.fileFormatType().name(), headerSeen, true));
         }
         batchFullyRead = true;
+        polls++;
     }
 
     private void emit(ReaderOutput<DataEntity> output) {
