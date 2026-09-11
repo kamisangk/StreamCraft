@@ -31,6 +31,7 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
     private final HdfsFileSourceConfig config;
     private final Object lock = new Object();
     private final ArrayDeque<HdfsRecord> records = new ArrayDeque<>();
+    private final ArrayDeque<HdfsFileSourceSplit> pendingSplits = new ArrayDeque<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private HdfsFileSourceSplit split;
     private boolean started;
@@ -55,6 +56,10 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
         synchronized (lock) {
             if (!started || split == null) return InputStatus.NOTHING_AVAILABLE;
             if (split.state().completed()) {
+                if (!pendingSplits.isEmpty()) {
+                    split = pendingSplits.removeFirst();
+                    batchFullyRead = false;
+                } else {
                 if (config.readMode() == HdfsFileSourceConfig.ReadMode.FULL
                         || (config.maxPolls() > 0 && polls >= config.maxPolls())) {
                     exhausted = true;
@@ -65,6 +70,7 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
                 nextPoll = System.currentTimeMillis() + config.pollIntervalMillis();
                 context.sendSplitRequest();
                 return InputStatus.NOTHING_AVAILABLE;
+                }
             }
             if (!records.isEmpty()) {
                 emit(output);
@@ -89,7 +95,11 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
     @Override
     public List<HdfsFileSourceSplit> snapshotState(long checkpointId) {
         synchronized (lock) {
-            return split == null ? List.of() : List.of(split);
+            if (split == null) return List.of();
+            List<HdfsFileSourceSplit> snapshot = new ArrayList<>(1 + pendingSplits.size());
+            snapshot.add(split);
+            snapshot.addAll(pendingSplits);
+            return snapshot;
         }
     }
 
@@ -101,7 +111,13 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
     @Override
     public void addSplits(List<HdfsFileSourceSplit> splits) {
         synchronized (lock) {
-            if (!splits.isEmpty()) split = splits.get(0);
+            for (HdfsFileSourceSplit candidate : splits) {
+                if (split == null) {
+                    split = candidate;
+                } else {
+                    pendingSplits.addLast(candidate);
+                }
+            }
             exhausted = false;
         }
     }
@@ -117,6 +133,9 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
         String fingerprint = path + ":" + status.getLen() + ":" + status.getModificationTime();
         if (!fingerprint.equals(current.state().fingerprint())) {
             LOG.warn("Skipping changed HDFS file {}", path);
+            split = new HdfsFileSourceSplit(current.splitId(), new HdfsFileSourceState(
+                    current.state().path(), current.state().fingerprint(), current.state().byteOffset(),
+                    current.state().lineNumber(), current.state().format(), current.state().headerSeen(), true));
             return;
         }
         long lineNumber = current.state().lineNumber();
@@ -124,6 +143,12 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
         byte[] rowDelimiter = config.rowDelimiter().getBytes(Charset.forName(config.encoding()));
         boolean headerSeen = current.state().headerSeen();
         List<String> fieldNames = new ArrayList<>(config.fieldNames());
+        if (config.fileFormatType() == HdfsFileFormatType.CSV
+                && config.csvUseHeaderLine()
+                && headerSeen
+                && fieldNames.isEmpty()) {
+            fieldNames = readCsvHeader(path);
+        }
         try (FSDataInputStream input = path.getFileSystem().open(path)) {
             if (current.state().byteOffset() > 0) input.seek(current.state().byteOffset());
             try (BufferedReader reader = new BufferedReader(
@@ -163,6 +188,23 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
         }
         batchFullyRead = true;
         polls++;
+    }
+
+    private List<String> readCsvHeader(Path path) throws Exception {
+        try (FSDataInputStream input = path.getFileSystem().open(path);
+                BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(input, Charset.forName(config.encoding())))) {
+            for (int line = 0; line < config.skipHeaderRowNumber(); line++) {
+                if (reader.readLine() == null) {
+                    throw new IllegalStateException("HDFS CSV header is missing from " + path);
+                }
+            }
+            String header = reader.readLine();
+            if (header == null) {
+                throw new IllegalStateException("HDFS CSV header is missing from " + path);
+            }
+            return HdfsFileRuntimeSupport.parseCsvLine(header, config.fieldDelimiter());
+        }
     }
 
     private void emit(ReaderOutput<DataEntity> output) {
