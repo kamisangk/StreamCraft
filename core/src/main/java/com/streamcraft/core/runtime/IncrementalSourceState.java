@@ -36,6 +36,13 @@ record IncrementalSourceState(
         if (uniqueIdValue != null && uniqueIdField == null) {
             throw new IllegalArgumentException("Incremental source uniqueIdValue requires a uniqueIdField.");
         }
+        if (uniqueIdValue != null && cursorValue == null) {
+            throw new IllegalArgumentException("Incremental source uniqueIdValue requires a cursorValue.");
+        }
+    }
+
+    int stateVersion() {
+        return 1;
     }
 
     boolean hasUniqueId() {
