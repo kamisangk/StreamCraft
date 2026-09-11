@@ -119,7 +119,7 @@ final class JdbcSourceReader implements SourceReader<DataEntity, JdbcSourceSplit
     public void addSplits(List<JdbcSourceSplit> splits) {
         synchronized (lock) {
             for (JdbcSourceSplit candidate : splits) {
-                candidate.state().validateFor("JDBC Source", config.cursorType().name(), config.idField());
+                candidate.state().validateFor("JDBC Source", config.cursorType().name(), config.cursorField(), config.idField());
                 if (split == null || split.state().cursorValue() == null
                         || candidate.state().cursorValue() != null) {
                     split = candidate;
@@ -216,6 +216,7 @@ final class JdbcSourceReader implements SourceReader<DataEntity, JdbcSourceSplit
                     split.splitId(),
                     new IncrementalSourceState(
                             config.cursorType().name(),
+                            config.cursorField(),
                             record.cursorValue(),
                             config.idField().isBlank() ? null : config.idField(),
                             config.idField().isBlank() ? null : record.uniqueId()));

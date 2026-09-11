@@ -121,7 +121,7 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
         synchronized (lock) {
             for (ElasticsearchSourceSplit candidate : splits) {
                 candidate.state().validateFor(
-                        "Elasticsearch Source", config.cursorType().name(), config.idField());
+                        "Elasticsearch Source", config.cursorType().name(), config.cursorField(), config.idField());
                 if (split == null || split.state().cursorValue() == null || candidate.state().cursorValue() != null) {
                     split = candidate;
                 }
@@ -239,6 +239,7 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
                     split.splitId(),
                     new IncrementalSourceState(
                             config.cursorType().name(),
+                            config.cursorField(),
                             record.cursorValue(),
                             config.idField().isBlank() ? null : config.idField(),
                             config.idField().isBlank() ? null : record.uniqueId()),

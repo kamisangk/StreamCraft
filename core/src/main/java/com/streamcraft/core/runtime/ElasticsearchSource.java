@@ -59,6 +59,7 @@ final class ElasticsearchSource implements Source<DataEntity, ElasticsearchSourc
                 "elasticsearch-source",
                 new IncrementalSourceState(
                         config.cursorType().name(),
+                        config.cursorField(),
                         config.initialCursorValue().isBlank() ? null : config.initialCursorValue(),
                         config.idField().isBlank() ? null : config.idField(),
                         null),

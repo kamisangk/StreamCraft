@@ -9,7 +9,8 @@ import org.apache.flink.core.io.SimpleVersionedSerializer;
 
 final class JdbcSourceSplitSerializer implements SimpleVersionedSerializer<JdbcSourceSplit> {
 
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
+    private static final int LEGACY_VERSION = 1;
     private final IncrementalSourceStateSerializer stateSerializer = new IncrementalSourceStateSerializer();
 
     @Override
@@ -35,14 +36,14 @@ final class JdbcSourceSplitSerializer implements SimpleVersionedSerializer<JdbcS
 
     @Override
     public JdbcSourceSplit deserialize(int version, byte[] serialized) throws IOException {
-        if (version != VERSION) {
+        if (version != LEGACY_VERSION && version != VERSION) {
             throw new IOException("Unsupported JDBC source split version: " + version);
         }
         if (serialized == null) {
             throw new IOException("JDBC source split must not be null.");
         }
         try (DataInputStream input = new DataInputStream(new ByteArrayInputStream(serialized))) {
-            if (input.readUnsignedByte() != VERSION) {
+            if (input.readUnsignedByte() != version) {
                 throw new IOException("Invalid JDBC source split version marker.");
             }
             String splitId = IncrementalSourceStateSerializerSupport.readString(input, "JDBC source split id");
@@ -54,7 +55,8 @@ final class JdbcSourceSplitSerializer implements SimpleVersionedSerializer<JdbcS
             if (stateBytes.length != stateLength) {
                 throw new IOException("Truncated JDBC source split state.");
             }
-            JdbcSourceSplit split = new JdbcSourceSplit(splitId, stateSerializer.deserialize(1, stateBytes));
+            JdbcSourceSplit split = new JdbcSourceSplit(
+                    splitId, stateSerializer.deserialize(stateVersion(stateBytes), stateBytes));
             if (input.available() != 0) {
                 throw new IOException("Trailing bytes in JDBC source split.");
             }
@@ -68,5 +70,12 @@ final class JdbcSourceSplitSerializer implements SimpleVersionedSerializer<JdbcS
         byte[] bytes = value.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         output.writeInt(bytes.length);
         output.write(bytes);
+    }
+
+    private static int stateVersion(byte[] bytes) throws IOException {
+        if (bytes == null || bytes.length == 0) {
+            throw new IOException("Missing JDBC source split state version.");
+        }
+        return bytes[0] & 0xff;
     }
 }

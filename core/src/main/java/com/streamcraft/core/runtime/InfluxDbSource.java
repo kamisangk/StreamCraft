@@ -12,5 +12,5 @@ final class InfluxDbSource implements Source<DataEntity, InfluxDbSourceSplit, In
     public SplitEnumerator<InfluxDbSourceSplit,InfluxDbSourceEnumeratorState> restoreEnumerator(SplitEnumeratorContext<InfluxDbSourceSplit> c, InfluxDbSourceEnumeratorState s){return new InfluxDbSourceEnumerator(c,s==null?initial():s);}
     public SimpleVersionedSerializer<InfluxDbSourceSplit> getSplitSerializer(){return new InfluxDbSourceSplitSerializer();}
     public SimpleVersionedSerializer<InfluxDbSourceEnumeratorState> getEnumeratorCheckpointSerializer(){return new InfluxDbSourceEnumeratorStateSerializer();}
-    private InfluxDbSourceEnumeratorState initial(){return new InfluxDbSourceEnumeratorState(new InfluxDbSourceSplit("influxdb-source",new IncrementalSourceState(config.cursorType().name(),config.initialCursorValue().isBlank()?null:config.initialCursorValue(),config.idField().isBlank()?null:config.idField(),null),0));}
+    private InfluxDbSourceEnumeratorState initial(){return new InfluxDbSourceEnumeratorState(new InfluxDbSourceSplit("influxdb-source",new IncrementalSourceState(config.cursorType().name(),config.cursorField(),config.initialCursorValue().isBlank()?null:config.initialCursorValue(),config.idField().isBlank()?null:config.idField(),null),0));}
 }

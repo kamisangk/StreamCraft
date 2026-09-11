@@ -9,7 +9,8 @@ import org.apache.flink.core.io.SimpleVersionedSerializer;
 
 final class JdbcSourceEnumeratorStateSerializer implements SimpleVersionedSerializer<JdbcSourceEnumeratorState> {
 
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
+    private static final int LEGACY_VERSION = 1;
     private final JdbcSourceSplitSerializer splitSerializer = new JdbcSourceSplitSerializer();
 
     @Override
@@ -36,14 +37,14 @@ final class JdbcSourceEnumeratorStateSerializer implements SimpleVersionedSerial
 
     @Override
     public JdbcSourceEnumeratorState deserialize(int version, byte[] serialized) throws IOException {
-        if (version != VERSION) {
+        if (version != LEGACY_VERSION && version != VERSION) {
             throw new IOException("Unsupported JDBC source enumerator state version: " + version);
         }
         if (serialized == null) {
             throw new IOException("JDBC source enumerator state must not be null.");
         }
         try (DataInputStream input = new DataInputStream(new ByteArrayInputStream(serialized))) {
-            if (input.readUnsignedByte() != VERSION) {
+            if (input.readUnsignedByte() != version) {
                 throw new IOException("Invalid JDBC source enumerator state version marker.");
             }
             JdbcSourceSplit pending = null;
@@ -56,12 +57,19 @@ final class JdbcSourceEnumeratorStateSerializer implements SimpleVersionedSerial
                 if (split.length != length) {
                     throw new IOException("Truncated JDBC source enumerator split.");
                 }
-                pending = splitSerializer.deserialize(1, split);
+                pending = splitSerializer.deserialize(splitVersion(split), split);
             }
             if (input.available() != 0) {
                 throw new IOException("Trailing bytes in JDBC source enumerator state.");
             }
             return new JdbcSourceEnumeratorState(pending);
         }
+    }
+
+    private static int splitVersion(byte[] bytes) throws IOException {
+        if (bytes == null || bytes.length == 0) {
+            throw new IOException("Missing JDBC source enumerator split version.");
+        }
+        return bytes[0] & 0xff;
     }
 }

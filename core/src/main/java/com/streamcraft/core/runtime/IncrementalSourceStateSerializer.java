@@ -14,7 +14,8 @@ import org.apache.flink.core.io.SimpleVersionedSerializer;
 /** Explicit binary serializer for cursor checkpoint state. */
 final class IncrementalSourceStateSerializer implements SimpleVersionedSerializer<IncrementalSourceState> {
 
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
+    private static final int LEGACY_VERSION = 1;
 
     @Override
     public int getVersion() {
@@ -38,6 +39,7 @@ final class IncrementalSourceStateSerializer implements SimpleVersionedSerialize
         try (DataOutputStream output = new DataOutputStream(bytes)) {
             output.writeByte(VERSION);
             writeNullableString(output, state.cursorType());
+            writeNullableString(output, state.cursorField());
             writeNullableString(output, state.cursorValue());
             writeNullableString(output, state.uniqueIdField());
             writeNullableString(output, state.uniqueIdValue());
@@ -47,21 +49,26 @@ final class IncrementalSourceStateSerializer implements SimpleVersionedSerialize
 
     @Override
     public IncrementalSourceState deserialize(int version, byte[] serialized) throws IOException {
-        if (version != VERSION) {
+        if (version != LEGACY_VERSION && version != VERSION) {
             throw new IOException("Unsupported incremental source state version: " + version);
         }
         if (serialized == null) {
             throw new IOException("Incremental source state must not be null.");
         }
         try (DataInputStream input = new DataInputStream(new ByteArrayInputStream(serialized))) {
-            if (input.readUnsignedByte() != VERSION) {
+            int marker = input.readUnsignedByte();
+            if (marker != version) {
                 throw new IOException("Invalid incremental source state version marker.");
             }
+            String cursorType = readNullableString(input);
+            String cursorField = version >= VERSION ? readNullableString(input) : null;
             IncrementalSourceState state = new IncrementalSourceState(
+                    cursorType,
+                    cursorField,
                     readNullableString(input),
                     readNullableString(input),
                     readNullableString(input),
-                    readNullableString(input));
+                    version);
             if (input.available() != 0) {
                 throw new IOException("Trailing bytes in incremental source state.");
             }

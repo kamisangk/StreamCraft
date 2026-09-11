@@ -10,7 +10,8 @@ import org.apache.flink.core.io.SimpleVersionedSerializer;
 final class ElasticsearchSourceEnumeratorStateSerializer
         implements SimpleVersionedSerializer<ElasticsearchSourceEnumeratorState> {
 
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
+    private static final int LEGACY_VERSION = 1;
     private final ElasticsearchSourceSplitSerializer splitSerializer = new ElasticsearchSourceSplitSerializer();
 
     @Override
@@ -37,11 +38,11 @@ final class ElasticsearchSourceEnumeratorStateSerializer
 
     @Override
     public ElasticsearchSourceEnumeratorState deserialize(int version, byte[] serialized) throws IOException {
-        if (version != VERSION || serialized == null) {
+        if ((version != LEGACY_VERSION && version != VERSION) || serialized == null) {
             throw new IOException("Invalid Elasticsearch source enumerator state version or bytes.");
         }
         try (DataInputStream input = new DataInputStream(new ByteArrayInputStream(serialized))) {
-            if (input.readUnsignedByte() != VERSION) {
+            if (input.readUnsignedByte() != version) {
                 throw new IOException("Invalid Elasticsearch source enumerator state version marker.");
             }
             ElasticsearchSourceSplit pending = null;
@@ -54,12 +55,19 @@ final class ElasticsearchSourceEnumeratorStateSerializer
                 if (split.length != length) {
                     throw new IOException("Truncated Elasticsearch enumerator split.");
                 }
-                pending = splitSerializer.deserialize(1, split);
+                pending = splitSerializer.deserialize(splitVersion(split), split);
             }
             if (input.available() != 0) {
                 throw new IOException("Trailing bytes in Elasticsearch source enumerator state.");
             }
             return new ElasticsearchSourceEnumeratorState(pending);
         }
+    }
+
+    private static int splitVersion(byte[] bytes) throws IOException {
+        if (bytes == null || bytes.length == 0) {
+            throw new IOException("Missing Elasticsearch source enumerator split version.");
+        }
+        return bytes[0] & 0xff;
     }
 }
