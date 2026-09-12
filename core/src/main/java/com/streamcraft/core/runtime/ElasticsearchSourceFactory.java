@@ -16,8 +16,7 @@ public class ElasticsearchSourceFactory {
                 IllegalArgumentException::new);
         return env.fromSource(
                         new ElasticsearchSource(config),
-                        WatermarkStrategy.noWatermarks(),
-                        sourceNode.name())
-                .setParallelism(1);
+                WatermarkStrategy.noWatermarks(),
+                sourceNode.name());
     }
 }
