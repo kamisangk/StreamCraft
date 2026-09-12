@@ -25,7 +25,7 @@ final class InfluxDbSource implements Source<DataEntity, InfluxDbSourceSplit, In
         long start=parseTime(config.splitStart(),config), end=parseTime(config.splitEnd(),config);
         if(end<=start) throw new IllegalArgumentException("InfluxDB splitEnd must be greater than splitStart.");
         long width=Math.max(1,(end-start)/config.splitCount());
-        for(int i=0;i<config.splitCount();i++){long lo=i==0?start:start+width*i;long hi=i==config.splitCount()-1?end:start+width*(i+1);result.add(new InfluxDbSourceSplit("influxdb:"+config.splitField()+":"+i+"/"+config.splitCount(),state,i,"",String.valueOf(lo),String.valueOf(hi),i==config.splitCount()-1));}
+        for(int i=0;i<config.splitCount();i++){long lo=i==0?start:start+width*i;long hi=i==config.splitCount()-1?end:start+width*(i+1);if(i>0)lo=Math.max(start,lo-config.splitOverlapMillis());result.add(new InfluxDbSourceSplit("influxdb:"+config.splitField()+":"+i+"/"+config.splitCount(),state,i,"",String.valueOf(lo),String.valueOf(hi),i==config.splitCount()-1));}
         return java.util.List.copyOf(result);
     }
     private static long parseTime(String value,InfluxDbSourceConfig config){try{return config.cursorType()==InfluxDbSourceConfig.CursorType.TIMESTAMP?java.time.Instant.parse(value).toEpochMilli():Long.parseLong(value);}catch(Exception e){throw new IllegalArgumentException("InfluxDB split bounds must be valid timestamps.",e);}}
