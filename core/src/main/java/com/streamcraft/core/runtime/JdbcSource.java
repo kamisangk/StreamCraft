@@ -80,6 +80,10 @@ final class JdbcSource implements Source<DataEntity, JdbcSourceSplit, JdbcSource
             if (upper <= lower) {
                 throw new IllegalArgumentException("JDBC Source splitUpperBound must be greater than splitLowerBound.");
             }
+            if (BigDecimal.valueOf(upper).subtract(BigDecimal.valueOf(lower))
+                    .compareTo(BigDecimal.valueOf(count)) < 0) {
+                throw new IllegalArgumentException("JDBC Source splitCount exceeds the numeric range cardinality.");
+            }
             BigDecimal width = BigDecimal.valueOf(upper).subtract(BigDecimal.valueOf(lower))
                     .divide(BigDecimal.valueOf(count), 12, java.math.RoundingMode.DOWN);
             for (int index = 0; index < count; index++) {
@@ -94,6 +98,9 @@ final class JdbcSource implements Source<DataEntity, JdbcSourceSplit, JdbcSource
                 throw new IllegalArgumentException("JDBC Source splitUpperBound must be greater than splitLowerBound.");
             }
             BigDecimal width = upper.subtract(lower).divide(BigDecimal.valueOf(count), 12, java.math.RoundingMode.DOWN);
+            if (width.signum() <= 0) {
+                throw new IllegalArgumentException("JDBC Source split range is too narrow for splitCount.");
+            }
             for (int index = 0; index < count; index++) {
                 BigDecimal start = index == 0 ? lower : lower.add(width.multiply(BigDecimal.valueOf(index)));
                 BigDecimal end = index == count - 1 ? upper : lower.add(width.multiply(BigDecimal.valueOf(index + 1)));

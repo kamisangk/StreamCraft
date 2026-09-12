@@ -17,6 +17,7 @@ public final class InfluxDbSourceConfigParser {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Pattern SAFE_DATABASE = Pattern.compile("[A-Za-z0-9_.$-]+");
     private static final Pattern SAFE_FIELD = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*");
+    private static final Pattern SAFE_MEASUREMENT = Pattern.compile("[A-Za-z_][A-Za-z0-9_.-]*");
     private static final Set<String> SUPPORTED_EPOCHS = Set.of("n", "u", "us", "ms", "s", "m", "h");
 
     private InfluxDbSourceConfigParser() {
@@ -89,6 +90,11 @@ public final class InfluxDbSourceConfigParser {
         }
         List<String> splitMeasurements = strings(safeConfig, "splitMeasurements");
         if (splitMeasurements.isEmpty()) splitMeasurements = strings(safeConfig, "measurements");
+        for (String measurement : splitMeasurements) {
+            if (!SAFE_MEASUREMENT.matcher(measurement).matches()) {
+                throw error.apply(ValidationError.invalidMeasurement(measurement));
+            }
+        }
         int splitCount = intValue(safeConfig, "splitCount", 1);
         if (splitCount <= 0) throw error.apply(ValidationError.positive("splitCount"));
         String splitField = text(safeConfig, "splitField", timestampField.isBlank() ? cursorField : timestampField);
@@ -96,8 +102,14 @@ public final class InfluxDbSourceConfigParser {
         String splitEnd = text(safeConfig, "splitEnd", "");
         long splitOverlapMillis = longValue(safeConfig, "splitOverlapMillis", 0L);
         if (splitOverlapMillis < 0) throw error.apply(ValidationError.nonNegative("splitOverlapMillis"));
-        if (splitCount > 1 && (splitStart.isBlank() || splitEnd.isBlank())) {
+        if (splitCount > 1 && splitMeasurements.isEmpty() && (splitStart.isBlank() || splitEnd.isBlank())) {
             throw error.apply(ValidationError.splitBoundsRequired());
+        }
+        if (splitCount > 1 && splitMeasurements.isEmpty() && splitField.isBlank()) {
+            throw error.apply(ValidationError.splitFieldRequired());
+        }
+        if (splitCount > 1 && readMode != ReadMode.FULL) {
+            throw error.apply(ValidationError.splitRequiresFullRead());
         }
         if (!splitField.isBlank()) validateField(splitField, "splitField", error);
 
@@ -319,6 +331,21 @@ public final class InfluxDbSourceConfigParser {
         static ValidationError splitBoundsRequired() {
             return new ValidationError("pipeline.validation.influxDbSource.splitBoundsRequired",
                     "InfluxDB Source splitStart and splitEnd are required when splitCount is greater than 1.");
+        }
+
+        static ValidationError splitFieldRequired() {
+            return new ValidationError("pipeline.validation.influxDbSource.splitFieldRequired",
+                    "InfluxDB Source splitField is required for time range splitting.");
+        }
+
+        static ValidationError splitRequiresFullRead() {
+            return new ValidationError("pipeline.validation.influxDbSource.splitRequiresFullRead",
+                    "InfluxDB Source splitting is supported only for FULL read mode.");
+        }
+
+        static ValidationError invalidMeasurement(String measurement) {
+            return new ValidationError("pipeline.validation.influxDbSource.invalidMeasurement",
+                    "InfluxDB Source measurement is invalid: " + measurement, measurement);
         }
 
         static ValidationError unsupportedValue(String fieldName, String value) {
