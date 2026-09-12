@@ -42,6 +42,7 @@ public final class HdfsFileSinkConfigParser {
             throw error.apply(ValidationError.required("file_format_type"));
         }
         HdfsFileFormatType fileFormatType = parseEnum(format, HdfsFileFormatType.class, "file_format_type", error);
+        validateRuntimeFormat(fileFormatType, format, error);
 
         String tmpPath = text(safeConfig, "tmp_path", HdfsFileSinkConfig.DEFAULT_TMP_PATH);
         if (tmpPath.isBlank()) {
@@ -238,6 +239,13 @@ public final class HdfsFileSinkConfigParser {
         }
     }
 
+    private static void validateRuntimeFormat(
+            HdfsFileFormatType format, String configuredValue, ValidationErrorFactory error) {
+        if (!format.runtimeSupported()) {
+            throw error.apply(ValidationError.unsupportedFormat(configuredValue));
+        }
+    }
+
     @FunctionalInterface
     public interface ValidationErrorFactory {
         IllegalArgumentException apply(ValidationError error);
@@ -298,5 +306,15 @@ public final class HdfsFileSinkConfigParser {
                     fieldName,
                     value);
         }
+
+        static ValidationError unsupportedFormat(String value) {
+            return new ValidationError(
+                    "pipeline.validation.hdfsFileSink.unsupportedFormat",
+                    "HDFS File Sink config file_format_type has unsupported format: " + value
+                            + ". Runtime currently supports JSON, CSV and TEXT.",
+                    "file_format_type",
+                    value);
+        }
+
     }
 }

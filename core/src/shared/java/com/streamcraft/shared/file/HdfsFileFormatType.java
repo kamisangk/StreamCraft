@@ -8,5 +8,9 @@ public enum HdfsFileFormatType {
     ORC,
     EXCEL,
     XML,
-    BINARY
+    BINARY;
+
+    public boolean runtimeSupported() {
+        return this == JSON || this == CSV || this == TEXT;
+    }
 }
