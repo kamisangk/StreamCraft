@@ -60,6 +60,7 @@ public class HdfsFileSinkFactory {
         private transient HdfsFileSinkStateSerializer stateSerializer;
         private transient ListState<byte[]> checkpointState;
         private transient HdfsFileSinkCommitter committer;
+        private transient String transactionRoot;
         private transient HdfsFileSinkTransaction activeTransaction;
         private transient String jobId;
         private transient int subtaskId;
@@ -102,8 +103,9 @@ public class HdfsFileSinkFactory {
             stateSerializer = stateSerializer == null ? new HdfsFileSinkStateSerializer() : stateSerializer;
             subtaskId = resolveSubtaskId();
             jobId = resolveJobId();
+            transactionRoot = HdfsFileRuntimeSupport.resolvePath(config.defaultFs(), config.tmpPath()).toString();
             activeTransaction = new HdfsFileSinkTransaction(jobId, subtaskId, nextTransactionCheckpoint);
-            committer = new HdfsFileSinkCommitter(config.tmpPath());
+            committer = new HdfsFileSinkCommitter(transactionRoot);
             try {
                 checkpointFlushes = getRuntimeContext().getMetricGroup().counter("checkpoint_flushes");
                 writeFailures = getRuntimeContext().getMetricGroup().counter("write_failures");
@@ -202,7 +204,7 @@ public class HdfsFileSinkFactory {
             List<HdfsFileSinkCommittable.FileCommit> files = new ArrayList<>();
             for (WriterState writerState : writersByPartition.values()) {
                 Path source = new Path(writerState.temporaryPath);
-                Path target = new Path(prepared.directory(config.tmpPath()), writerState.relativePath);
+                Path target = new Path(prepared.directory(transactionRoot), writerState.relativePath);
                 FileSystem fileSystem = source.getFileSystem();
                 Path targetParent = target.getParent();
                 if (targetParent != null) {
@@ -232,7 +234,7 @@ public class HdfsFileSinkFactory {
                 return;
             }
             try {
-                Path directory = activeTransaction.directory(config.tmpPath());
+                Path directory = activeTransaction.directory(transactionRoot);
                 FileSystem fileSystem = directory.getFileSystem();
                 if (fileSystem.exists(directory)) {
                     fileSystem.delete(directory, true);
@@ -248,7 +250,7 @@ public class HdfsFileSinkFactory {
             if (existing != null) {
                 return existing;
             }
-            Path transactionDirectory = activeTransaction.directory(config.tmpPath());
+            Path transactionDirectory = activeTransaction.directory(transactionRoot);
             Path outputDirectory = partitionPath.isBlank()
                     ? transactionDirectory : new Path(transactionDirectory, partitionPath);
             FileSystem fileSystem = outputDirectory.getFileSystem();
