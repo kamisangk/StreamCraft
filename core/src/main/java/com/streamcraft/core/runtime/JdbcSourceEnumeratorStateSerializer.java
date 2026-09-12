@@ -5,12 +5,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 
 final class JdbcSourceEnumeratorStateSerializer implements SimpleVersionedSerializer<JdbcSourceEnumeratorState> {
 
-    private static final int VERSION = 2;
-    private static final int LEGACY_VERSION = 1;
+    private static final int VERSION = 3;
     private final JdbcSourceSplitSerializer splitSerializer = new JdbcSourceSplitSerializer();
 
     @Override
@@ -23,11 +24,10 @@ final class JdbcSourceEnumeratorStateSerializer implements SimpleVersionedSerial
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try (DataOutputStream output = new DataOutputStream(bytes)) {
             output.writeByte(VERSION);
-            if (state == null || state.pendingSplit() == null) {
-                output.writeBoolean(false);
-            } else {
-                output.writeBoolean(true);
-                byte[] split = splitSerializer.serialize(state.pendingSplit());
+            List<JdbcSourceSplit> pending = state == null ? List.of() : state.pendingSplits();
+            output.writeInt(pending.size());
+            for (JdbcSourceSplit candidate : pending) {
+                byte[] split = splitSerializer.serialize(candidate);
                 output.writeInt(split.length);
                 output.write(split);
             }
@@ -37,7 +37,7 @@ final class JdbcSourceEnumeratorStateSerializer implements SimpleVersionedSerial
 
     @Override
     public JdbcSourceEnumeratorState deserialize(int version, byte[] serialized) throws IOException {
-        if (version != LEGACY_VERSION && version != VERSION) {
+        if (version < 1 || version > VERSION) {
             throw new IOException("Unsupported JDBC source enumerator state version: " + version);
         }
         if (serialized == null) {
@@ -47,23 +47,37 @@ final class JdbcSourceEnumeratorStateSerializer implements SimpleVersionedSerial
             if (input.readUnsignedByte() != version) {
                 throw new IOException("Invalid JDBC source enumerator state version marker.");
             }
-            JdbcSourceSplit pending = null;
-            if (input.readBoolean()) {
-                int length = input.readInt();
-                if (length < 0 || length > input.available()) {
-                    throw new IOException("Invalid JDBC source enumerator split length.");
+            List<JdbcSourceSplit> pending = new ArrayList<>();
+            if (version < VERSION) {
+                if (input.readBoolean()) {
+                    pending.add(readSplit(input));
                 }
-                byte[] split = input.readNBytes(length);
-                if (split.length != length) {
-                    throw new IOException("Truncated JDBC source enumerator split.");
+            } else {
+                int count = input.readInt();
+                if (count < 0 || count > input.available()) {
+                    throw new IOException("Invalid JDBC enumerator split count.");
                 }
-                pending = splitSerializer.deserialize(splitVersion(split), split);
+                for (int index = 0; index < count; index++) {
+                    pending.add(readSplit(input));
+                }
             }
             if (input.available() != 0) {
-                throw new IOException("Trailing bytes in JDBC source enumerator state.");
+                throw new IOException("Trailing bytes in JDBC enumerator state.");
             }
             return new JdbcSourceEnumeratorState(pending);
         }
+    }
+
+    private JdbcSourceSplit readSplit(DataInputStream input) throws IOException {
+        int length = input.readInt();
+        if (length < 0 || length > input.available()) {
+            throw new IOException("Invalid JDBC enumerator split length.");
+        }
+        byte[] split = input.readNBytes(length);
+        if (split.length != length) {
+            throw new IOException("Truncated JDBC enumerator split.");
+        }
+        return splitSerializer.deserialize(splitVersion(split), split);
     }
 
     private static int splitVersion(byte[] bytes) throws IOException {

@@ -1,6 +1,9 @@
 package com.streamcraft.core.runtime;
 
+import com.streamcraft.shared.jdbc.JdbcSourceConfig;
 import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
@@ -11,43 +14,53 @@ import org.apache.flink.api.connector.source.SplitsAssignment;
 final class JdbcSourceEnumerator implements SplitEnumerator<JdbcSourceSplit, JdbcSourceEnumeratorState> {
 
     private final SplitEnumeratorContext<JdbcSourceSplit> context;
-    private JdbcSourceSplit pendingSplit;
+    private final ArrayDeque<JdbcSourceSplit> pendingSplits = new ArrayDeque<>();
     private final TreeSet<Integer> waitingReaders = new TreeSet<>();
+    private final boolean bounded;
+    private final TreeSet<Integer> noMoreSignaled = new TreeSet<>();
 
-    JdbcSourceEnumerator(SplitEnumeratorContext<JdbcSourceSplit> context, JdbcSourceEnumeratorState state) {
+    JdbcSourceEnumerator(
+            SplitEnumeratorContext<JdbcSourceSplit> context,
+            JdbcSourceEnumeratorState state,
+            JdbcSourceConfig config) {
         this.context = context;
-        this.pendingSplit = state == null ? null : state.pendingSplit();
+        this.bounded = config.readMode() == JdbcSourceConfig.ReadMode.FULL;
+        if (state != null) {
+            pendingSplits.addAll(state.pendingSplits());
+        }
     }
 
     @Override
     public void start() {
-        assignPendingSplit();
+        assignPendingSplits();
     }
 
     @Override
     public void handleSplitRequest(int subtaskId, String requesterHostname) {
         waitingReaders.add(subtaskId);
-        assignPendingSplit();
+        assignPendingSplits();
     }
 
     @Override
     public void addReader(int subtaskId) {
         waitingReaders.add(subtaskId);
-        assignPendingSplit();
+        assignPendingSplits();
     }
 
     @Override
     public void addSplitsBack(List<JdbcSourceSplit> splits, int subtaskId) {
-        if (!splits.isEmpty()) {
-            pendingSplit = splits.get(0);
+        if (splits != null) {
+            // Preserve deterministic order when a reader returns more than one split.
+            splits.stream().sorted(java.util.Comparator.comparing(JdbcSourceSplit::splitId))
+                    .forEach(pendingSplits::addFirst);
         }
         waitingReaders.add(subtaskId);
-        assignPendingSplit();
+        assignPendingSplits();
     }
 
     @Override
     public JdbcSourceEnumeratorState snapshotState(long checkpointId) {
-        return new JdbcSourceEnumeratorState(pendingSplit);
+        return new JdbcSourceEnumeratorState(new ArrayList<>(pendingSplits));
     }
 
     @Override
@@ -55,20 +68,37 @@ final class JdbcSourceEnumerator implements SplitEnumerator<JdbcSourceSplit, Jdb
         // No external resources are owned by the enumerator.
     }
 
-    private void assignPendingSplit() {
-        if (pendingSplit == null) {
+    private void assignPendingSplits() {
+        if (pendingSplits.isEmpty()) {
+            signalNoMoreSplits();
             return;
         }
         Map<Integer, ?> readers = context.registeredReaders();
-        Integer reader = waitingReaders.stream().filter(readers::containsKey).findFirst().orElse(null);
-        if (reader == null && !readers.isEmpty()) {
-            reader = readers.keySet().stream().sorted().findFirst().orElse(null);
+        List<Integer> targets = waitingReaders.stream().filter(readers::containsKey).toList();
+        if (targets.isEmpty()) {
+            targets = readers.keySet().stream().sorted().toList();
         }
-        if (reader == null) {
+        if (targets.isEmpty()) {
             return;
         }
-        context.assignSplits(new SplitsAssignment<>(Map.of(reader, List.of(pendingSplit))));
-        pendingSplit = null;
-        waitingReaders.remove(reader);
+        Map<Integer, List<JdbcSourceSplit>> assignment = new java.util.LinkedHashMap<>();
+        int index = 0;
+        while (!pendingSplits.isEmpty()) {
+            JdbcSourceSplit split = pendingSplits.removeFirst();
+            int target = targets.get(index++ % targets.size());
+            assignment.computeIfAbsent(target, ignored -> new ArrayList<>()).add(split);
+        }
+        context.assignSplits(new SplitsAssignment<>(assignment));
+        waitingReaders.removeAll(assignment.keySet());
+        signalNoMoreSplits();
+    }
+
+    private void signalNoMoreSplits() {
+        if (!bounded || !pendingSplits.isEmpty()) {
+            return;
+        }
+        context.registeredReaders().keySet().stream().sorted()
+                .filter(noMoreSignaled::add)
+                .forEach(context::signalNoMoreSplits);
     }
 }

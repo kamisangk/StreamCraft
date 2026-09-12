@@ -67,6 +67,42 @@ public final class JdbcSourceConfigParser {
             throw error.apply(ValidationError.nonNegative("maxPolls"));
         }
 
+        int splitCount = intValue(safeConfig, "splitCount", 1);
+        if (splitCount <= 0) {
+            throw error.apply(ValidationError.positive("splitCount"));
+        }
+        String splitColumn = text(safeConfig, "splitColumn", "");
+        String splitLowerBound = text(safeConfig, "splitLowerBound", "");
+        String splitUpperBound = text(safeConfig, "splitUpperBound", "");
+        if (splitCount > 1) {
+            if (readMode != ReadMode.FULL) {
+                throw error.apply(ValidationError.splitRequiresFullRead());
+            }
+            if (splitColumn.isBlank()) {
+                throw error.apply(ValidationError.splitColumnRequired());
+            }
+            validateCursorField(splitColumn, error);
+            if (splitLowerBound.isBlank() || splitUpperBound.isBlank()) {
+                throw error.apply(ValidationError.splitBoundsRequired());
+            }
+            CursorType splitType = parseEnum(
+                    text(safeConfig, "cursorType", "STRING"), CursorType.class, "cursorType", error);
+            if (splitType != CursorType.LONG && splitType != CursorType.DOUBLE) {
+                throw error.apply(ValidationError.splitNumericRequired());
+            }
+            try {
+                if (splitType == CursorType.LONG) {
+                    if (Long.parseLong(splitUpperBound) <= Long.parseLong(splitLowerBound)) {
+                        throw error.apply(ValidationError.splitBoundsOrder());
+                    }
+                } else if (Double.parseDouble(splitUpperBound) <= Double.parseDouble(splitLowerBound)) {
+                    throw error.apply(ValidationError.splitBoundsOrder());
+                }
+            } catch (NumberFormatException exception) {
+                throw error.apply(ValidationError.splitBoundsNumeric());
+            }
+        }
+
         return new JdbcSourceConfig(
                 url,
                 driver,
@@ -82,7 +118,11 @@ public final class JdbcSourceConfigParser {
                 fetchSize,
                 maxPolls,
                 text(safeConfig, "idField", ""),
-                text(safeConfig, "timestampField", ""));
+                text(safeConfig, "timestampField", ""),
+                splitCount,
+                splitColumn,
+                splitLowerBound,
+                splitUpperBound);
     }
 
     private static void validateQuery(String query, ValidationErrorFactory error) {
@@ -201,6 +241,42 @@ public final class JdbcSourceConfigParser {
                     "JDBC Source config " + fieldName + " has unsupported value: " + value,
                     fieldName,
                     value);
+        }
+
+        static ValidationError splitRequiresFullRead() {
+            return new ValidationError(
+                    "pipeline.validation.jdbcSource.splitRequiresFullRead",
+                    "JDBC Source range splitting is supported only for FULL read mode.");
+        }
+
+        static ValidationError splitColumnRequired() {
+            return new ValidationError(
+                    "pipeline.validation.jdbcSource.splitColumnRequired",
+                    "JDBC Source splitColumn is required when splitCount is greater than 1.");
+        }
+
+        static ValidationError splitBoundsRequired() {
+            return new ValidationError(
+                    "pipeline.validation.jdbcSource.splitBoundsRequired",
+                    "JDBC Source splitLowerBound and splitUpperBound are required when splitCount is greater than 1.");
+        }
+
+        static ValidationError splitNumericRequired() {
+            return new ValidationError(
+                    "pipeline.validation.jdbcSource.splitNumericRequired",
+                    "JDBC Source range splitting requires cursorType LONG or DOUBLE.");
+        }
+
+        static ValidationError splitBoundsOrder() {
+            return new ValidationError(
+                    "pipeline.validation.jdbcSource.splitBoundsOrder",
+                    "JDBC Source splitUpperBound must be greater than splitLowerBound.");
+        }
+
+        static ValidationError splitBoundsNumeric() {
+            return new ValidationError(
+                    "pipeline.validation.jdbcSource.splitBoundsNumeric",
+                    "JDBC Source split bounds must be valid numbers for the configured cursorType.");
         }
     }
 }

@@ -9,8 +9,7 @@ import org.apache.flink.core.io.SimpleVersionedSerializer;
 
 final class JdbcSourceSplitSerializer implements SimpleVersionedSerializer<JdbcSourceSplit> {
 
-    private static final int VERSION = 2;
-    private static final int LEGACY_VERSION = 1;
+    private static final int VERSION = 3;
     private final IncrementalSourceStateSerializer stateSerializer = new IncrementalSourceStateSerializer();
 
     @Override
@@ -30,13 +29,17 @@ final class JdbcSourceSplitSerializer implements SimpleVersionedSerializer<JdbcS
             byte[] state = stateSerializer.serialize(split.state());
             output.writeInt(state.length);
             output.write(state);
+            writeString(output, split.rangeColumn());
+            writeString(output, split.lowerBound());
+            writeString(output, split.upperBound());
+            output.writeBoolean(split.upperInclusive());
         }
         return bytes.toByteArray();
     }
 
     @Override
     public JdbcSourceSplit deserialize(int version, byte[] serialized) throws IOException {
-        if (version != LEGACY_VERSION && version != VERSION) {
+        if (version < 1 || version > VERSION) {
             throw new IOException("Unsupported JDBC source split version: " + version);
         }
         if (serialized == null) {
@@ -55,8 +58,17 @@ final class JdbcSourceSplitSerializer implements SimpleVersionedSerializer<JdbcS
             if (stateBytes.length != stateLength) {
                 throw new IOException("Truncated JDBC source split state.");
             }
-            JdbcSourceSplit split = new JdbcSourceSplit(
-                    splitId, stateSerializer.deserialize(stateVersion(stateBytes), stateBytes));
+            JdbcSourceSplit split;
+            if (version == VERSION) {
+                String rangeColumn = readString(input, "JDBC range column");
+                String lowerBound = readString(input, "JDBC lower bound");
+                String upperBound = readString(input, "JDBC upper bound");
+                boolean upperInclusive = input.readBoolean();
+                split = new JdbcSourceSplit(splitId, stateSerializer.deserialize(stateVersion(stateBytes), stateBytes),
+                        rangeColumn, lowerBound, upperBound, upperInclusive);
+            } else {
+                split = new JdbcSourceSplit(splitId, stateSerializer.deserialize(stateVersion(stateBytes), stateBytes));
+            }
             if (input.available() != 0) {
                 throw new IOException("Trailing bytes in JDBC source split.");
             }
@@ -70,6 +82,18 @@ final class JdbcSourceSplitSerializer implements SimpleVersionedSerializer<JdbcS
         byte[] bytes = value.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         output.writeInt(bytes.length);
         output.write(bytes);
+    }
+
+    private static String readString(DataInputStream input, String field) throws IOException {
+        int length = input.readInt();
+        if (length < 0 || length > input.available()) {
+            throw new IOException("Invalid " + field + " length.");
+        }
+        byte[] bytes = input.readNBytes(length);
+        if (bytes.length != length) {
+            throw new IOException("Truncated " + field + ".");
+        }
+        return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
     }
 
     private static int stateVersion(byte[] bytes) throws IOException {

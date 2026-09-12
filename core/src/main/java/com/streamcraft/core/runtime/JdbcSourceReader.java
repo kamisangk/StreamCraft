@@ -37,10 +37,13 @@ final class JdbcSourceReader implements SourceReader<DataEntity, JdbcSourceSplit
     private final JdbcSourceConfig config;
     private final Object lock = new Object();
     private final ArrayDeque<JdbcRecord> records = new ArrayDeque<>();
+    private final ArrayDeque<JdbcSourceSplit> pendingSplits = new ArrayDeque<>();
     private JdbcSourceSplit split;
     private Connection connection;
     private boolean started;
     private boolean exhausted;
+    private boolean noMoreSplits;
+    private boolean splitFinished;
     private int polls;
     private long nextPollAtMillis;
 
@@ -60,16 +63,23 @@ final class JdbcSourceReader implements SourceReader<DataEntity, JdbcSourceSplit
     @Override
     public InputStatus pollNext(ReaderOutput<DataEntity> output) throws Exception {
         synchronized (lock) {
-            if (!started || split == null) {
+            if (!started) {
                 return InputStatus.NOTHING_AVAILABLE;
+            }
+            activateNextSplit();
+            if (split == null) {
+                return noMoreSplits ? InputStatus.END_OF_INPUT : InputStatus.NOTHING_AVAILABLE;
             }
             if (!records.isEmpty()) {
                 emitOne(output);
                 return records.isEmpty() ? InputStatus.NOTHING_AVAILABLE : InputStatus.MORE_AVAILABLE;
             }
-            if (exhausted) {
-                return InputStatus.END_OF_INPUT;
+            if (splitFinished) {
+                split = null;
+                activateNextSplit();
+                if (split == null) return noMoreSplits ? InputStatus.END_OF_INPUT : InputStatus.NOTHING_AVAILABLE;
             }
+            if (exhausted) return InputStatus.END_OF_INPUT;
             if (config.readMode() == JdbcSourceConfig.ReadMode.INCREMENTAL
                     && config.maxPolls() > 0
                     && polls >= config.maxPolls()) {
@@ -85,8 +95,14 @@ final class JdbcSourceReader implements SourceReader<DataEntity, JdbcSourceSplit
                 emitOne(output);
                 return records.isEmpty() ? InputStatus.NOTHING_AVAILABLE : InputStatus.MORE_AVAILABLE;
             }
-            if (config.readMode() == JdbcSourceConfig.ReadMode.FULL
-                    || (config.maxPolls() > 0 && polls >= config.maxPolls())) {
+            if (config.readMode() == JdbcSourceConfig.ReadMode.FULL) {
+                splitFinished = true;
+                split = null;
+                activateNextSplit();
+                if (split != null) return pollNext(output);
+                return noMoreSplits ? InputStatus.END_OF_INPUT : InputStatus.NOTHING_AVAILABLE;
+            }
+            if (config.maxPolls() > 0 && polls >= config.maxPolls()) {
                 exhausted = true;
                 return InputStatus.END_OF_INPUT;
             }
@@ -98,7 +114,10 @@ final class JdbcSourceReader implements SourceReader<DataEntity, JdbcSourceSplit
     @Override
     public List<JdbcSourceSplit> snapshotState(long checkpointId) {
         synchronized (lock) {
-            return split == null ? List.of() : List.of(split);
+            List<JdbcSourceSplit> snapshot = new ArrayList<>(1 + pendingSplits.size());
+            if (split != null) snapshot.add(split);
+            snapshot.addAll(pendingSplits);
+            return snapshot;
         }
     }
 
@@ -118,28 +137,28 @@ final class JdbcSourceReader implements SourceReader<DataEntity, JdbcSourceSplit
     @Override
     public void addSplits(List<JdbcSourceSplit> splits) {
         synchronized (lock) {
+            if (splits == null) return;
             for (JdbcSourceSplit candidate : splits) {
                 candidate.state().validateFor("JDBC Source", config.cursorType().name(), config.cursorField(), config.idField());
-                if (split == null || split.state().cursorValue() == null
-                        || candidate.state().cursorValue() != null) {
-                    split = candidate;
-                }
+                pendingSplits.addLast(candidate);
             }
+            activateNextSplit();
             exhausted = false;
-            context.sendSplitRequest();
+            splitFinished = false;
         }
     }
 
     @Override
     public void notifyNoMoreSplits() {
-        // The singleton split is assigned asynchronously after the reader starts.
-        // Do not treat this callback as end-of-input before that split arrives.
+        noMoreSplits = true;
     }
 
     @Override
     public void close() throws Exception {
         synchronized (lock) {
             exhausted = true;
+            split = null;
+            pendingSplits.clear();
             if (connection != null) {
                 connection.close();
                 connection = null;
@@ -149,10 +168,11 @@ final class JdbcSourceReader implements SourceReader<DataEntity, JdbcSourceSplit
 
     private void loadBatch() throws Exception {
         ensureConnection();
+        JdbcSourceSplit current = split;
         IncrementalSourceState state = split.state();
         String query;
         if (config.readMode() == JdbcSourceConfig.ReadMode.FULL) {
-            query = config.resolvedQuery();
+            query = rangeQuery(current);
         } else {
             query = JdbcSourceFactory.incrementalQuery(
                     config.resolvedQuery(),
@@ -162,17 +182,44 @@ final class JdbcSourceReader implements SourceReader<DataEntity, JdbcSourceSplit
         }
         try (PreparedStatement statement = connection.prepareStatement(query)) {
             applyFetchSize(statement);
-            if (config.readMode() == JdbcSourceConfig.ReadMode.INCREMENTAL && state.cursorValue() != null) {
+            if (config.readMode() == JdbcSourceConfig.ReadMode.FULL && hasRange(current)) {
+                bindRangeParameters(statement, current);
+            } else if (config.readMode() == JdbcSourceConfig.ReadMode.INCREMENTAL && state.cursorValue() != null) {
                 bindIncrementalParameters(statement, state);
             }
             try (ResultSet resultSet = statement.executeQuery()) {
                 readRows(resultSet);
             }
         }
-        if (config.readMode() == JdbcSourceConfig.ReadMode.FULL) {
-            exhausted = true;
-        }
+        if (config.readMode() == JdbcSourceConfig.ReadMode.FULL) splitFinished = true;
         polls++;
+    }
+
+    private String rangeQuery(JdbcSourceSplit current) {
+        if (!hasRange(current)) return config.resolvedQuery();
+        String operator = current.upperInclusive() ? " <= ?" : " < ?";
+        return "select * from (" + config.resolvedQuery().trim() + ") streamcraft_jdbc_range where "
+                + current.rangeColumn() + " >= ? and " + current.rangeColumn() + operator
+                + " order by " + current.rangeColumn();
+    }
+
+    private static boolean hasRange(JdbcSourceSplit split) {
+        return split != null && !split.rangeColumn().isBlank()
+                && !split.lowerBound().isBlank() && !split.upperBound().isBlank();
+    }
+
+    private void activateNextSplit() {
+        if (split == null && !pendingSplits.isEmpty()) {
+            split = pendingSplits.removeFirst();
+            splitFinished = false;
+            polls = 0;
+            nextPollAtMillis = 0L;
+        }
+    }
+
+    private void bindRangeParameters(PreparedStatement statement, JdbcSourceSplit current) throws SQLException {
+        statement.setObject(1, JdbcSourceFactory.coerceCursor(current.lowerBound(), config.cursorType()));
+        statement.setObject(2, JdbcSourceFactory.coerceCursor(current.upperBound(), config.cursorType()));
     }
 
     private void readRows(ResultSet resultSet) throws SQLException {
