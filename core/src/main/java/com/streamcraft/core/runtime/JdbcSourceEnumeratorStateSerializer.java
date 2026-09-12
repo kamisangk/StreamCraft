@@ -44,11 +44,12 @@ final class JdbcSourceEnumeratorStateSerializer implements SimpleVersionedSerial
             throw new IOException("JDBC source enumerator state must not be null.");
         }
         try (DataInputStream input = new DataInputStream(new ByteArrayInputStream(serialized))) {
-            if (input.readUnsignedByte() != version) {
+            int marker = input.readUnsignedByte();
+            if (marker != version && !(version == 2 && marker == VERSION)) {
                 throw new IOException("Invalid JDBC source enumerator state version marker.");
             }
             List<JdbcSourceSplit> pending = new ArrayList<>();
-            if (version < VERSION) {
+            if (marker < VERSION) {
                 if (input.readBoolean()) {
                     pending.add(readSplit(input));
                 }

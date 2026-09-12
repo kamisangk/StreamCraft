@@ -37,11 +37,12 @@ final class ElasticsearchSourceEnumeratorStateSerializer
             throw new IOException("Invalid Elasticsearch source enumerator state version or bytes.");
         }
         try (DataInputStream input = new DataInputStream(new ByteArrayInputStream(serialized))) {
-            if (input.readUnsignedByte() != version) {
+            int marker = input.readUnsignedByte();
+            if (marker != version && !(version == 2 && marker == VERSION)) {
                 throw new IOException("Invalid Elasticsearch source enumerator state version marker.");
             }
             List<ElasticsearchSourceSplit> pending = new ArrayList<>();
-            if (version < VERSION) {
+            if (marker < VERSION) {
                 if (input.readBoolean()) pending.add(readSplit(input));
             } else {
                 int count = input.readInt();
