@@ -97,7 +97,7 @@ final class HdfsFileSourceReader implements SourceReader<DataEntity, HdfsFileSou
         synchronized (lock) {
             if (split == null) return List.of();
             List<HdfsFileSourceSplit> snapshot = new ArrayList<>(1 + pendingSplits.size());
-            snapshot.add(split);
+            if (!split.state().completed()) snapshot.add(split);
             snapshot.addAll(pendingSplits);
             return snapshot;
         }
