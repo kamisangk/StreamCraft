@@ -42,12 +42,14 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
     private final ElasticsearchSourceConfig config;
     private final Object lock = new Object();
     private final ArrayDeque<EsRecord> records = new ArrayDeque<>();
+    private final ArrayDeque<ElasticsearchSourceSplit> pendingSplits = new ArrayDeque<>();
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private ElasticsearchSourceSplit split;
     private boolean started;
     private boolean exhausted;
     private boolean noMoreSplits;
+    private boolean splitFinished;
     private int polls;
     private long nextPollAtMillis;
     private String activeScrollId = "";
@@ -66,8 +68,15 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
     @Override
     public InputStatus pollNext(ReaderOutput<DataEntity> output) throws Exception {
         synchronized (lock) {
-            if (!started || split == null) {
+            if (!started) {
                 return InputStatus.NOTHING_AVAILABLE;
+            }
+            activateNextSplit();
+            if (split == null) return noMoreSplits ? InputStatus.END_OF_INPUT : InputStatus.NOTHING_AVAILABLE;
+            if (splitFinished && records.isEmpty()) {
+                split = null;
+                activateNextSplit();
+                if (split == null) return noMoreSplits ? InputStatus.END_OF_INPUT : InputStatus.NOTHING_AVAILABLE;
             }
             if (!records.isEmpty()) {
                 emitOne(output);
@@ -100,7 +109,10 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
     @Override
     public List<ElasticsearchSourceSplit> snapshotState(long checkpointId) {
         synchronized (lock) {
-            return split == null ? List.of() : List.of(split);
+            List<ElasticsearchSourceSplit> snapshot = new ArrayList<>(1 + pendingSplits.size());
+            if (split != null && !splitFinished) snapshot.add(split);
+            snapshot.addAll(pendingSplits);
+            return snapshot;
         }
     }
 
@@ -124,12 +136,11 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
             for (ElasticsearchSourceSplit candidate : splits) {
                 candidate.state().validateFor(
                         "Elasticsearch Source", config.cursorType().name(), config.cursorField(), config.idField());
-                if (split == null || split.state().cursorValue() == null || candidate.state().cursorValue() != null) {
-                    split = candidate;
-                }
+                pendingSplits.addLast(candidate);
             }
+            activateNextSplit();
             exhausted = false;
-            context.sendSplitRequest();
+            splitFinished = false;
         }
     }
 
@@ -142,6 +153,8 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
     public void close() {
         synchronized (lock) {
             exhausted = true;
+            split = null;
+            pendingSplits.clear();
             if (!activeScrollId.isBlank()) {
                 clearScroll(activeScrollId);
                 activeScrollId = "";
@@ -180,7 +193,17 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
         }
         split = new ElasticsearchSourceSplit(
                 current.splitId(), current.state(), "", pageIndex);
+        if (config.readMode() == ReadMode.FULL) splitFinished = true;
         polls++;
+    }
+
+    private void activateNextSplit() {
+        if (split == null && !pendingSplits.isEmpty()) {
+            split = pendingSplits.removeFirst();
+            splitFinished = false;
+            polls = 0;
+            nextPollAtMillis = 0L;
+        }
     }
 
     private SearchPage search(JsonNode query) throws Exception {
