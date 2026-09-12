@@ -46,7 +46,8 @@ final class JdbcSourceSplitSerializer implements SimpleVersionedSerializer<JdbcS
             throw new IOException("JDBC source split must not be null.");
         }
         try (DataInputStream input = new DataInputStream(new ByteArrayInputStream(serialized))) {
-            if (input.readUnsignedByte() != version) {
+            int marker = input.readUnsignedByte();
+            if (marker != version && !(version == 2 && marker == VERSION)) {
                 throw new IOException("Invalid JDBC source split version marker.");
             }
             String splitId = IncrementalSourceStateSerializerSupport.readString(input, "JDBC source split id");
@@ -59,7 +60,7 @@ final class JdbcSourceSplitSerializer implements SimpleVersionedSerializer<JdbcS
                 throw new IOException("Truncated JDBC source split state.");
             }
             JdbcSourceSplit split;
-            if (version == VERSION) {
+            if (marker == VERSION) {
                 String rangeColumn = readString(input, "JDBC range column");
                 String lowerBound = readString(input, "JDBC lower bound");
                 String upperBound = readString(input, "JDBC upper bound");

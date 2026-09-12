@@ -21,12 +21,12 @@ final class InfluxDbSourceSplitSerializer implements SimpleVersionedSerializer<I
     public InfluxDbSourceSplit deserialize(int version, byte[] serialized) throws IOException {
         if (version < 1 || version > VERSION || serialized == null) throw new IOException("Invalid InfluxDB source split version or bytes.");
         try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(serialized))) {
-            if (in.readUnsignedByte() != version) throw new IOException("Invalid InfluxDB source split version marker.");
+            int marker=in.readUnsignedByte(); if (marker != version && !(version == 2 && marker == VERSION)) throw new IOException("Invalid InfluxDB source split version marker.");
             String id = IncrementalSourceStateSerializerSupport.readString(in, "InfluxDB split id");
             int length = in.readInt(); if (length < 0 || length > in.available()) throw new IOException("Invalid InfluxDB split state length.");
             byte[] state = in.readNBytes(length); if (state.length != length) throw new IOException("Truncated InfluxDB split state.");
             long page = in.readLong(); String measurement="", start="", end=""; boolean inclusive=false;
-            if(version>=VERSION){measurement=IncrementalSourceStateSerializerSupport.readString(in,"InfluxDB measurement");start=IncrementalSourceStateSerializerSupport.readString(in,"InfluxDB range start");end=IncrementalSourceStateSerializerSupport.readString(in,"InfluxDB range end");inclusive=in.readBoolean();}
+            if(marker>=VERSION){measurement=IncrementalSourceStateSerializerSupport.readString(in,"InfluxDB measurement");start=IncrementalSourceStateSerializerSupport.readString(in,"InfluxDB range start");end=IncrementalSourceStateSerializerSupport.readString(in,"InfluxDB range end");inclusive=in.readBoolean();}
             InfluxDbSourceSplit result = new InfluxDbSourceSplit(id, stateSerializer.deserialize(stateVersion(state), state), page, measurement, start, end, inclusive);
             if (in.available() != 0) throw new IOException("Trailing bytes in InfluxDB source split.");
             return result;

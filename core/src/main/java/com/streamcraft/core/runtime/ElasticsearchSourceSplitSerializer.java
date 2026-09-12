@@ -46,7 +46,8 @@ final class ElasticsearchSourceSplitSerializer implements SimpleVersionedSeriali
             throw new IOException("Elasticsearch source split must not be null.");
         }
         try (DataInputStream input = new DataInputStream(new ByteArrayInputStream(serialized))) {
-            if (input.readUnsignedByte() != version) {
+            int marker = input.readUnsignedByte();
+            if (marker != version && !(version == 2 && marker == VERSION)) {
                 throw new IOException("Invalid Elasticsearch source split version marker.");
             }
             String splitId = IncrementalSourceStateSerializerSupport.readString(input, "Elasticsearch split id");
@@ -60,7 +61,7 @@ final class ElasticsearchSourceSplitSerializer implements SimpleVersionedSeriali
             long pageIndex = input.readLong();
             int sliceId = 0;
             int sliceMax = 1;
-            if (version >= VERSION) {
+            if (marker >= VERSION) {
                 sliceId = input.readInt();
                 sliceMax = input.readInt();
             }
