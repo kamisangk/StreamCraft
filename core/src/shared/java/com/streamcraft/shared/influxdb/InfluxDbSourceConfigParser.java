@@ -7,6 +7,8 @@ import com.streamcraft.shared.influxdb.InfluxDbSourceConfig.ReadMode;
 import java.net.URI;
 import java.util.Locale;
 import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
@@ -81,6 +83,23 @@ public final class InfluxDbSourceConfigParser {
         if (maxPolls < 0) {
             throw error.apply(ValidationError.nonNegative("maxPolls"));
         }
+        String timestampField = text(safeConfig, "timestampField", "");
+        if (!timestampField.isBlank()) {
+            validateField(timestampField, "timestampField", error);
+        }
+        List<String> splitMeasurements = strings(safeConfig, "splitMeasurements");
+        if (splitMeasurements.isEmpty()) splitMeasurements = strings(safeConfig, "measurements");
+        int splitCount = intValue(safeConfig, "splitCount", 1);
+        if (splitCount <= 0) throw error.apply(ValidationError.positive("splitCount"));
+        String splitField = text(safeConfig, "splitField", timestampField.isBlank() ? cursorField : timestampField);
+        String splitStart = text(safeConfig, "splitStart", "");
+        String splitEnd = text(safeConfig, "splitEnd", "");
+        long splitOverlapMillis = longValue(safeConfig, "splitOverlapMillis", 0L);
+        if (splitOverlapMillis < 0) throw error.apply(ValidationError.nonNegative("splitOverlapMillis"));
+        if (splitCount > 1 && (splitStart.isBlank() || splitEnd.isBlank())) {
+            throw error.apply(ValidationError.splitBoundsRequired());
+        }
+        if (!splitField.isBlank()) validateField(splitField, "splitField", error);
 
         String idField = text(safeConfig, "idField", "");
         if (!idField.isBlank()) {
@@ -89,11 +108,6 @@ public final class InfluxDbSourceConfigParser {
         if (readMode == ReadMode.INCREMENTAL && !idField.isBlank() && sql.contains("${cursor}")) {
             throw error.apply(ValidationError.scalarCursorTemplateDoesNotSupportIdField());
         }
-        String timestampField = text(safeConfig, "timestampField", "");
-        if (!timestampField.isBlank()) {
-            validateField(timestampField, "timestampField", error);
-        }
-
         return new InfluxDbSourceConfig(
                 url,
                 database,
@@ -111,7 +125,13 @@ public final class InfluxDbSourceConfigParser {
                 idField,
                 timestampField,
                 text(safeConfig, "username", ""),
-                text(safeConfig, "password", ""));
+                text(safeConfig, "password", ""),
+                splitMeasurements,
+                splitCount,
+                splitField,
+                splitStart,
+                splitEnd,
+                splitOverlapMillis);
     }
 
     private static String normalizeUrl(String url) {
@@ -193,6 +213,15 @@ public final class InfluxDbSourceConfigParser {
     private static int intValue(JsonNode config, String fieldName, int fallback) {
         JsonNode value = config == null ? null : config.path(fieldName);
         return value == null || value.isMissingNode() || value.isNull() ? fallback : value.asInt(fallback);
+    }
+
+    private static List<String> strings(JsonNode config, String fieldName) {
+        JsonNode value = config == null ? null : config.path(fieldName);
+        if (value == null || value.isMissingNode() || value.isNull()) return List.of();
+        List<String> values = new ArrayList<>();
+        if (value.isArray()) value.forEach(item -> { String v = item.asText("").trim(); if (!v.isBlank()) values.add(v); });
+        else for (String item : value.asText("").split(",", -1)) { String v = item.trim(); if (!v.isBlank()) values.add(v); }
+        return List.copyOf(values);
     }
 
     private static <T extends Enum<T>> T parseEnum(
@@ -285,6 +314,11 @@ public final class InfluxDbSourceConfigParser {
                     "pipeline.validation.influxDbSource.nonNegative",
                     "InfluxDB Source config " + fieldName + " must be greater than or equal to 0.",
                     fieldName);
+        }
+
+        static ValidationError splitBoundsRequired() {
+            return new ValidationError("pipeline.validation.influxDbSource.splitBoundsRequired",
+                    "InfluxDB Source splitStart and splitEnd are required when splitCount is greater than 1.");
         }
 
         static ValidationError unsupportedValue(String fieldName, String value) {

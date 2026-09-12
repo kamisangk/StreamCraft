@@ -3,6 +3,7 @@ package com.streamcraft.shared.influxdb;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.Serializable;
+import java.util.List;
 
 public record InfluxDbSourceConfig(
         String url,
@@ -21,7 +22,13 @@ public record InfluxDbSourceConfig(
         String idField,
         String timestampField,
         String username,
-        String password) implements Serializable {
+        String password,
+        List<String> splitMeasurements,
+        int splitCount,
+        String splitField,
+        String splitStart,
+        String splitEnd,
+        long splitOverlapMillis) implements Serializable {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -54,6 +61,27 @@ public record InfluxDbSourceConfig(
         timestampField = clean(timestampField);
         username = clean(username);
         password = password == null ? "" : password;
+        splitMeasurements = splitMeasurements == null ? List.of() : List.copyOf(splitMeasurements);
+        splitCount = splitCount <= 0 ? 1 : splitCount;
+        splitField = clean(splitField);
+        splitStart = clean(splitStart);
+        splitEnd = clean(splitEnd);
+        splitOverlapMillis = Math.max(0L, splitOverlapMillis);
+    }
+
+    public InfluxDbSourceConfig(
+            String url, String database, String sql, String schemaJson, String epoch,
+            int queryTimeoutSeconds, int connectTimeoutMillis, ReadMode readMode, String cursorField,
+            CursorType cursorType, String initialCursorValue, long pollIntervalMillis, int maxPolls,
+            String idField, String timestampField, String username, String password) {
+        this(url, database, sql, schemaJson, epoch, queryTimeoutSeconds, connectTimeoutMillis, readMode,
+                cursorField, cursorType, initialCursorValue, pollIntervalMillis, maxPolls, idField,
+                timestampField, username, password, List.of(), 1, "", "", "", 0L);
+    }
+
+    public boolean splitEnabled() {
+        return readMode == ReadMode.FULL && (!splitMeasurements.isEmpty()
+                || (splitCount > 1 && !splitField.isBlank() && !splitStart.isBlank() && !splitEnd.isBlank()));
     }
 
     public JsonNode schema() {
