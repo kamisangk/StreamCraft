@@ -47,8 +47,10 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
     private ElasticsearchSourceSplit split;
     private boolean started;
     private boolean exhausted;
+    private boolean noMoreSplits;
     private int polls;
     private long nextPollAtMillis;
+    private String activeScrollId = "";
 
     ElasticsearchSourceReader(SourceReaderContext context, ElasticsearchSourceConfig config) {
         this.context = context;
@@ -133,13 +135,17 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
 
     @Override
     public void notifyNoMoreSplits() {
-        // The singleton split is assigned asynchronously after the reader starts.
+        noMoreSplits = true;
     }
 
     @Override
     public void close() {
         synchronized (lock) {
             exhausted = true;
+            if (!activeScrollId.isBlank()) {
+                clearScroll(activeScrollId);
+                activeScrollId = "";
+            }
         }
     }
 
@@ -149,11 +155,17 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
                 ? effectiveQuery(config.query())
                 : incrementalQuery(effectiveQuery(config.query()), current.state()));
         String activeScroll = page.scrollId();
+        activeScrollId = activeScroll;
         long pageIndex = current.pageIndex();
+        int pagesRead = 0;
         try {
             while (!page.hits().isEmpty()) {
                 appendHits(page.hits());
                 pageIndex++;
+                pagesRead++;
+                if (config.maxPolls() > 0 && pagesRead >= config.maxPolls()) {
+                    break;
+                }
                 if (page.scrollId().isBlank()) {
                     break;
                 }
@@ -164,6 +176,7 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
             if (!activeScroll.isBlank()) {
                 clearScroll(activeScroll);
             }
+            activeScrollId = "";
         }
         split = new ElasticsearchSourceSplit(
                 current.splitId(), current.state(), "", pageIndex);
@@ -174,6 +187,7 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
         ObjectNode body = objectMapper.createObjectNode();
         body.put("size", config.scrollSize());
         body.set("query", query);
+        appendSlice(body);
         appendSourceFilter(body);
         appendSort(body);
         return executeSearch(firstHost() + "/" + config.index() + "/_search?scroll=" + encoded(config.scrollTime()), body);
@@ -312,6 +326,13 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
         }
         ArrayNode source = body.putArray("_source");
         filtered.forEach(source::add);
+    }
+
+    private void appendSlice(ObjectNode body) {
+        if (split == null || split.sliceMax() <= 1) return;
+        ObjectNode slice = body.putObject("slice");
+        slice.put("id", split.sliceId());
+        slice.put("max", split.sliceMax());
     }
 
     private static void addRequiredField(List<String> fields, String field) {

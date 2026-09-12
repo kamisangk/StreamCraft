@@ -83,6 +83,10 @@ public final class ElasticsearchSourceConfigParser {
         if (maxPolls < 0) {
             throw error.apply(ValidationError.nonNegative("maxPolls"));
         }
+        int splitCount = intValue(safeConfig, "splitCount", 1);
+        if (splitCount <= 0) {
+            throw error.apply(ValidationError.positive("splitCount"));
+        }
 
         String idField = text(safeConfig, "idField", "");
         if (!idField.isBlank()) {
@@ -122,7 +126,8 @@ public final class ElasticsearchSourceConfigParser {
                 authType,
                 username,
                 password,
-                apiKey);
+                apiKey,
+                splitCount);
     }
 
     private static void validateHost(String host, ValidationErrorFactory error) {

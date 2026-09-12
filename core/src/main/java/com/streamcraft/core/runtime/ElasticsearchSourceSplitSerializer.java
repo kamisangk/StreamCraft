@@ -9,8 +9,7 @@ import org.apache.flink.core.io.SimpleVersionedSerializer;
 
 final class ElasticsearchSourceSplitSerializer implements SimpleVersionedSerializer<ElasticsearchSourceSplit> {
 
-    private static final int VERSION = 2;
-    private static final int LEGACY_VERSION = 1;
+    private static final int VERSION = 3;
     private final IncrementalSourceStateSerializer stateSerializer = new IncrementalSourceStateSerializer();
 
     @Override
@@ -32,13 +31,15 @@ final class ElasticsearchSourceSplitSerializer implements SimpleVersionedSeriali
             output.write(state);
             writeString(output, split.scrollId());
             output.writeLong(split.pageIndex());
+            output.writeInt(split.sliceId());
+            output.writeInt(split.sliceMax());
         }
         return bytes.toByteArray();
     }
 
     @Override
     public ElasticsearchSourceSplit deserialize(int version, byte[] serialized) throws IOException {
-        if (version != LEGACY_VERSION && version != VERSION) {
+        if (version < 1 || version > VERSION) {
             throw new IOException("Unsupported Elasticsearch source split version: " + version);
         }
         if (serialized == null) {
@@ -57,7 +58,14 @@ final class ElasticsearchSourceSplitSerializer implements SimpleVersionedSeriali
             IncrementalSourceState state = stateSerializer.deserialize(stateVersion(stateBytes), stateBytes);
             String scrollId = IncrementalSourceStateSerializerSupport.readString(input, "Elasticsearch scroll id");
             long pageIndex = input.readLong();
-            ElasticsearchSourceSplit result = new ElasticsearchSourceSplit(splitId, state, scrollId, pageIndex);
+            int sliceId = 0;
+            int sliceMax = 1;
+            if (version >= VERSION) {
+                sliceId = input.readInt();
+                sliceMax = input.readInt();
+            }
+            ElasticsearchSourceSplit result = new ElasticsearchSourceSplit(splitId, state, scrollId, pageIndex,
+                    sliceId, sliceMax);
             if (input.available() != 0) {
                 throw new IOException("Trailing bytes in Elasticsearch source split.");
             }

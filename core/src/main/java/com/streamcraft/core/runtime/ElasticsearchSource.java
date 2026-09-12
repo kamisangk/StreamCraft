@@ -34,14 +34,15 @@ final class ElasticsearchSource implements Source<DataEntity, ElasticsearchSourc
     @Override
     public SplitEnumerator<ElasticsearchSourceSplit, ElasticsearchSourceEnumeratorState> createEnumerator(
             SplitEnumeratorContext<ElasticsearchSourceSplit> enumContext) {
-        return new ElasticsearchSourceEnumerator(enumContext, initialState());
+        return new ElasticsearchSourceEnumerator(enumContext, initialState(), config);
     }
 
     @Override
     public SplitEnumerator<ElasticsearchSourceSplit, ElasticsearchSourceEnumeratorState> restoreEnumerator(
             SplitEnumeratorContext<ElasticsearchSourceSplit> enumContext,
             ElasticsearchSourceEnumeratorState checkpoint) {
-        return new ElasticsearchSourceEnumerator(enumContext, checkpoint == null ? initialState() : checkpoint);
+        return new ElasticsearchSourceEnumerator(
+                enumContext, checkpoint == null ? initialState() : checkpoint, config);
     }
 
     @Override
@@ -55,15 +56,20 @@ final class ElasticsearchSource implements Source<DataEntity, ElasticsearchSourc
     }
 
     private ElasticsearchSourceEnumeratorState initialState() {
-        return new ElasticsearchSourceEnumeratorState(new ElasticsearchSourceSplit(
-                "elasticsearch-source",
-                new IncrementalSourceState(
-                        config.cursorType().name(),
-                        config.cursorField(),
-                        config.initialCursorValue().isBlank() ? null : config.initialCursorValue(),
-                        config.idField().isBlank() ? null : config.idField(),
-                        null),
-                "",
-                0L));
+        return new ElasticsearchSourceEnumeratorState(splitPlan(config));
+    }
+
+    static java.util.List<ElasticsearchSourceSplit> splitPlan(ElasticsearchSourceConfig config) {
+        IncrementalSourceState state = new IncrementalSourceState(
+                config.cursorType().name(), config.cursorField(),
+                config.initialCursorValue().isBlank() ? null : config.initialCursorValue(),
+                config.idField().isBlank() ? null : config.idField(), null);
+        java.util.List<ElasticsearchSourceSplit> splits = new java.util.ArrayList<>();
+        for (int index = 0; index < config.splitCount(); index++) {
+            splits.add(new ElasticsearchSourceSplit(
+                    "elasticsearch:" + config.index() + ":slice-" + index + "-of-" + config.splitCount(),
+                    state, "", 0L, index, config.splitCount()));
+        }
+        return java.util.List.copyOf(splits);
     }
 }

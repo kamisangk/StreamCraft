@@ -23,7 +23,8 @@ public record ElasticsearchSourceConfig(
         AuthType authType,
         String username,
         String password,
-        String apiKey) implements Serializable {
+        String apiKey,
+        int splitCount) implements Serializable {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -56,6 +57,17 @@ public record ElasticsearchSourceConfig(
         username = clean(username);
         password = password == null ? "" : password;
         apiKey = clean(apiKey);
+        splitCount = splitCount <= 0 ? 1 : splitCount;
+    }
+
+    public ElasticsearchSourceConfig(
+            List<String> hosts, String index, List<String> sourceFields, String queryJson,
+            ReadMode readMode, String cursorField, CursorType cursorType, String initialCursorValue,
+            long pollIntervalMillis, int scrollSize, String scrollTime, int maxPolls, String idField,
+            String timestampField, AuthType authType, String username, String password, String apiKey) {
+        this(hosts, index, sourceFields, queryJson, readMode, cursorField, cursorType, initialCursorValue,
+                pollIntervalMillis, scrollSize, scrollTime, maxPolls, idField, timestampField, authType,
+                username, password, apiKey, 1);
     }
 
     public JsonNode query() {
