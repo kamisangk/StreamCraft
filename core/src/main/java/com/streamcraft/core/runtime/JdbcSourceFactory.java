@@ -17,8 +17,12 @@ public class JdbcSourceFactory {
         JdbcSourceConfig config = JdbcSourceConfigParser.parse(
                 sourceNode.config(),
                 IllegalArgumentException::new);
+        if (config.rangeSplittingEnabled()) {
+            return env.fromSource(new JdbcSource(config), WatermarkStrategy.noWatermarks(), sourceNode.name())
+                    .setParallelism(config.splitCount());
+        }
         return env.fromSource(new JdbcSource(config), WatermarkStrategy.noWatermarks(), sourceNode.name())
-                ;
+                .setParallelism(1);
     }
 
     static String incrementalQuery(String baseQuery, String cursorField, boolean hasCursor) {

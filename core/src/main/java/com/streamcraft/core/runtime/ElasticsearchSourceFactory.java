@@ -14,9 +14,11 @@ public class ElasticsearchSourceFactory {
         ElasticsearchSourceConfig config = ElasticsearchSourceConfigParser.parse(
                 sourceNode.config(),
                 IllegalArgumentException::new);
-        return env.fromSource(
-                        new ElasticsearchSource(config),
-                WatermarkStrategy.noWatermarks(),
-                sourceNode.name());
+        if (config.splitCount() > 1) {
+            return env.fromSource(new ElasticsearchSource(config), WatermarkStrategy.noWatermarks(), sourceNode.name())
+                    .setParallelism(config.splitCount());
+        }
+        return env.fromSource(new ElasticsearchSource(config), WatermarkStrategy.noWatermarks(), sourceNode.name())
+                .setParallelism(1);
     }
 }
