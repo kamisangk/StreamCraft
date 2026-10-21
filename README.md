@@ -33,6 +33,12 @@ It consists of two parts:
 
 ## Screenshots
 
+Kafka sinks using `EXACTLY_ONCE` require checkpointing and a stable deployment
+identity. The optional DSL field `transactionTimeoutMs` defaults to `600000`
+(10 minutes). Set it above the expected checkpoint and recovery duration, and
+no higher than the broker's `transaction.max.timeout.ms`. Downstream consumers
+must use `isolation.level=read_committed` to hide uncommitted transactions.
+
 <p align="center">
   <img src=".github/docs/assets/monitor-dark.png" alt="Task monitoring (dark mode)" width="100%">
   <img src=".github/docs/assets/dag-dark.png" alt="DAG Studio (dark mode)" width="100%">

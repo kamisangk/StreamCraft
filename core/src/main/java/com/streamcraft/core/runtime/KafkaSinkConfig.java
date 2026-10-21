@@ -23,6 +23,7 @@ final class KafkaSinkConfig implements Serializable {
     private final String username;
     private final String password;
     private final String scramMechanism;
+    private final int transactionTimeoutMs;
 
     private KafkaSinkConfig(
             String bootstrapServers,
@@ -33,7 +34,8 @@ final class KafkaSinkConfig implements Serializable {
             String authType,
             String username,
             String password,
-            String scramMechanism) {
+            String scramMechanism,
+            int transactionTimeoutMs) {
         this.bootstrapServers = bootstrapServers;
         this.topic = topic;
         this.deliveryGuarantee = deliveryGuarantee;
@@ -43,6 +45,7 @@ final class KafkaSinkConfig implements Serializable {
         this.username = username;
         this.password = password;
         this.scramMechanism = scramMechanism;
+        this.transactionTimeoutMs = transactionTimeoutMs;
     }
 
     static KafkaSinkConfig from(JsonNode config) {
@@ -81,7 +84,8 @@ final class KafkaSinkConfig implements Serializable {
                 authType,
                 config.path("username").asText(),
                 config.path("password").asText(),
-                scramMechanism);
+                scramMechanism,
+                readTransactionTimeout(config));
     }
 
     static KafkaSinkConfig fromPreview(JsonNode config) {
@@ -105,11 +109,27 @@ final class KafkaSinkConfig implements Serializable {
                 "NONE",
                 "",
                 "",
-                "");
+                "",
+                600_000);
     }
 
     String bootstrapServers() {
         return bootstrapServers;
+    }
+
+    int transactionTimeoutMs() {
+        return transactionTimeoutMs;
+    }
+
+    private static int readTransactionTimeout(JsonNode config) {
+        JsonNode value = config.get("transactionTimeoutMs");
+        if (value == null || value.isNull()) {
+            return 600_000;
+        }
+        if (!value.isIntegralNumber() || !value.canConvertToInt() || value.intValue() <= 0) {
+            throw new IllegalArgumentException("Kafka Sink transactionTimeoutMs must be a positive 32-bit integer.");
+        }
+        return value.intValue();
     }
 
     String topic() {

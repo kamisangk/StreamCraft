@@ -213,6 +213,14 @@ public final class PipelineNodeConfigValidationSupport {
     private static void validateKafkaSink(JsonNode config, ValidationErrorFactory error) {
         requireText(config, "bootstrapServers", error);
         requireText(config, "topic", error);
+        JsonNode transactionTimeout = path(config, "transactionTimeoutMs");
+        if (transactionTimeout != null && !transactionTimeout.isNull()
+                && (!transactionTimeout.isIntegralNumber() || !transactionTimeout.canConvertToInt()
+                || transactionTimeout.intValue() <= 0)) {
+            throw error.apply(new ValidationError(
+                    "pipeline.validation.kafkaSink.transactionTimeout.positive",
+                    "Kafka Sink transactionTimeoutMs must be a positive 32-bit integer."));
+        }
         String deliveryGuarantee = requireText(config, "deliveryGuarantee", error).toUpperCase(Locale.ROOT);
         if (!SUPPORTED_DELIVERY_GUARANTEES.contains(deliveryGuarantee)) {
             throw error.apply(new ValidationError(

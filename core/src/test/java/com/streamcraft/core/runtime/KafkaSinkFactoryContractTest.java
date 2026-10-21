@@ -12,6 +12,29 @@ class KafkaSinkFactoryContractTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
+    void transactionTimeoutDefaultsBelowStandardBrokerLimitAndSupportsOverride() throws Exception {
+        var json = objectMapper.readTree("""
+                {"bootstrapServers":"broker:9092","topic":"out","deliveryGuarantee":"EXACTLY_ONCE"}
+                """);
+        assertEquals("600000", KafkaSinkFactory.buildProducerProperties(KafkaSinkConfig.from(json))
+                .getProperty("transaction.timeout.ms"));
+        ((com.fasterxml.jackson.databind.node.ObjectNode) json).put("transactionTimeoutMs", 120000);
+        assertEquals("120000", KafkaSinkFactory.buildProducerProperties(KafkaSinkConfig.from(json))
+                .getProperty("transaction.timeout.ms"));
+    }
+
+    @Test
+    void rejectsInvalidTransactionTimeout() throws Exception {
+        for (String value : new String[]{"0", "-1", "2147483648", "1.5", "\"1000\"", "true"}) {
+            var json = objectMapper.readTree("""
+                    {"bootstrapServers":"broker:9092","topic":"out","deliveryGuarantee":"EXACTLY_ONCE",
+                     "transactionTimeoutMs":%s}
+                    """.formatted(value));
+            assertThrows(IllegalArgumentException.class, () -> KafkaSinkConfig.from(json), value);
+        }
+    }
+
+    @Test
     void mapsExactlyOnceToCheckpointRequirement() throws Exception {
         KafkaSinkConfig config = KafkaSinkConfig.from(objectMapper.readTree("""
                 {"bootstrapServers":"broker:9092","topic":"out","deliveryGuarantee":"EXACTLY_ONCE","format":"JSON"}

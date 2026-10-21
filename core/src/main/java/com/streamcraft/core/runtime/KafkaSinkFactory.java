@@ -84,6 +84,7 @@ public class KafkaSinkFactory implements KafkaSinkAttacher {
 
         Properties properties = new Properties();
         properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, config.bootstrapServers());
+        properties.put(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG, Integer.toString(config.transactionTimeoutMs()));
         properties.put(
                 ProducerConfig.ACKS_CONFIG,
                 config.deliveryGuarantee() == DeliveryGuarantee.NONE ? "0" : "all");

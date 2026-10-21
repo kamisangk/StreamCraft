@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -52,6 +53,7 @@ interface KafkaSourceFetcherClient extends AutoCloseable {
 final class KafkaSourceFetcher implements KafkaSourceFetcherClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSourceFetcher.class);
+    private static final int MAX_POLL_RECORDS = 500;
 
     record FetchedRecord(String key, long timestamp, String topic, int partition, long offset, String value) {}
 
@@ -61,13 +63,14 @@ final class KafkaSourceFetcher implements KafkaSourceFetcherClient {
 
     private final KafkaSourceConfig config;
     private final ConcurrentLinkedQueue<KafkaPartitionSplit> splitAssignments = new ConcurrentLinkedQueue<>();
-    private final ConcurrentLinkedQueue<FetchedRecord> records = new ConcurrentLinkedQueue<>();
+    private final ArrayBlockingQueue<FetchedRecord> records = new ArrayBlockingQueue<>(2_000);
     private final ConcurrentHashMap<TopicPartition, Long> recordFloorOffsets = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<CommitRequest> commitRequests = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<CommitResult> commitResults = new ConcurrentLinkedQueue<>();
     private final Set<Long> abortedCheckpointIds = ConcurrentHashMap.newKeySet();
     private final AtomicReference<CompletableFuture<Void>> availability = new AtomicReference<>(new CompletableFuture<>());
     private final Object availabilityLock = new Object();
+    private final Object controlLock = new Object();
     private final AtomicBoolean running = new AtomicBoolean();
     private volatile KafkaConsumer<String, String> consumer;
     private volatile RuntimeException failure;
@@ -148,6 +151,9 @@ final class KafkaSourceFetcher implements KafkaSourceFetcherClient {
     }
 
     void wakeup() {
+        synchronized (controlLock) {
+            controlLock.notifyAll();
+        }
         KafkaConsumer<String, String> activeConsumer = consumer;
         if (activeConsumer != null) {
             activeConsumer.wakeup();
@@ -186,6 +192,20 @@ final class KafkaSourceFetcher implements KafkaSourceFetcherClient {
                 try {
                     applySplitAssignments(createdConsumer, assignedOffsets, appliedOffsets);
                     drainCommitRequests(createdConsumer);
+                    if (assignedOffsets.isEmpty()) {
+                        synchronized (controlLock) {
+                            if (running.get() && splitAssignments.isEmpty()) {
+                                controlLock.wait(250);
+                            }
+                        }
+                        continue;
+                    }
+                    // Keep polling paused partitions so commit callbacks and control requests progress.
+                    if (records.remainingCapacity() < MAX_POLL_RECORDS) {
+                        createdConsumer.pause(createdConsumer.assignment());
+                    } else {
+                        createdConsumer.resume(createdConsumer.assignment());
+                    }
                     ConsumerRecords<String, String> polled = createdConsumer.poll(Duration.ofMillis(250));
                     for (ConsumerRecord<String, String> record : polled) {
                         records.add(new FetchedRecord(
@@ -203,6 +223,12 @@ final class KafkaSourceFetcher implements KafkaSourceFetcherClient {
                     // Wakeups are control flow for assignment, commit, and shutdown requests.
                     // A close wakeup is observed on the next loop condition.
                 }
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            if (running.get()) {
+                failure = new IllegalStateException("Kafka Source fetcher interrupted", exception);
+                signalAvailable();
             }
         } catch (RuntimeException exception) {
             if (running.get()) {
@@ -228,6 +254,7 @@ final class KafkaSourceFetcher implements KafkaSourceFetcherClient {
         properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, config.autoOffsetReset());
+        properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(MAX_POLL_RECORDS));
         properties.put(
                 ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
                 Boolean.toString(!config.commitOnCheckpoint()));
