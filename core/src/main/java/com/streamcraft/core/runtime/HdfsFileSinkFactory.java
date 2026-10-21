@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ import org.apache.flink.runtime.state.FunctionSnapshotContext;
 import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.functions.sink.legacy.RichSinkFunction;
+import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
 
 public class HdfsFileSinkFactory {
 
@@ -52,22 +54,24 @@ public class HdfsFileSinkFactory {
         private static final String STATE_NAME = "hdfs-file-sink-transactions";
 
         private final HdfsFileSinkConfig config;
+        private final String fallbackOperatorId = UUID.randomUUID().toString();
         private transient ObjectMapper objectMapper;
         private transient Charset charset;
         private transient DateTimeFormatter filenameTimeFormatter;
         private transient Map<String, WriterState> writersByPartition;
-        private transient Map<Long, HdfsFileSinkCommittable> pendingTransactions;
+        private transient Map<HdfsFileSinkTransaction, HdfsFileSinkCommittable> pendingTransactions;
         private transient HdfsFileSinkStateSerializer stateSerializer;
         private transient ListState<byte[]> checkpointState;
         private transient HdfsFileSinkCommitter committer;
         private transient String transactionRoot;
-        private transient HdfsFileSinkTransaction activeTransaction;
+        private transient Path activeDirectory;
         private transient String jobId;
         private transient int subtaskId;
         private transient long nextTransactionCheckpoint;
         private transient int pendingRows;
         private transient Counter checkpointFlushes;
         private transient Counter writeFailures;
+        private transient boolean finished;
 
         private HdfsFileSinkFunction(HdfsFileSinkConfig config) {
             this.config = config;
@@ -83,15 +87,15 @@ public class HdfsFileSinkFactory {
             for (byte[] serialized : checkpointState.get()) {
                 HdfsFileSinkState state = stateSerializer.deserialize(stateSerializer.getVersion(), serialized);
                 for (HdfsFileSinkCommittable committable : state.pendingTransactions()) {
-                    pendingTransactions.put(committable.transaction().checkpointId(), committable);
+                    pendingTransactions.put(committable.transaction(), committable);
                     maxCheckpoint = Math.max(maxCheckpoint, committable.transaction().checkpointId());
                 }
             }
-            nextTransactionCheckpoint = maxCheckpoint == Long.MAX_VALUE ? 0 : maxCheckpoint + 1;
+            nextTransactionCheckpoint = maxCheckpoint == Long.MAX_VALUE ? Long.MAX_VALUE : maxCheckpoint + 1;
         }
 
         @Override
-        public void open(OpenContext openContext) {
+        public void open(OpenContext openContext) throws Exception {
             objectMapper = new ObjectMapper();
             charset = Charset.forName(config.encoding());
             filenameTimeFormatter = DateTimeFormatter.ofPattern(config.filenameTimeFormat())
@@ -104,7 +108,7 @@ public class HdfsFileSinkFactory {
             subtaskId = resolveSubtaskId();
             jobId = resolveJobId();
             transactionRoot = HdfsFileRuntimeSupport.resolvePath(config.defaultFs(), config.tmpPath()).toString();
-            activeTransaction = new HdfsFileSinkTransaction(jobId, subtaskId, nextTransactionCheckpoint);
+            activeDirectory = newActiveDirectory();
             committer = new HdfsFileSinkCommitter(transactionRoot);
             try {
                 checkpointFlushes = getRuntimeContext().getMetricGroup().counter("checkpoint_flushes");
@@ -112,10 +116,16 @@ public class HdfsFileSinkFactory {
             } catch (RuntimeException ignored) {
                 // Direct unit tests do not have a Flink metric group.
             }
+            // Restored state belongs to a completed checkpoint. Upstream will not
+            // replay these rows, even if the original completion callback never ran.
+            notifyCheckpointComplete(Long.MAX_VALUE);
         }
 
         @Override
         public synchronized void invoke(DataEntity value, Context context) throws Exception {
+            if (finished) {
+                throw new IllegalStateException("HDFS sink has already finished.");
+            }
             WriterState writerState = writerFor(value);
             List<String> columns = writableColumns(value.fields());
             if (config.fileFormatType() == com.streamcraft.shared.file.HdfsFileFormatType.CSV
@@ -150,14 +160,15 @@ public class HdfsFileSinkFactory {
             if (pendingTransactions == null) {
                 return;
             }
-            List<Long> completed = pendingTransactions.keySet().stream()
-                    .filter(id -> id <= checkpointId)
-                    .sorted()
+            List<HdfsFileSinkTransaction> completed = pendingTransactions.keySet().stream()
+                    .filter(transaction -> transaction.checkpointId() <= checkpointId)
+                    .sorted(Comparator.comparingLong(HdfsFileSinkTransaction::checkpointId)
+                            .thenComparing(HdfsFileSinkTransaction::transactionId))
                     .toList();
             if (completed.isEmpty()) {
                 return;
             }
-            for (Long completedCheckpoint : completed) {
+            for (HdfsFileSinkTransaction completedCheckpoint : completed) {
                 HdfsFileSinkCommittable committable = pendingTransactions.get(completedCheckpoint);
                 try {
                     committer.commit(committable);
@@ -172,19 +183,18 @@ public class HdfsFileSinkFactory {
 
         @Override
         public synchronized void notifyCheckpointAborted(long checkpointId) {
-            if (pendingTransactions == null) {
+            // A later successful checkpoint also covers these input rows. Retain
+            // their durable files in both memory and the next operator snapshot.
+        }
+
+        @Override
+        public synchronized void finish() throws Exception {
+            if (finished) {
                 return;
             }
-            HdfsFileSinkCommittable committable = pendingTransactions.remove(checkpointId);
-            if (committable == null) {
-                return;
-            }
-            try {
-                committer.abort(committable);
-            } catch (Exception exception) {
-                pendingTransactions.put(checkpointId, committable);
-                throw new IllegalStateException("HDFS sink transaction abort failed: " + checkpointId, exception);
-            }
+            prepareTransaction(nextTransactionCheckpoint);
+            notifyCheckpointComplete(Long.MAX_VALUE);
+            finished = true;
         }
 
         @Override
@@ -194,7 +204,8 @@ public class HdfsFileSinkFactory {
 
         private HdfsFileSinkState currentState() {
             return new HdfsFileSinkState(pendingTransactions.values().stream()
-                    .sorted(java.util.Comparator.comparingLong(item -> item.transaction().checkpointId()))
+                    .sorted(Comparator.comparingLong((HdfsFileSinkCommittable item) -> item.transaction().checkpointId())
+                            .thenComparing(item -> item.transaction().transactionId()))
                     .toList());
         }
 
@@ -220,21 +231,22 @@ public class HdfsFileSinkFactory {
                 files.add(new HdfsFileSinkCommittable.FileCommit(
                         prepared, target.toString(), writerState.finalPath, writerState.partition));
             }
-            pendingTransactions.put(checkpointId, new HdfsFileSinkCommittable(prepared, files));
+            if (!files.isEmpty()) {
+                pendingTransactions.put(prepared, new HdfsFileSinkCommittable(prepared, files));
+            }
             cleanupEmptyActiveDirectory();
-            activeTransaction = new HdfsFileSinkTransaction(
-                    jobId, subtaskId, checkpointId == Long.MAX_VALUE ? 0 : checkpointId + 1);
-            nextTransactionCheckpoint = activeTransaction.checkpointId();
+            activeDirectory = newActiveDirectory();
+            nextTransactionCheckpoint = checkpointId == Long.MAX_VALUE ? Long.MAX_VALUE : checkpointId + 1;
             writersByPartition.clear();
             pendingRows = 0;
         }
 
         private void cleanupEmptyActiveDirectory() {
-            if (activeTransaction == null) {
+            if (activeDirectory == null) {
                 return;
             }
             try {
-                Path directory = activeTransaction.directory(transactionRoot);
+                Path directory = activeDirectory;
                 FileSystem fileSystem = directory.getFileSystem();
                 if (fileSystem.exists(directory)) {
                     fileSystem.delete(directory, true);
@@ -250,7 +262,7 @@ public class HdfsFileSinkFactory {
             if (existing != null) {
                 return existing;
             }
-            Path transactionDirectory = activeTransaction.directory(transactionRoot);
+            Path transactionDirectory = activeDirectory;
             Path outputDirectory = partitionPath.isBlank()
                     ? transactionDirectory : new Path(transactionDirectory, partitionPath);
             FileSystem fileSystem = outputDirectory.getFileSystem();
@@ -269,7 +281,7 @@ public class HdfsFileSinkFactory {
             FSDataOutputStream output = fileSystem.create(temporaryFile, FileSystem.WriteMode.OVERWRITE);
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(output, charset));
             WriterState writerState = new WriterState(
-                    writer, activeTransaction, relativePath, temporaryFile.toString(), finalFile.toString(), partitionPath);
+                    writer, relativePath, temporaryFile.toString(), finalFile.toString(), partitionPath);
             writersByPartition.put(partitionPath, writerState);
             return writerState;
         }
@@ -347,10 +359,16 @@ public class HdfsFileSinkFactory {
 
         private String resolveJobId() {
             try {
-                return HdfsFileRuntimeSupport.normalizeFileName(getRuntimeContext().getTaskInfo().getTaskName());
+                String operatorId = getRuntimeContext() instanceof StreamingRuntimeContext streaming
+                        ? streaming.getOperatorUniqueID() : fallbackOperatorId;
+                return getRuntimeContext().getJobInfo().getJobId() + "-" + operatorId;
             } catch (RuntimeException ignored) {
-                return "streamcraft-hdfs-sink";
+                return "streamcraft-hdfs-sink-" + fallbackOperatorId;
             }
+        }
+
+        private Path newActiveDirectory() {
+            return new Path(new Path(transactionRoot, "_active"), jobId + "-" + subtaskId + "-" + UUID.randomUUID());
         }
 
         private static void increment(Counter counter) {
@@ -361,17 +379,15 @@ public class HdfsFileSinkFactory {
 
         private static final class WriterState {
             private final BufferedWriter writer;
-            private final HdfsFileSinkTransaction transaction;
             private final String relativePath;
             private final String temporaryPath;
             private final String finalPath;
             private final String partition;
             private boolean headerWritten;
 
-            private WriterState(BufferedWriter writer, HdfsFileSinkTransaction transaction, String relativePath,
+            private WriterState(BufferedWriter writer, String relativePath,
                     String temporaryPath, String finalPath, String partition) {
                 this.writer = writer;
-                this.transaction = transaction;
                 this.relativePath = relativePath;
                 this.temporaryPath = temporaryPath;
                 this.finalPath = finalPath;
