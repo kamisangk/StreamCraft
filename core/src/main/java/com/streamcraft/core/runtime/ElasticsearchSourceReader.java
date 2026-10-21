@@ -43,6 +43,7 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
     private final Object lock = new Object();
     private final ArrayDeque<EsRecord> records = new ArrayDeque<>();
     private final ArrayDeque<ElasticsearchSourceSplit> pendingSplits = new ArrayDeque<>();
+    private final Map<String, Long> nextSplitPollAtMillis = new HashMap<>();
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private ElasticsearchSourceSplit split;
@@ -50,9 +51,11 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
     private boolean exhausted;
     private boolean noMoreSplits;
     private boolean splitFinished;
+    private boolean queryCycleFinished;
     private int polls;
     private long nextPollAtMillis;
     private String activeScrollId = "";
+    private CompletableFuture<Void> availabilityFuture;
 
     ElasticsearchSourceReader(SourceReaderContext context, ElasticsearchSourceConfig config) {
         this.context = context;
@@ -80,6 +83,7 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
             }
             if (!records.isEmpty()) {
                 emitOne(output);
+                if (rotateCompletedIncrementalCycle()) return nextSplitStatus();
                 return records.isEmpty() ? InputStatus.NOTHING_AVAILABLE : InputStatus.MORE_AVAILABLE;
             }
             if (config.readMode() == ReadMode.INCREMENTAL && activeScrollId.isBlank()
@@ -95,8 +99,10 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
             loadBatch();
             if (!records.isEmpty()) {
                 emitOne(output);
+                if (rotateCompletedIncrementalCycle()) return nextSplitStatus();
                 return records.isEmpty() ? InputStatus.NOTHING_AVAILABLE : InputStatus.MORE_AVAILABLE;
             }
+            if (rotateCompletedIncrementalCycle()) return nextSplitStatus();
             if (splitFinished || !activeScrollId.isBlank()) return InputStatus.MORE_AVAILABLE;
             nextPollAtMillis = System.currentTimeMillis() + config.pollIntervalMillis();
             return InputStatus.NOTHING_AVAILABLE;
@@ -120,7 +126,9 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
             if (!records.isEmpty() || exhausted || split == null || System.currentTimeMillis() >= nextPollAtMillis) {
                 return CompletableFuture.completedFuture(null);
             }
+            if (availabilityFuture != null && !availabilityFuture.isDone()) return availabilityFuture;
             CompletableFuture<Void> future = new CompletableFuture<>();
+            availabilityFuture = future;
             CompletableFuture.delayedExecutor(
                     nextPollAtMillis - System.currentTimeMillis(), TimeUnit.MILLISECONDS)
                     .execute(() -> future.complete(null));
@@ -136,8 +144,15 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
                         "Elasticsearch Source", config.cursorType().name(), config.cursorField(), config.idField());
                 pendingSplits.addLast(candidate);
             }
+            if (split != null && config.readMode() == ReadMode.INCREMENTAL && config.maxPolls() == 0
+                    && records.isEmpty() && activeScrollId.isBlank()
+                    && System.currentTimeMillis() < nextPollAtMillis) {
+                pendingSplits.addLast(split);
+                split = null;
+            }
             activateNextSplit();
             exhausted = false;
+            if (!splits.isEmpty() && availabilityFuture != null) availabilityFuture.complete(null);
         }
     }
 
@@ -152,6 +167,8 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
             exhausted = true;
             split = null;
             pendingSplits.clear();
+            nextSplitPollAtMillis.clear();
+            if (availabilityFuture != null) availabilityFuture.complete(null);
             if (!activeScrollId.isBlank()) {
                 clearScroll(activeScrollId);
                 activeScrollId = "";
@@ -175,17 +192,41 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
             if (!activeScrollId.isBlank()) clearScroll(activeScrollId);
             activeScrollId = "";
             polls++;
+            queryCycleFinished = true;
             if (config.readMode() == ReadMode.FULL) splitFinished = true;
         }
     }
 
     private void activateNextSplit() {
         if (split == null && !pendingSplits.isEmpty()) {
-            split = pendingSplits.removeFirst();
+            if (config.readMode() == ReadMode.INCREMENTAL && config.maxPolls() == 0) {
+                split = pendingSplits.stream().min(java.util.Comparator.comparingLong(
+                        candidate -> nextSplitPollAtMillis.getOrDefault(candidate.splitId(), 0L))).orElseThrow();
+                pendingSplits.remove(split);
+            } else {
+                split = pendingSplits.removeFirst();
+            }
             splitFinished = false;
+            queryCycleFinished = false;
             polls = 0;
-            nextPollAtMillis = 0L;
+            nextPollAtMillis = nextSplitPollAtMillis.getOrDefault(split.splitId(), 0L);
         }
+    }
+
+    private boolean rotateCompletedIncrementalCycle() {
+        if (config.readMode() != ReadMode.INCREMENTAL || config.maxPolls() > 0
+                || !queryCycleFinished || !records.isEmpty()) return false;
+        // Keep each slice's emitted cursor and cooldown when yielding to another slice.
+        nextSplitPollAtMillis.put(split.splitId(), System.currentTimeMillis() + config.pollIntervalMillis());
+        pendingSplits.addLast(split);
+        split = null;
+        activateNextSplit();
+        return true;
+    }
+
+    private InputStatus nextSplitStatus() {
+        return System.currentTimeMillis() >= nextPollAtMillis
+                ? InputStatus.MORE_AVAILABLE : InputStatus.NOTHING_AVAILABLE;
     }
 
     private SearchPage search(JsonNode query) throws Exception {
