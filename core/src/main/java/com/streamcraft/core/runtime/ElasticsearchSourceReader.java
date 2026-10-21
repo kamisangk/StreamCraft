@@ -82,12 +82,12 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
                 emitOne(output);
                 return records.isEmpty() ? InputStatus.NOTHING_AVAILABLE : InputStatus.MORE_AVAILABLE;
             }
-            if (exhausted) {
-                return InputStatus.END_OF_INPUT;
-            }
-            if (config.readMode() == ReadMode.INCREMENTAL && config.maxPolls() > 0 && polls >= config.maxPolls()) {
-                exhausted = true;
-                return InputStatus.END_OF_INPUT;
+            if (config.readMode() == ReadMode.INCREMENTAL && activeScrollId.isBlank()
+                    && config.maxPolls() > 0 && polls >= config.maxPolls()) {
+                split = null;
+                activateNextSplit();
+                return split != null ? InputStatus.MORE_AVAILABLE
+                        : noMoreSplits ? InputStatus.END_OF_INPUT : InputStatus.NOTHING_AVAILABLE;
             }
             if (System.currentTimeMillis() < nextPollAtMillis) {
                 return InputStatus.NOTHING_AVAILABLE;
@@ -97,10 +97,7 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
                 emitOne(output);
                 return records.isEmpty() ? InputStatus.NOTHING_AVAILABLE : InputStatus.MORE_AVAILABLE;
             }
-            if (config.readMode() == ReadMode.FULL || (config.maxPolls() > 0 && polls >= config.maxPolls())) {
-                exhausted = true;
-                return InputStatus.END_OF_INPUT;
-            }
+            if (splitFinished || !activeScrollId.isBlank()) return InputStatus.MORE_AVAILABLE;
             nextPollAtMillis = System.currentTimeMillis() + config.pollIntervalMillis();
             return InputStatus.NOTHING_AVAILABLE;
         }
@@ -110,7 +107,8 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
     public List<ElasticsearchSourceSplit> snapshotState(long checkpointId) {
         synchronized (lock) {
             List<ElasticsearchSourceSplit> snapshot = new ArrayList<>(1 + pendingSplits.size());
-            if (split != null && !splitFinished) snapshot.add(split);
+            // A full-read restore replays this slice until every buffered record was emitted.
+            if (split != null && (!splitFinished || !records.isEmpty())) snapshot.add(split);
             snapshot.addAll(pendingSplits);
             return snapshot;
         }
@@ -140,7 +138,6 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
             }
             activateNextSplit();
             exhausted = false;
-            splitFinished = false;
         }
     }
 
@@ -164,37 +161,22 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
 
     private void loadBatch() throws Exception {
         ElasticsearchSourceSplit current = split;
-        SearchPage page = search(config.readMode() == ReadMode.FULL
-                ? effectiveQuery(config.query())
-                : incrementalQuery(effectiveQuery(config.query()), current.state()));
-        String activeScroll = page.scrollId();
-        activeScrollId = activeScroll;
-        long pageIndex = current.pageIndex();
-        int pagesRead = 0;
-        try {
-            while (!page.hits().isEmpty()) {
-                appendHits(page.hits());
-                pageIndex++;
-                pagesRead++;
-                if (config.maxPolls() > 0 && pagesRead >= config.maxPolls()) {
-                    break;
-                }
-                if (page.scrollId().isBlank()) {
-                    break;
-                }
-                activeScroll = page.scrollId();
-                page = scroll(page.scrollId());
-            }
-        } finally {
-            if (!activeScroll.isBlank()) {
-                clearScroll(activeScroll);
-            }
-            activeScrollId = "";
-        }
+        SearchPage page = activeScrollId.isBlank()
+                ? search(config.readMode() == ReadMode.FULL
+                        ? effectiveQuery(config.query())
+                        : incrementalQuery(effectiveQuery(config.query()), current.state()))
+                : scroll(activeScrollId);
+        if (!page.scrollId().isBlank()) activeScrollId = page.scrollId();
+        appendHits(page.hits());
         split = new ElasticsearchSourceSplit(
-                current.splitId(), current.state(), "", pageIndex);
-        if (config.readMode() == ReadMode.FULL) splitFinished = true;
-        polls++;
+                current.splitId(), current.state(), "", current.pageIndex() + (page.hits().isEmpty() ? 0 : 1),
+                current.sliceId(), current.sliceMax());
+        if (page.hits().isEmpty() || page.scrollId().isBlank()) {
+            if (!activeScrollId.isBlank()) clearScroll(activeScrollId);
+            activeScrollId = "";
+            polls++;
+            if (config.readMode() == ReadMode.FULL) splitFinished = true;
+        }
     }
 
     private void activateNextSplit() {
@@ -281,7 +263,7 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
                             config.idField().isBlank() ? null : config.idField(),
                             config.idField().isBlank() ? null : record.uniqueId()),
                     "",
-                    split.pageIndex());
+                    split.pageIndex(), split.sliceId(), split.sliceMax());
         }
     }
 
@@ -294,8 +276,8 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
             ObjectNode bool = objectMapper.createObjectNode();
             ArrayNode must = bool.putObject("bool").putArray("must");
             must.add(baseQuery);
-            ObjectNode range = objectMapper.createObjectNode().putObject("range").putObject(config.cursorField());
-            range.set("gt", objectMapper.valueToTree(cursor));
+            ObjectNode range = objectMapper.createObjectNode();
+            range.putObject("range").putObject(config.cursorField()).set("gt", objectMapper.valueToTree(cursor));
             must.add(range);
             return bool;
         }
@@ -304,16 +286,16 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
         ArrayNode must = outer.putArray("must");
         must.add(baseQuery);
         ArrayNode should = outer.putArray("should");
-        ObjectNode greaterCursor = objectMapper.createObjectNode().putObject("range").putObject(config.cursorField());
-        greaterCursor.set("gt", objectMapper.valueToTree(cursor));
+        ObjectNode greaterCursor = objectMapper.createObjectNode();
+        greaterCursor.putObject("range").putObject(config.cursorField()).set("gt", objectMapper.valueToTree(cursor));
         should.add(greaterCursor);
         ObjectNode equalAndGreaterId = objectMapper.createObjectNode();
         ArrayNode tieMust = equalAndGreaterId.putObject("bool").putArray("must");
-        ObjectNode equalCursor = objectMapper.createObjectNode().putObject("term");
-        equalCursor.set(config.cursorField(), objectMapper.valueToTree(cursor));
+        ObjectNode equalCursor = objectMapper.createObjectNode();
+        equalCursor.putObject("term").set(config.cursorField(), objectMapper.valueToTree(cursor));
         tieMust.add(equalCursor);
-        ObjectNode greaterId = objectMapper.createObjectNode().putObject("range").putObject(config.idField());
-        greaterId.put("gt", state.uniqueIdValue());
+        ObjectNode greaterId = objectMapper.createObjectNode();
+        greaterId.putObject("range").putObject(config.idField()).put("gt", state.uniqueIdValue());
         tieMust.add(greaterId);
         should.add(equalAndGreaterId);
         outer.put("minimum_should_match", 1);
@@ -339,6 +321,7 @@ final class ElasticsearchSourceReader implements SourceReader<DataEntity, Elasti
     }
 
     private void appendSourceFilter(ObjectNode body) {
+        if (config.sourceFields().isEmpty()) return;
         List<String> filtered = new ArrayList<>(config.sourceFields().stream()
                 .filter(field -> !"_id".equals(field))
                 .toList());
