@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 class JdbcSinkCheckpointTest {
 
     @Test
-    void lowVolumeRecordsFlushWhenCheckpointCompletes() throws Exception {
+    void lowVolumeRecordsAreDurableBeforeSnapshotReturns() throws Exception {
         String url = createDatabase("checkpoint_flush");
         try (Connection connection = DriverManager.getConnection(url)) {
             JdbcSinkFactory.JdbcSinkFunction sink = new JdbcSinkFactory.JdbcSinkFunction(config(url), connection);
@@ -26,7 +26,9 @@ class JdbcSinkCheckpointTest {
             sink.invoke(entity(1L, "Ada"), null);
 
             sink.snapshotState(context(7L));
-            assertEquals(0, countRows(connection));
+            try (Connection observer = DriverManager.getConnection(url)) {
+                assertEquals(1, countRows(observer));
+            }
 
             sink.notifyCheckpointComplete(7L);
 
@@ -58,7 +60,7 @@ class JdbcSinkCheckpointTest {
     }
 
     @Test
-    void abortedCheckpointDoesNotFlushItsSnapshot() throws Exception {
+    void abortedCheckpointMayExposeWritesWithAtLeastOnceDelivery() throws Exception {
         String url = createDatabase("checkpoint_abort");
         try (Connection connection = DriverManager.getConnection(url)) {
             JdbcSinkFactory.JdbcSinkFunction sink = new JdbcSinkFactory.JdbcSinkFunction(config(url), connection);
@@ -68,8 +70,8 @@ class JdbcSinkCheckpointTest {
             sink.notifyCheckpointAborted(10L);
             sink.notifyCheckpointComplete(10L);
 
-            assertEquals(0, countRows(connection));
-            assertEquals(1, sink.bufferedRecordCount());
+            assertEquals(1, countRows(connection));
+            assertEquals(0, sink.bufferedRecordCount());
         }
     }
 
@@ -80,14 +82,58 @@ class JdbcSinkCheckpointTest {
             JdbcSinkFactory.JdbcSinkFunction sink = new JdbcSinkFactory.JdbcSinkFunction(config(url), connection);
             sink.open(null);
             sink.invoke(entity(1L, "Ada"), null);
-            sink.invoke(new DataEntity("2", 0L, Map.of("id", 2L, "customer_name", new Object()), Map.of()), null);
-            sink.snapshotState(context(11L));
+            sink.invoke(entity(1L, "Grace"), null);
+            assertThrows(Exception.class, () -> sink.snapshotState(context(11L)));
 
-            assertThrows(Exception.class, () -> sink.notifyCheckpointComplete(11L));
-
-            assertEquals(0, countRows(connection));
+            try (Connection observer = DriverManager.getConnection(url)) {
+                assertEquals(0, countRows(observer));
+            }
             assertEquals(2, sink.bufferedRecordCount());
             assertFalse(connection.getAutoCommit());
+        }
+    }
+
+    @Test
+    void recoveryAfterSnapshotDoesNotNeedTheCompletionCallback() throws Exception {
+        String url = createDatabase("checkpoint_recovery");
+        try (Connection originalConnection = DriverManager.getConnection(url)) {
+            JdbcSinkFactory.JdbcSinkFunction original = new JdbcSinkFactory.JdbcSinkFunction(config(url), originalConnection);
+            original.open(null);
+            original.invoke(entity(1L, "Ada"), null);
+            original.snapshotState(context(12L));
+        }
+
+        try (Connection restoredConnection = DriverManager.getConnection(url)) {
+            JdbcSinkFactory.JdbcSinkFunction restored = new JdbcSinkFactory.JdbcSinkFunction(config(url), restoredConnection);
+            restored.initializeState(null);
+            restored.open(null);
+            restored.snapshotState(context(13L));
+            restored.notifyCheckpointComplete(13L);
+
+            assertEquals(1, countRows(restoredConnection));
+        }
+    }
+
+    @Test
+    void failedSnapshotCanRetryTheRetainedBatch() throws Exception {
+        String url = createDatabase("checkpoint_retry");
+        try (Connection connection = DriverManager.getConnection(url);
+                Connection control = DriverManager.getConnection(url)) {
+            JdbcSinkFactory.JdbcSinkFunction sink = new JdbcSinkFactory.JdbcSinkFunction(config(url), connection);
+            sink.open(null);
+            try (Statement statement = control.createStatement()) {
+                statement.execute("drop table orders_out");
+            }
+            sink.invoke(entity(1L, "Ada"), null);
+            assertThrows(Exception.class, () -> sink.snapshotState(context(14L)));
+            assertEquals(1, sink.bufferedRecordCount());
+
+            try (Statement statement = control.createStatement()) {
+                statement.execute("create table orders_out (id bigint primary key, customer_name varchar(64))");
+            }
+            sink.snapshotState(context(15L));
+            assertEquals(1, countRows(control));
+            assertEquals(0, sink.bufferedRecordCount());
         }
     }
 

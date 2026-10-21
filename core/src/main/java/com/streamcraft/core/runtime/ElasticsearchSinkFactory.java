@@ -16,8 +16,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -46,6 +44,8 @@ public class ElasticsearchSinkFactory {
     /**
      * Checkpoint-aware legacy sink with at-least-once delivery semantics.
      * Elasticsearch bulk responses are handled per input record.
+     * Writes finish before a checkpoint snapshot returns; aborted checkpoints
+     * may expose writes that are replayed after recovery.
      */
     static final class ElasticsearchSinkFunction extends RichSinkFunction<DataEntity>
             implements CheckpointedFunction, CheckpointListener {
@@ -55,7 +55,6 @@ public class ElasticsearchSinkFactory {
 
         private final ElasticsearchSinkConfig config;
         private transient List<DataEntity> buffer;
-        private transient Map<Long, List<DataEntity>> checkpointSnapshots;
         private transient HttpClient httpClient;
         private transient ObjectMapper objectMapper;
         private transient long lastFlushAt;
@@ -75,7 +74,6 @@ public class ElasticsearchSinkFactory {
                     .build();
             objectMapper = new ObjectMapper();
             buffer = new ArrayList<>();
-            checkpointSnapshots = new HashMap<>();
             lastFlushAt = System.currentTimeMillis();
             try {
                 recordsFlushed = getRuntimeContext().getMetricGroup().counter("records_flushed");
@@ -109,47 +107,21 @@ public class ElasticsearchSinkFactory {
 
         @Override
         public void initializeState(FunctionInitializationContext context) {
-            // The live buffer is intentionally replayed from the upstream checkpoint.
+            // Snapshots flush durably; records after the snapshot are replayed upstream.
         }
 
         @Override
-        public synchronized void snapshotState(FunctionSnapshotContext context) {
-            if (buffer == null || checkpointSnapshots == null) {
+        public synchronized void snapshotState(FunctionSnapshotContext context) throws Exception {
+            if (buffer == null) {
                 return;
             }
-            checkpointSnapshots.put(context.getCheckpointId(), List.copyOf(buffer));
-        }
-
-        @Override
-        public synchronized void notifyCheckpointComplete(long checkpointId) throws Exception {
-            if (checkpointSnapshots == null) {
-                return;
-            }
-            List<DataEntity> snapshot = checkpointSnapshots.get(checkpointId);
-            if (snapshot == null) {
-                return;
-            }
-            List<DataEntity> recordsToFlush = recordsStillBuffered(snapshot);
-            if (!recordsToFlush.isEmpty()) {
-                try {
-                    executeBulkWithRetry(recordsToFlush);
-                } catch (Exception exception) {
-                    increment(writeFailures);
-                    throw exception;
-                }
-                removeByIdentity(recordsToFlush);
-                increment(recordsFlushed, recordsToFlush.size());
-            }
+            flush();
             increment(checkpointFlushes);
-            checkpointSnapshots.entrySet().removeIf(entry -> entry.getKey() <= checkpointId);
-            lastFlushAt = System.currentTimeMillis();
         }
 
         @Override
-        public synchronized void notifyCheckpointAborted(long checkpointId) {
-            if (checkpointSnapshots != null) {
-                checkpointSnapshots.remove(checkpointId);
-            }
+        public synchronized void notifyCheckpointComplete(long checkpointId) {
+            // Durability is established before the snapshot is acknowledged.
         }
 
         synchronized int bufferedRecordCount() {
@@ -355,37 +327,6 @@ public class ElasticsearchSinkFactory {
             return new ElasticsearchBulkResponseException(
                     "Elasticsearch Sink bulk response is invalid: " + detail,
                     cause);
-        }
-
-        private List<DataEntity> recordsStillBuffered(List<DataEntity> snapshot) {
-            IdentityHashMap<DataEntity, Integer> available = new IdentityHashMap<>();
-            for (DataEntity record : buffer) {
-                available.merge(record, 1, Integer::sum);
-            }
-            List<DataEntity> recordsToFlush = new ArrayList<>();
-            for (DataEntity snapshotRecord : snapshot) {
-                Integer count = available.get(snapshotRecord);
-                if (count != null && count > 0) {
-                    recordsToFlush.add(snapshotRecord);
-                    if (count == 1) {
-                        available.remove(snapshotRecord);
-                    } else {
-                        available.put(snapshotRecord, count - 1);
-                    }
-                }
-            }
-            return recordsToFlush;
-        }
-
-        private void removeByIdentity(List<DataEntity> records) {
-            for (DataEntity record : records) {
-                for (int index = 0; index < buffer.size(); index++) {
-                    if (buffer.get(index) == record) {
-                        buffer.remove(index);
-                        break;
-                    }
-                }
-            }
         }
 
         private static void increment(Counter counter) {

@@ -21,14 +21,14 @@ import org.junit.jupiter.api.Test;
 class InfluxDbSinkCheckpointTest {
 
     @Test
-    void lowVolumeRecordsFlushWhenCheckpointCompletes() throws Exception {
+    void lowVolumeRecordsAreDurableBeforeSnapshotReturns() throws Exception {
         try (TestServer server = new TestServer(204)) {
             InfluxDbSinkFactory.InfluxDbSinkFunction sink = sink(server, 0);
             sink.open(null);
             sink.invoke(entity(1L, "Ada"), null);
             sink.snapshotState(context(1L));
 
-            assertEquals(0, server.requestCount());
+            assertEquals(1, server.requestCount());
             sink.notifyCheckpointComplete(1L);
 
             assertEquals(1, server.requestCount());
@@ -62,7 +62,7 @@ class InfluxDbSinkCheckpointTest {
     }
 
     @Test
-    void abortedCheckpointDoesNotFlushItsSnapshot() throws Exception {
+    void abortedCheckpointMayExposeWritesWithAtLeastOnceDelivery() throws Exception {
         try (TestServer server = new TestServer(204)) {
             InfluxDbSinkFactory.InfluxDbSinkFunction sink = sink(server, 0);
             sink.open(null);
@@ -71,8 +71,8 @@ class InfluxDbSinkCheckpointTest {
             sink.notifyCheckpointAborted(4L);
             sink.notifyCheckpointComplete(4L);
 
-            assertEquals(0, server.requestCount());
-            assertEquals(1, sink.bufferedRecordCount());
+            assertEquals(1, server.requestCount());
+            assertEquals(0, sink.bufferedRecordCount());
         }
     }
 
@@ -112,12 +112,45 @@ class InfluxDbSinkCheckpointTest {
             InfluxDbSinkFactory.InfluxDbSinkFunction sink = sink(server, 3);
             sink.open(null);
             sink.invoke(entity(1L, "Ada"), null);
-            sink.snapshotState(context(6L));
-
-            assertThrows(IllegalStateException.class, () -> sink.notifyCheckpointComplete(6L));
+            assertThrows(IllegalStateException.class, () -> sink.snapshotState(context(6L)));
 
             assertEquals(1, server.requestCount());
             assertEquals(1, sink.bufferedRecordCount());
+        }
+    }
+
+    @Test
+    void recoveryAfterSnapshotDoesNotNeedTheCompletionCallback() throws Exception {
+        try (TestServer server = new TestServer(204)) {
+            InfluxDbSinkFactory.InfluxDbSinkFunction original = sink(server, 0);
+            original.open(null);
+            original.invoke(entity(1L, "Ada"), null);
+            original.snapshotState(context(8L));
+
+            InfluxDbSinkFactory.InfluxDbSinkFunction restored = sink(server, 0);
+            restored.initializeState(null);
+            restored.open(null);
+            restored.snapshotState(context(9L));
+            restored.notifyCheckpointComplete(9L);
+
+            assertEquals(1, server.requestCount());
+            assertTrue(server.bodies().get(0).contains("Ada"));
+        }
+    }
+
+    @Test
+    void failedSnapshotCanRetryTheRetainedBatch() throws Exception {
+        try (TestServer server = new TestServer(503, 204)) {
+            InfluxDbSinkFactory.InfluxDbSinkFunction sink = sink(server, 0);
+            sink.open(null);
+            sink.invoke(entity(1L, "Ada"), null);
+            assertThrows(IllegalStateException.class, () -> sink.snapshotState(context(10L)));
+            assertEquals(1, sink.bufferedRecordCount());
+
+            sink.snapshotState(context(11L));
+            assertEquals(2, server.requestCount());
+            assertEquals(server.bodies().get(0), server.bodies().get(1));
+            assertEquals(0, sink.bufferedRecordCount());
         }
     }
 

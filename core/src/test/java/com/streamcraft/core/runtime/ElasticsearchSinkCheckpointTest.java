@@ -22,14 +22,14 @@ import org.junit.jupiter.api.Test;
 class ElasticsearchSinkCheckpointTest {
 
     @Test
-    void lowVolumeRecordsFlushWhenCheckpointCompletes() throws Exception {
+    void lowVolumeRecordsAreDurableBeforeSnapshotReturns() throws Exception {
         try (TestServer server = new TestServer(items(201))) {
             ElasticsearchSinkFactory.ElasticsearchSinkFunction sink = sink(server, 0);
             sink.open(null);
             sink.invoke(entity(1L, "Ada"), null);
             sink.snapshotState(context(1L));
 
-            assertEquals(0, server.requestCount());
+            assertEquals(1, server.requestCount());
             sink.notifyCheckpointComplete(1L);
 
             assertEquals(1, server.requestCount());
@@ -64,7 +64,7 @@ class ElasticsearchSinkCheckpointTest {
     }
 
     @Test
-    void abortedCheckpointDoesNotFlushItsSnapshot() throws Exception {
+    void abortedCheckpointMayExposeWritesWithAtLeastOnceDelivery() throws Exception {
         try (TestServer server = new TestServer(items(201))) {
             ElasticsearchSinkFactory.ElasticsearchSinkFunction sink = sink(server, 0);
             sink.open(null);
@@ -73,8 +73,8 @@ class ElasticsearchSinkCheckpointTest {
             sink.notifyCheckpointAborted(4L);
             sink.notifyCheckpointComplete(4L);
 
-            assertEquals(0, server.requestCount());
-            assertEquals(1, sink.bufferedRecordCount());
+            assertEquals(1, server.requestCount());
+            assertEquals(0, sink.bufferedRecordCount());
         }
     }
 
@@ -136,9 +136,7 @@ class ElasticsearchSinkCheckpointTest {
             ElasticsearchSinkFactory.ElasticsearchSinkFunction sink = sink(server, 3);
             sink.open(null);
             sink.invoke(entity(1L, "Ada"), null);
-            sink.snapshotState(context(7L));
-
-            assertThrows(IllegalStateException.class, () -> sink.notifyCheckpointComplete(7L));
+            assertThrows(IllegalStateException.class, () -> sink.snapshotState(context(7L)));
 
             assertEquals(1, server.requestCount());
             assertEquals(1, sink.bufferedRecordCount());
@@ -151,9 +149,7 @@ class ElasticsearchSinkCheckpointTest {
             ElasticsearchSinkFactory.ElasticsearchSinkFunction sink = sink(server, 3);
             sink.open(null);
             sink.invoke(entity(1L, "Ada"), null);
-            sink.snapshotState(context(8L));
-
-            assertThrows(IllegalStateException.class, () -> sink.notifyCheckpointComplete(8L));
+            assertThrows(IllegalStateException.class, () -> sink.snapshotState(context(8L)));
 
             assertEquals(1, server.requestCount());
             assertEquals(1, sink.bufferedRecordCount());
@@ -166,9 +162,7 @@ class ElasticsearchSinkCheckpointTest {
             ElasticsearchSinkFactory.ElasticsearchSinkFunction sink = sink(server, 3);
             sink.open(null);
             sink.invoke(entity(1L, "Ada"), null);
-            sink.snapshotState(context(9L));
-
-            assertThrows(IllegalStateException.class, () -> sink.notifyCheckpointComplete(9L));
+            assertThrows(IllegalStateException.class, () -> sink.snapshotState(context(9L)));
 
             assertEquals(1, server.requestCount());
             assertEquals(1, sink.bufferedRecordCount());
@@ -181,12 +175,45 @@ class ElasticsearchSinkCheckpointTest {
             ElasticsearchSinkFactory.ElasticsearchSinkFunction sink = sink(server, 3);
             sink.open(null);
             sink.invoke(entity(1L, "Ada"), null);
-            sink.snapshotState(context(11L));
-
-            assertThrows(IllegalStateException.class, () -> sink.notifyCheckpointComplete(11L));
+            assertThrows(IllegalStateException.class, () -> sink.snapshotState(context(11L)));
 
             assertEquals(1, server.requestCount());
             assertEquals(1, sink.bufferedRecordCount());
+        }
+    }
+
+    @Test
+    void recoveryAfterSnapshotDoesNotNeedTheCompletionCallback() throws Exception {
+        try (TestServer server = new TestServer(items(201))) {
+            ElasticsearchSinkFactory.ElasticsearchSinkFunction original = sink(server, 0);
+            original.open(null);
+            original.invoke(entity(1L, "Ada"), null);
+            original.snapshotState(context(12L));
+
+            ElasticsearchSinkFactory.ElasticsearchSinkFunction restored = sink(server, 0);
+            restored.initializeState(null);
+            restored.open(null);
+            restored.snapshotState(context(13L));
+            restored.notifyCheckpointComplete(13L);
+
+            assertEquals(1, server.requestCount());
+            assertTrue(server.requestBodies().get(0).contains("\"_id\":\"1\""));
+        }
+    }
+
+    @Test
+    void failedSnapshotCanRetryTheRetainedBatch() throws Exception {
+        try (TestServer server = new TestServer(items(503), items(201))) {
+            ElasticsearchSinkFactory.ElasticsearchSinkFunction sink = sink(server, 0);
+            sink.open(null);
+            sink.invoke(entity(1L, "Ada"), null);
+            assertThrows(IllegalStateException.class, () -> sink.snapshotState(context(14L)));
+            assertEquals(1, sink.bufferedRecordCount());
+
+            sink.snapshotState(context(15L));
+            assertEquals(2, server.requestCount());
+            assertEquals(server.requestBodies().get(0), server.requestBodies().get(1));
+            assertEquals(0, sink.bufferedRecordCount());
         }
     }
 

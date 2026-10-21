@@ -14,7 +14,6 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -43,6 +42,8 @@ public class InfluxDbSinkFactory {
     /**
      * Checkpoint-aware legacy sink with at-least-once delivery semantics.
      * InfluxDB's HTTP write is not atomically coupled to Flink checkpoints.
+     * Writes finish before a checkpoint snapshot returns; aborted checkpoints
+     * may expose writes that are replayed after recovery.
      */
     static final class InfluxDbSinkFunction extends RichSinkFunction<DataEntity>
             implements CheckpointedFunction, CheckpointListener {
@@ -52,7 +53,6 @@ public class InfluxDbSinkFactory {
 
         private final InfluxDbSinkConfig config;
         private transient List<DataEntity> buffer;
-        private transient Map<Long, List<DataEntity>> checkpointSnapshots;
         private transient HttpClient httpClient;
         private transient long lastFlushAt;
         private transient Counter recordsFlushed;
@@ -70,7 +70,6 @@ public class InfluxDbSinkFactory {
                     .connectTimeout(Duration.ofMillis(config.connectTimeoutMillis()))
                     .build();
             buffer = new ArrayList<>();
-            checkpointSnapshots = new HashMap<>();
             lastFlushAt = System.currentTimeMillis();
             try {
                 recordsFlushed = getRuntimeContext().getMetricGroup().counter("records_flushed");
@@ -104,47 +103,21 @@ public class InfluxDbSinkFactory {
 
         @Override
         public void initializeState(FunctionInitializationContext context) {
-            // The live buffer is intentionally replayed from the upstream checkpoint.
+            // Snapshots flush durably; records after the snapshot are replayed upstream.
         }
 
         @Override
-        public synchronized void snapshotState(FunctionSnapshotContext context) {
-            if (buffer == null || checkpointSnapshots == null) {
+        public synchronized void snapshotState(FunctionSnapshotContext context) throws Exception {
+            if (buffer == null) {
                 return;
             }
-            checkpointSnapshots.put(context.getCheckpointId(), List.copyOf(buffer));
-        }
-
-        @Override
-        public synchronized void notifyCheckpointComplete(long checkpointId) throws Exception {
-            if (checkpointSnapshots == null) {
-                return;
-            }
-            List<DataEntity> snapshot = checkpointSnapshots.get(checkpointId);
-            if (snapshot == null) {
-                return;
-            }
-            List<DataEntity> recordsToFlush = recordsStillBuffered(snapshot);
-            if (!recordsToFlush.isEmpty()) {
-                try {
-                    executeWriteWithRetry(lineProtocol(recordsToFlush));
-                } catch (Exception exception) {
-                    increment(writeFailures);
-                    throw exception;
-                }
-                removeByIdentity(recordsToFlush);
-                increment(recordsFlushed, recordsToFlush.size());
-            }
+            flush();
             increment(checkpointFlushes);
-            checkpointSnapshots.entrySet().removeIf(entry -> entry.getKey() <= checkpointId);
-            lastFlushAt = System.currentTimeMillis();
         }
 
         @Override
-        public synchronized void notifyCheckpointAborted(long checkpointId) {
-            if (checkpointSnapshots != null) {
-                checkpointSnapshots.remove(checkpointId);
-            }
+        public synchronized void notifyCheckpointComplete(long checkpointId) {
+            // Durability is established before the snapshot is acknowledged.
         }
 
         synchronized int bufferedRecordCount() {
@@ -165,32 +138,6 @@ public class InfluxDbSinkFactory {
             buffer.clear();
             increment(recordsFlushed, records.size());
             lastFlushAt = System.currentTimeMillis();
-        }
-
-        private List<DataEntity> recordsStillBuffered(List<DataEntity> snapshot) {
-            List<DataEntity> available = new ArrayList<>(buffer);
-            List<DataEntity> recordsToFlush = new ArrayList<>();
-            for (DataEntity snapshotRecord : snapshot) {
-                for (int index = 0; index < available.size(); index++) {
-                    if (available.get(index) == snapshotRecord) {
-                        recordsToFlush.add(snapshotRecord);
-                        available.remove(index);
-                        break;
-                    }
-                }
-            }
-            return recordsToFlush;
-        }
-
-        private void removeByIdentity(List<DataEntity> records) {
-            for (DataEntity record : records) {
-                for (int index = 0; index < buffer.size(); index++) {
-                    if (buffer.get(index) == record) {
-                        buffer.remove(index);
-                        break;
-                    }
-                }
-            }
         }
 
         private static void increment(Counter counter) {
