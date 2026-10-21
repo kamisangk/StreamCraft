@@ -13,6 +13,19 @@ class PipelineNodeConfigValidationSupportTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
+    void acceptsKafkaTransactionTimeoutWhenOmittedOrNull() throws Exception {
+        var config = objectMapper.readTree("""
+                {"bootstrapServers":"broker:9092","topic":"out","deliveryGuarantee":"AT_LEAST_ONCE",
+                 "format":"JSON","authType":"NONE"}
+                """);
+        assertDoesNotThrow(() -> PipelineNodeConfigValidationSupport.validateSinkConfig("KAFKA_SINK", config,
+                issue -> new IllegalArgumentException(issue.defaultMessage())));
+        ((com.fasterxml.jackson.databind.node.ObjectNode) config).putNull("transactionTimeoutMs");
+        assertDoesNotThrow(() -> PipelineNodeConfigValidationSupport.validateSinkConfig("KAFKA_SINK", config,
+                issue -> new IllegalArgumentException(issue.defaultMessage())));
+    }
+
+    @Test
     void rejectsInvalidKafkaTransactionTimeoutBeforeSubmission() throws Exception {
         JsonNode config = objectMapper.readTree("""
                 {"bootstrapServers":"broker:9092","topic":"out","deliveryGuarantee":"EXACTLY_ONCE",

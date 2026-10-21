@@ -214,7 +214,7 @@ public final class PipelineNodeConfigValidationSupport {
         requireText(config, "bootstrapServers", error);
         requireText(config, "topic", error);
         JsonNode transactionTimeout = path(config, "transactionTimeoutMs");
-        if (transactionTimeout != null && !transactionTimeout.isNull()
+        if (transactionTimeout != null && !transactionTimeout.isMissingNode() && !transactionTimeout.isNull()
                 && (!transactionTimeout.isIntegralNumber() || !transactionTimeout.canConvertToInt()
                 || transactionTimeout.intValue() <= 0)) {
             throw error.apply(new ValidationError(
