@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "d8df5cf2-b541-44dc-a6c0-257276bfdbc0",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "D:\\dev\\StreamCraft\\.archify\\architecture-streamcraft-20261109-222931\\candidate.json",
+  "output": "D:\\dev\\StreamCraft\\.github\\docs\\assets\\streamcraft-architecture.html",
+  "specification": {
+    "sha256": "ce0babba9d384a8e53c93898813a35f04e735f25db09b1a0a6aaddc939d07f3c",
+    "bytes": 5578
+  },
+  "artifact": {
+    "sha256": "e0d4c3abe3ced7db43008086a87c6aeaca11dfb5a055d145682a63c8392fcb00",
+    "bytes": 850481
+  }
+}

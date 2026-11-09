@@ -31,6 +31,16 @@ StreamCraft 把流处理作业的搭建从写代码变成画图：在浏览器 D
 - **运行时监控**：作业状态、Flink 指标、运行数据实时查看
 - **数据库支持**：默认 SQLite 开箱即用，可切换 MySQL
 
+## 项目架构
+
+![StreamCraft 项目架构](.github/docs/assets/streamcraft-architecture.svg)
+
+[查看交互式架构图](.github/docs/assets/streamcraft-architecture.html) · [Archify 可编辑源文件](.archify/architecture-streamcraft-20261109-222931/candidate.json)
+
+Spring Boot Service 负责管理管道定义与运行元数据。运行管道时，Service 启动本地 Core 提交进程，由该进程读取已保存的 DSL、构建 JobGraph，再通过 REST 提交到 Flink。Service 根据持久化的 JobID 查询作业状态、指标或请求停止作业。
+
+Source → Transform → Sink 数据处理在 Flink 集群中执行，直接读写外部系统。DSL 校验和连接器解析代码由 Service 与 Core 共享；预览通过本地 Core 进程运行，并拦截外部 Sink。图中展示的是逻辑运行架构，具体部署方式可按环境调整。
+
 ## 截图
 
 <p align="center">

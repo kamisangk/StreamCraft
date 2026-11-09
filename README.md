@@ -31,6 +31,16 @@ It consists of two parts:
 - **Runtime monitoring**: job status, Flink metrics, and runtime data in real time
 - **Database support**: SQLite out of the box, switchable to MySQL
 
+## Architecture
+
+![StreamCraft architecture](.github/docs/assets/streamcraft-architecture.svg)
+
+[Interactive architecture diagram](.github/docs/assets/streamcraft-architecture.html) · [Editable Archify source](.archify/architecture-streamcraft-20261109-222931/candidate.json)
+
+The Spring Boot service manages pipeline definitions and runtime metadata. To run a pipeline, it starts a local Core submission process, which loads the saved DSL, builds a JobGraph, and submits it to Flink through REST. The service uses the stored JobID to query job status and metrics or request cancellation.
+
+Source → Transform → Sink processing runs in the Flink cluster and connects directly to external systems. Shared DSL validation and connector parsing code is compiled into both Service and Core; previews run in a local Core process with external sinks intercepted. The diagram shows the logical runtime architecture rather than a specific deployment topology.
+
 ## Screenshots
 
 Kafka sinks using `EXACTLY_ONCE` require checkpointing and a stable deployment

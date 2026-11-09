@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "StreamCraft 项目架构",
+    "locale": "zh-CN",
+    "output": ".archify/architecture-streamcraft-20261109-222931/streamcraft.html",
+    "quality_profile": "showcase",
+    "repository": {"url": "https://github.com/kamisangk/StreamCraft", "revision": "7122ccdd36ed08f4c71fd3032a1467e02b91ff1d"}
+  },
+  "components": [
+    {"id": "studio", "type": "frontend", "label": "DAG Studio / 监控页", "sublabel": "浏览器 · 可视化编排与监控", "pos": [40, 100], "size": [220, 84], "sources": [{"path": "service/src/main/resources/static/js/studio-editor.js", "line": 5593, "end_line": 5605}, {"path": "service/src/main/resources/static/js/studio-editor.js", "line": 5644, "end_line": 5654}, {"path": "service/src/main/resources/static/js/studio-editor.js", "line": 6900, "end_line": 6907}]},
+    {"id": "service", "type": "backend", "label": "StreamCraft Service", "sublabel": "Spring Boot · API / 校验 / 生命周期", "pos": [390, 100], "size": [250, 84], "sources": [{"path": "service/src/main/java/com/streamcraft/service/pipeline/service/PipelineCrudService.java", "line": 40, "end_line": 51}, {"path": "service/src/main/java/com/streamcraft/service/flink/service/CompositeFlinkJobGateway.java", "line": 41, "end_line": 76}, {"path": "service/src/main/java/com/streamcraft/service/pipeline/service/PipelineRuntimeStateSupport.java", "line": 111, "end_line": 165}]},
+    {"id": "submitter", "type": "backend", "label": "Core 提交进程", "sublabel": "加载 DSL · 编译 JobGraph", "pos": [780, 100], "size": [230, 84], "sources": [{"path": "service/src/main/java/com/streamcraft/service/flink/client/LocalCoreProcessClient.java", "line": 47, "end_line": 92}, {"path": "core/src/main/java/com/streamcraft/core/StreamCraftCoreApplication.java", "line": 136, "end_line": 163}, {"path": "core/src/main/java/com/streamcraft/core/config/PipelineDefinitionLoader.java", "line": 28, "end_line": 49}]},
+    {"id": "flink", "type": "cloud", "label": "Flink 集群", "sublabel": "JobManager · REST / 调度 / 作业状态", "pos": [1160, 100], "size": [260, 84], "sources": [{"path": "core/src/main/java/com/streamcraft/core/StreamCraftCoreApplication.java", "line": 144, "end_line": 160}, {"path": "service/src/main/java/com/streamcraft/service/flink/client/FlinkJobControlClient.java", "line": 19, "end_line": 32}]},
+    {"id": "metadata", "type": "database", "label": "SQLite / MySQL", "sublabel": "管道 DSL · JobID · 运行目标 / 提交记录", "pos": [390, 370], "size": [270, 84], "sources": [{"path": "service/src/main/resources/application.properties", "line": 14, "end_line": 30}, {"path": "service/src/main/java/com/streamcraft/service/pipeline/model/Pipeline.java", "line": 16, "end_line": 42}, {"path": "service/src/main/java/com/streamcraft/service/pipeline/persistence/PipelineRepository.java", "line": 8, "end_line": 12}]},
+    {"id": "inputs", "type": "external", "label": "外部数据源", "sublabel": "Kafka · JDBC · ES · InfluxDB · HDFS", "pos": [780, 370], "size": [260, 84], "sources": [{"path": "core/src/main/java/com/streamcraft/core/runtime/PipelineRuntime.java", "line": 118, "end_line": 137}]},
+    {"id": "runtime", "type": "backend", "label": "Core 作业 / TaskManager", "sublabel": "Source → Transform → Sink", "pos": [1160, 370], "size": [260, 84], "sources": [{"path": "core/src/main/java/com/streamcraft/core/runtime/PipelineRuntime.java", "line": 71, "end_line": 109}, {"path": "core/src/main/java/com/streamcraft/core/StreamCraftCoreApplication.java", "line": 54, "end_line": 92}]},
+    {"id": "outputs", "type": "external", "label": "外部写入目标", "sublabel": "Kafka · JDBC · ES · InfluxDB · HDFS", "pos": [1480, 370], "size": [260, 84], "sources": [{"path": "core/src/main/java/com/streamcraft/core/runtime/PipelineRuntime.java", "line": 96, "end_line": 109}]}
+  ],
+  "boundaries": [
+    {"kind": "region", "label": "管理端主机", "wraps": ["service", "submitter"], "pad": 24},
+    {"kind": "region", "label": "Flink 运行环境", "wraps": ["flink", "runtime"], "pad": 24}
+  ],
+  "connections": [
+    {"id": "author", "from": "studio", "to": "service", "label": "HTTP API", "variant": "emphasis"},
+    {"id": "launch", "from": "service", "to": "submitter", "label": "启动 · DSL URL", "variant": "emphasis"},
+    {"id": "submit", "from": "submitter", "to": "flink", "label": "REST 提交", "variant": "emphasis"},
+    {"id": "observe", "from": "service", "to": "flink", "label": "状态 · 指标 · 停止", "variant": "dashed"},
+    {"id": "persist", "from": "service", "to": "metadata", "label": "JPA 读写"},
+    {"id": "schedule", "from": "flink", "to": "runtime", "label": "调度与执行"},
+    {"id": "read", "from": "inputs", "to": "runtime", "label": "读取", "variant": "emphasis"},
+    {"id": "write", "from": "runtime", "to": "outputs", "label": "写入", "variant": "emphasis"}
+  ],
+  "cards": [
+    {"dot": "cyan", "title": "编排与提交", "items": ["Service 保存并校验 DSL；本地 Core 子进程通过受保护的定义接口加载 DSL，编译并提交 JobGraph，返回 JobID。"]},
+    {"dot": "emerald", "title": "计算与观测", "items": ["数据在 Flink 作业中经过 Source、Transform 和 Sink；Service 按已保存的 JobID 查询 Flink 状态与指标。"]},
+    {"dot": "violet", "title": "代码复用与预览", "items": ["core/src/shared/java 的 DSL 与连接器解析代码同时编入 Service 和 Core；预览使用本地 Core 进程并拦截外部 Sink。"]}
+  ]
+}
