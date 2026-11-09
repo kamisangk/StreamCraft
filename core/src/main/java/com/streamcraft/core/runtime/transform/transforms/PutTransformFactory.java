@@ -4,6 +4,7 @@ import com.streamcraft.core.model.DataEntity;
 import com.streamcraft.core.model.PipelineNode;
 import com.streamcraft.core.runtime.transform.TransformFactory;
 import com.streamcraft.core.runtime.transform.TransformOutputs;
+import com.streamcraft.shared.fields.FieldPathSupport;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -23,7 +24,7 @@ public class PutTransformFactory implements TransformFactory {
                         .name(node.name()));
     }
 
-    private static Object resolveValue(DataEntity entity, String value) {
+    static Object resolveValue(DataEntity entity, String value) {
         if (value == null) {
             return null;
         }
@@ -35,17 +36,21 @@ public class PutTransformFactory implements TransformFactory {
 
         matcher.reset();
         if (matcher.matches()) {
-            return entity.fields().get(matcher.group(1));
+            return referenceValue(entity, matcher.group(1));
         }
 
         StringBuilder resolved = new StringBuilder();
         int cursor = 0;
         while (matcher.find()) {
             resolved.append(value, cursor, matcher.start());
-            resolved.append(Objects.toString(entity.fields().get(matcher.group(1)), "null"));
+            resolved.append(Objects.toString(referenceValue(entity, matcher.group(1)), "null"));
             cursor = matcher.end();
         }
         resolved.append(value.substring(cursor));
         return resolved.toString();
+    }
+
+    private static Object referenceValue(DataEntity entity, String path) {
+        return FieldPathSupport.lookup(entity.fields(), path).value();
     }
 }
