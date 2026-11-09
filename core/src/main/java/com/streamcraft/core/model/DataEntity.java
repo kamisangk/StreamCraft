@@ -2,7 +2,6 @@ package com.streamcraft.core.model;
 
 import java.io.Serializable;
 import java.util.LinkedHashMap;
-import java.util.HashMap;
 import java.util.Map;
 
 public record DataEntity(
@@ -12,18 +11,18 @@ public record DataEntity(
         Map<String, String> headers) implements Serializable {
 
     public DataEntity {
-        fields = fields == null ? new HashMap<>() : new HashMap<>(fields);
-        headers = headers == null ? new HashMap<>() : new HashMap<>(headers);
+        fields = fields == null ? new LinkedHashMap<>() : new LinkedHashMap<>(fields);
+        headers = headers == null ? new LinkedHashMap<>() : new LinkedHashMap<>(headers);
     }
 
     public DataEntity withField(String key, Object value) {
-        Map<String, Object> newFields = new HashMap<>(fields);
+        Map<String, Object> newFields = new LinkedHashMap<>(fields);
         putNestedValue(newFields, key, value);
         return new DataEntity(id, timestamp, newFields, headers);
     }
 
     public DataEntity withoutField(String key) {
-        Map<String, Object> newFields = new HashMap<>(fields);
+        Map<String, Object> newFields = new LinkedHashMap<>(fields);
         removeNestedValue(newFields, key);
         return new DataEntity(id, timestamp, newFields, headers);
     }
