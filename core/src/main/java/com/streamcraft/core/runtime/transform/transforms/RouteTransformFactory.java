@@ -98,7 +98,10 @@ public class RouteTransformFactory implements TransformFactory {
             try {
                 return Boolean.TRUE.equals(route.condition().evaluateBoolean(entity.fields()));
             } catch (Exception exception) {
-                return false;
+                throw new IllegalArgumentException(
+                        "Failed to evaluate route condition for port '" + route.portId()
+                                + "' on record '" + entity.id() + "'.",
+                        exception);
             }
         }
     }
