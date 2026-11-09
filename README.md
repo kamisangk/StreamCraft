@@ -35,7 +35,7 @@ It consists of two parts:
 
 ![StreamCraft architecture](.github/docs/assets/streamcraft-architecture.svg)
 
-[Interactive architecture diagram](.github/docs/assets/streamcraft-architecture.html) · [Editable Archify source](.archify/architecture-streamcraft-20261109-222931/candidate.json)
+[Interactive architecture diagram](.github/docs/assets/streamcraft-architecture.html) · [Editable Archify source](.github/docs/.archify/architecture-streamcraft-20261109-222931/candidate.json)
 
 The Spring Boot service manages pipeline definitions and runtime metadata. To run a pipeline, it starts a local Core submission process, which loads the saved DSL, builds a JobGraph, and submits it to Flink through REST. The service uses the stored JobID to query job status and metrics or request cancellation.
 

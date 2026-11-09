@@ -35,7 +35,7 @@ StreamCraft 把流处理作业的搭建从写代码变成画图：在浏览器 D
 
 ![StreamCraft 项目架构](.github/docs/assets/streamcraft-architecture.svg)
 
-[查看交互式架构图](.github/docs/assets/streamcraft-architecture.html) · [Archify 可编辑源文件](.archify/architecture-streamcraft-20261109-222931/candidate.json)
+[查看交互式架构图](.github/docs/assets/streamcraft-architecture.html) · [Archify 可编辑源文件](.github/docs/.archify/architecture-streamcraft-20261109-222931/candidate.json)
 
 Spring Boot Service 负责管理管道定义与运行元数据。运行管道时，Service 启动本地 Core 提交进程，由该进程读取已保存的 DSL、构建 JobGraph，再通过 REST 提交到 Flink。Service 根据持久化的 JobID 查询作业状态、指标或请求停止作业。
 
