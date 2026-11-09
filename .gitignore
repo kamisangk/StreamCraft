@@ -32,3 +32,6 @@ temp/
 /.trellis/
 /.gitattributes
 /AGENTS.md
+
+# Local deployment probes and environment records
+/P1_RUNTIME_BASELINE.md
