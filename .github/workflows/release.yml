@@ -26,6 +26,18 @@ jobs:
           java-version: "17"
           cache: maven
 
+      - name: Set Maven version from release tag
+        shell: bash
+        run: |
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
+            printf 'Invalid release tag: %s (expected vMAJOR.MINOR.PATCH or a prerelease)\n' "${GITHUB_REF_NAME}" >&2
+            exit 1
+          fi
+          mvn -B -ntp org.codehaus.mojo:versions-maven-plugin:2.18.0:set \
+            -DnewVersion="${GITHUB_REF_NAME#v}" \
+            -DprocessAllModules=true \
+            -DgenerateBackupPoms=false
+
       - name: Build with Maven
         run: mvn -B -ntp clean package
 
