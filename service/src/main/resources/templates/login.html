@@ -191,8 +191,10 @@
     <footer class="login-footer relative z-10">
         <span>&copy; 2026 STREAMCRAFT</span>
         <span class="login-footer-status">
-            <span>V0.1.0</span>
-            <span class="login-footer-dot" aria-hidden="true"></span>
+            <th:block th:if="${buildVersion != null}">
+                <span id="login-build-version" th:text="|V${buildVersion}|"></span>
+                <span class="login-footer-dot" aria-hidden="true"></span>
+            </th:block>
             <span id="login-clock">--:--:--</span>
         </span>
     </footer>

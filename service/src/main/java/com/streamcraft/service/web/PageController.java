@@ -2,7 +2,9 @@ package com.streamcraft.service.web;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Locale;
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.context.MessageSource;
 import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -16,10 +18,16 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class PageController {
 
     private final MessageSource messageSource;
+    private final String buildVersion;
 
     @Autowired
-    public PageController(MessageSource messageSource) {
+    public PageController(MessageSource messageSource, Optional<BuildProperties> buildProperties) {
         this.messageSource = messageSource;
+        this.buildVersion = buildProperties.map(BuildProperties::getVersion).orElse(null);
+    }
+
+    public PageController(MessageSource messageSource) {
+        this(messageSource, Optional.empty());
     }
 
     PageController() {
@@ -32,7 +40,7 @@ public class PageController {
     }
 
     @GetMapping("/login")
-    public String login(Authentication authentication, HttpServletRequest request) {
+    public String login(Authentication authentication, HttpServletRequest request, Model model) {
         if (isLoggedIn(authentication)) {
             return "redirect:/main";
         }
@@ -45,6 +53,7 @@ public class PageController {
             csrfToken.getToken();
         }
 
+        model.addAttribute("buildVersion", buildVersion);
         return "login";
     }
 
