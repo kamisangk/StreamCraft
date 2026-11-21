@@ -30,6 +30,7 @@ public final class RuntimePortContract {
     private static final Set<String> SOURCE_OPERATORS = Set.of(
             "KAFKA_SOURCE",
             "JDBC_SOURCE",
+            "MYSQL_SOURCE",
             "ELASTICSEARCH_SOURCE",
             "INFLUXDB_SOURCE",
             "HDFS_FILE_SOURCE");

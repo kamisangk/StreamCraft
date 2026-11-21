@@ -970,6 +970,9 @@
                             class="operator-palette-item studio-operator-item w-full text-left"
                             draggable="true"
                             data-operator-key="jdbcSource" th:text="#{studio.operator.jdbcSource}">JDBC Source</button>
+                    <button type="button" class="operator-palette-item studio-operator-item w-full text-left"
+                            draggable="true" data-operator-key="mysqlSource"
+                            th:text="#{studio.operator.mysqlSource}">MySQL Source</button>
                     <button type="button"
                             class="operator-palette-item studio-operator-item w-full text-left"
                             draggable="true"
@@ -1260,7 +1263,7 @@
                                     <label for="jdbc-url" class="sc-form-label" th:text="#{studio.field.jdbcUrl}">JDBC URL</label>
                                     <input id="jdbc-url" type="text" class="sc-input" placeholder="jdbc:postgresql://127.0.0.1:5432/dw">
                                 </div>
-                                <div>
+                                <div id="jdbc-driver-field">
                                     <label for="jdbc-driver" class="sc-form-label" th:text="#{studio.field.jdbcDriver}">Driver class</label>
                                     <input id="jdbc-driver" type="text" class="sc-input" placeholder="org.postgresql.Driver">
                                 </div>
@@ -1329,6 +1332,26 @@
                                 <div>
                                     <label for="jdbc-timestamp-field" class="sc-form-label" th:text="#{studio.field.timestampField}">Timestamp field</label>
                                     <input id="jdbc-timestamp-field" type="text" class="sc-input" placeholder="updated_at">
+                                </div>
+                                <div id="mysql-source-partitions" class="space-y-4 hidden">
+                                    <div>
+                                        <label for="mysql-source-partition-num" class="sc-form-label" th:text="#{studio.field.mysqlPartitionNum}">Partitions</label>
+                                        <input id="mysql-source-partition-num" type="number" min="1" step="1" class="sc-input">
+                                    </div>
+                                    <div id="mysql-source-partition-range" class="space-y-4 hidden">
+                                        <div>
+                                            <label for="mysql-source-partition-column" class="sc-form-label" th:text="#{studio.field.mysqlPartitionColumn}">Partition column</label>
+                                            <input id="mysql-source-partition-column" type="text" class="sc-input" placeholder="id">
+                                        </div>
+                                        <div>
+                                            <label for="mysql-source-partition-lower-bound" class="sc-form-label" th:text="#{studio.field.mysqlPartitionLowerBound}">Lower bound (inclusive)</label>
+                                            <input id="mysql-source-partition-lower-bound" type="text" inputmode="numeric" class="sc-input">
+                                        </div>
+                                        <div>
+                                            <label for="mysql-source-partition-upper-bound" class="sc-form-label" th:text="#{studio.field.mysqlPartitionUpperBound}">Upper bound (inclusive)</label>
+                                            <input id="mysql-source-partition-upper-bound" type="text" inputmode="numeric" class="sc-input">
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div id="elasticsearch-config-section" class="space-y-4 hidden">

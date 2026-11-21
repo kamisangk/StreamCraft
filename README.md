@@ -118,9 +118,19 @@ The root `pom.xml` builds the `core`, `service`, and `streamcraft-dist` modules;
 |---|---|
 | `KAFKA_SOURCE` | Consume Kafka records |
 | `JDBC_SOURCE` | Read relational data in full or incremental mode |
+| `MYSQL_SOURCE` | Read a MySQL table or SELECT query with optional numeric partitions or cursor polling |
 | `ELASTICSEARCH_SOURCE` | Read Elasticsearch documents in full or incremental mode |
 | `INFLUXDB_SOURCE` | Read InfluxDB time-series data |
 | `HDFS_FILE_SOURCE` | Read files from HDFS |
+
+For `MYSQL_SOURCE`, set `url` (`jdbc:mysql://host:3306/database`), optional
+`username` and `password`, and either `tablePath` or `query`. The Core JAR
+includes Connector/J. `fetchSize` defaults to 1000. For a bounded range scan,
+set `partitionNum`, `partitionColumn`, `partitionLowerBound` and
+`partitionUpperBound`. Both bounds are inclusive and the partition column must
+be an integer column in the query result. With `readMode: INCREMENTAL`, use
+`cursorField` and `cursorType` to poll for new rows with a single reader.
+`sampleData` supplies records for Studio preview.
 
 ### Transforms
 

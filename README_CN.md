@@ -112,9 +112,17 @@ StreamCraft/
 |---|---|
 | `KAFKA_SOURCE` | 消费 Kafka 记录 |
 | `JDBC_SOURCE` | 以全量或增量模式读取关系型数据库数据 |
+| `MYSQL_SOURCE` | 读取 MySQL 表或 SELECT 查询，支持数字范围分片和游标轮询 |
 | `ELASTICSEARCH_SOURCE` | 以全量或增量模式读取 Elasticsearch 文档 |
 | `INFLUXDB_SOURCE` | 读取 InfluxDB 时序数据 |
 | `HDFS_FILE_SOURCE` | 从 HDFS 读取文件 |
+
+`MYSQL_SOURCE` 使用 `url`（`jdbc:mysql://host:3306/database`）、可选的
+`username` 和 `password`，以及 `tablePath` 或 `query`。Core JAR 内置
+Connector/J，`fetchSize` 默认 1000。全量分片使用 `partitionNum`、
+`partitionColumn`、`partitionLowerBound` 和 `partitionUpperBound`，上下界均包含，
+分片列须为查询结果中的整数列。增量轮询使用 `readMode: INCREMENTAL`、
+`cursorField` 和 `cursorType`，由单个 reader 执行。Studio 预览读取 `sampleData`。
 
 ### Transform
 

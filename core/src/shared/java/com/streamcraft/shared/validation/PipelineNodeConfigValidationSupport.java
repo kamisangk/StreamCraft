@@ -18,6 +18,7 @@ import com.streamcraft.shared.influxdb.InfluxDbSinkConfigParser;
 import com.streamcraft.shared.influxdb.InfluxDbSourceConfigParser;
 import com.streamcraft.shared.jdbc.JdbcSinkConfigParser;
 import com.streamcraft.shared.jdbc.JdbcSourceConfigParser;
+import com.streamcraft.shared.jdbc.MysqlConnectorConfig;
 import com.streamcraft.shared.lookup.LookupEnrichConfigParser;
 import com.streamcraft.shared.lookupjoin.LookupJoinConfigParser;
 import com.streamcraft.shared.maskhash.MaskHashConfigParser;
@@ -97,6 +98,9 @@ public final class PipelineNodeConfigValidationSupport {
             ValidationErrorFactory error) {
         switch (operator) {
             case "KAFKA_SOURCE" -> validateKafkaSource(config, error);
+            case "MYSQL_SOURCE" -> MysqlConnectorConfig.parseSourceValidated(
+                    config, issue -> error.apply(new ValidationError(
+                            issue.messageKey(), issue.defaultMessage(), issue.args())));
             case "JDBC_SOURCE" -> JdbcSourceConfigParser.parseValidated(
                     config, validationError -> error.apply(new ValidationError(
                             validationError.messageKey(),

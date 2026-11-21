@@ -125,7 +125,7 @@ public class PipelineRuntime {
         } else {
             sourceStream = switch (sourceNode.operator()) {
                 case KAFKA_SOURCE -> kafkaSourceFactory.create(env, sourceNode);
-                case JDBC_SOURCE -> jdbcSourceFactory.create(env, sourceNode);
+                case JDBC_SOURCE, MYSQL_SOURCE -> jdbcSourceFactory.create(env, sourceNode);
                 case ELASTICSEARCH_SOURCE -> elasticsearchSourceFactory.create(env, sourceNode);
                 case INFLUXDB_SOURCE -> influxDbSourceFactory.create(env, sourceNode);
                 case HDFS_FILE_SOURCE -> hdfsFileSourceFactory.create(env, sourceNode);

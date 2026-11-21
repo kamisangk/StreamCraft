@@ -17,6 +17,7 @@ public final class RuntimePipelineValidationSupport {
     public static final String SINK_TYPE = "SINK";
     public static final String KAFKA_SOURCE_OPERATOR = "KAFKA_SOURCE";
     public static final String JDBC_SOURCE_OPERATOR = "JDBC_SOURCE";
+    public static final String MYSQL_SOURCE_OPERATOR = "MYSQL_SOURCE";
     public static final String ELASTICSEARCH_SOURCE_OPERATOR = "ELASTICSEARCH_SOURCE";
     public static final String INFLUXDB_SOURCE_OPERATOR = "INFLUXDB_SOURCE";
     public static final String HDFS_FILE_SOURCE_OPERATOR = "HDFS_FILE_SOURCE";
@@ -76,7 +77,7 @@ public final class RuntimePipelineValidationSupport {
         switch (node.type()) {
             case SOURCE_TYPE -> requireCompatibleOperator(
                     node,
-                    Set.of(KAFKA_SOURCE_OPERATOR, JDBC_SOURCE_OPERATOR, ELASTICSEARCH_SOURCE_OPERATOR,
+                    Set.of(KAFKA_SOURCE_OPERATOR, JDBC_SOURCE_OPERATOR, MYSQL_SOURCE_OPERATOR, ELASTICSEARCH_SOURCE_OPERATOR,
                             INFLUXDB_SOURCE_OPERATOR, HDFS_FILE_SOURCE_OPERATOR));
             case SINK_TYPE -> requireCompatibleOperator(
                     node,
@@ -224,6 +225,7 @@ public final class RuntimePipelineValidationSupport {
         Set<String> operators = new HashSet<>();
         operators.add(KAFKA_SOURCE_OPERATOR);
         operators.add(JDBC_SOURCE_OPERATOR);
+        operators.add(MYSQL_SOURCE_OPERATOR);
         operators.add(ELASTICSEARCH_SOURCE_OPERATOR);
         operators.add(INFLUXDB_SOURCE_OPERATOR);
         operators.add(HDFS_FILE_SOURCE_OPERATOR);

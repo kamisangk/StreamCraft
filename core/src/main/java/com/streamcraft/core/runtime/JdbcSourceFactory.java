@@ -2,9 +2,11 @@ package com.streamcraft.core.runtime;
 
 import com.streamcraft.core.model.DataEntity;
 import com.streamcraft.core.model.PipelineNode;
+import com.streamcraft.core.model.PipelineOperator;
 import com.streamcraft.shared.jdbc.JdbcSourceConfig;
 import com.streamcraft.shared.jdbc.JdbcSourceConfig.CursorType;
 import com.streamcraft.shared.jdbc.JdbcSourceConfigParser;
+import com.streamcraft.shared.jdbc.MysqlConnectorConfig;
 import java.sql.Timestamp;
 import java.time.Instant;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
@@ -14,9 +16,9 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 public class JdbcSourceFactory {
 
     public DataStream<DataEntity> create(StreamExecutionEnvironment env, PipelineNode sourceNode) {
-        JdbcSourceConfig config = JdbcSourceConfigParser.parse(
-                sourceNode.config(),
-                IllegalArgumentException::new);
+        JdbcSourceConfig config = sourceNode.operator() == PipelineOperator.MYSQL_SOURCE
+                ? MysqlConnectorConfig.parseSource(sourceNode.config(), IllegalArgumentException::new)
+                : JdbcSourceConfigParser.parse(sourceNode.config(), IllegalArgumentException::new);
         if (config.rangeSplittingEnabled()) {
             return env.fromSource(new JdbcSource(config), WatermarkStrategy.noWatermarks(), sourceNode.name())
                     .setParallelism(config.splitCount());

@@ -105,6 +105,19 @@ const OPERATOR_CATALOG = {
             sampleData: [""]
         }
     },
+    mysqlSource: {
+        type: "SOURCE",
+        operator: "MYSQL_SOURCE",
+        defaultName: t("studio.operator.mysqlSource", "MySQL Source"),
+        runnableInRuntime: true,
+        defaultConfig: {
+            url: "", username: "", password: "", query: "", tablePath: "", readMode: "FULL",
+            cursorField: "", cursorType: "STRING", initialCursorValue: "", pollIntervalMillis: 5000,
+            fetchSize: 1000, maxPolls: 0, idField: "", timestampField: "", partitionNum: 1,
+            partitionColumn: "", partitionLowerBound: "", partitionUpperBound: "",
+            format: "JSON", sampleData: [""]
+        }
+    },
     elasticsearchSource: {
         type: "SOURCE",
         operator: "ELASTICSEARCH_SOURCE",
@@ -2252,8 +2265,15 @@ function updateHdfsFileSinkFilenameUI(customFilename) {
 }
 
 function updateSourceConfigSections(operator) {
+    const mysql = operator === "MYSQL_SOURCE";
     byId("kafka-config-section")?.classList.toggle("hidden", operator !== "KAFKA_SOURCE");
-    byId("jdbc-config-section")?.classList.toggle("hidden", operator !== "JDBC_SOURCE");
+    byId("jdbc-config-section")?.classList.toggle("hidden", operator !== "JDBC_SOURCE" && !mysql);
+    byId("jdbc-driver-field")?.classList.toggle("hidden", mysql);
+    if (byId("jdbc-url")) {
+        byId("jdbc-url").placeholder = mysql ? "jdbc:mysql://localhost:3306/shop" : "jdbc:postgresql://127.0.0.1:5432/dw";
+        byId("jdbc-table-path").placeholder = mysql ? "shop.orders" : "public.orders";
+        byId("jdbc-query").placeholder = mysql ? "select id, updated_at, amount from shop.orders" : "select id, updated_at, amount from public.orders";
+    }
     byId("elasticsearch-config-section")?.classList.toggle("hidden", operator !== "ELASTICSEARCH_SOURCE");
     byId("influxdb-config-section")?.classList.toggle("hidden", operator !== "INFLUXDB_SOURCE");
     byId("hdfs-file-config-section")?.classList.toggle("hidden", operator !== "HDFS_FILE_SOURCE");
@@ -2261,6 +2281,9 @@ function updateSourceConfigSections(operator) {
 
 function updateJdbcReadModeUI(readMode) {
     byId("jdbc-incremental-config")?.classList.toggle("hidden", readMode !== "INCREMENTAL");
+    const mysql = findNodeById(state.selectedNodeId)?.operator === "MYSQL_SOURCE";
+    byId("mysql-source-partitions")?.classList.toggle("hidden", !mysql || readMode !== "FULL");
+    byId("mysql-source-partition-range")?.classList.toggle("hidden", Number(byId("mysql-source-partition-num")?.value) <= 1);
 }
 
 function updateElasticsearchReadModeUI(readMode) {
@@ -2363,9 +2386,11 @@ function syncSelectedNodeConfigFromInspector() {
 
     if (selectedNode.type === "SOURCE") {
         selectedNode.config.sampleData = collectSourceSampleInputs();
-        if (selectedNode.operator === "JDBC_SOURCE") {
+        if (selectedNode.operator === "JDBC_SOURCE" || selectedNode.operator === "MYSQL_SOURCE") {
             selectedNode.config.url = byId("jdbc-url")?.value?.trim?.() || "";
-            selectedNode.config.driver = byId("jdbc-driver")?.value?.trim?.() || "";
+            if (selectedNode.operator === "JDBC_SOURCE") {
+                selectedNode.config.driver = byId("jdbc-driver")?.value?.trim?.() || "";
+            }
             selectedNode.config.username = byId("jdbc-username")?.value?.trim?.() || "";
             selectedNode.config.password = byId("jdbc-password")?.value || "";
             selectedNode.config.query = byId("jdbc-query")?.value?.trim?.() || "";
@@ -2379,6 +2404,13 @@ function syncSelectedNodeConfigFromInspector() {
             selectedNode.config.maxPolls = Number(byId("jdbc-max-polls")?.value || 0);
             selectedNode.config.idField = byId("jdbc-id-field")?.value?.trim?.() || "";
             selectedNode.config.timestampField = byId("jdbc-timestamp-field")?.value?.trim?.() || "";
+            if (selectedNode.operator === "MYSQL_SOURCE") {
+                selectedNode.config.partitionNum = selectedNode.config.readMode === "FULL"
+                    ? Number(byId("mysql-source-partition-num")?.value || 1) : 1;
+                selectedNode.config.partitionColumn = byId("mysql-source-partition-column")?.value.trim() || "";
+                selectedNode.config.partitionLowerBound = byId("mysql-source-partition-lower-bound")?.value.trim() || "";
+                selectedNode.config.partitionUpperBound = byId("mysql-source-partition-upper-bound")?.value.trim() || "";
+            }
             selectedNode.config.format = "JSON";
         } else if (selectedNode.operator === "ELASTICSEARCH_SOURCE") {
             selectedNode.config.hosts = splitTopics(byId("elasticsearch-hosts")?.value || "");
@@ -2848,6 +2880,12 @@ function fillInspectorFromSelectedNode() {
         }
         if (byId("jdbc-timestamp-field")) {
             byId("jdbc-timestamp-field").value = selectedNode.config.timestampField || "";
+        }
+        if (selectedNode.operator === "MYSQL_SOURCE") {
+            byId("mysql-source-partition-num").value = selectedNode.config.partitionNum ?? 1;
+            byId("mysql-source-partition-column").value = selectedNode.config.partitionColumn ?? "";
+            byId("mysql-source-partition-lower-bound").value = selectedNode.config.partitionLowerBound ?? "";
+            byId("mysql-source-partition-upper-bound").value = selectedNode.config.partitionUpperBound ?? "";
         }
         if (byId("elasticsearch-hosts")) {
             byId("elasticsearch-hosts").value = (selectedNode.config.hosts || []).join(",");
@@ -5762,6 +5800,10 @@ function bindInspectorInputs() {
         "jdbc-max-polls",
         "jdbc-id-field",
         "jdbc-timestamp-field",
+        "mysql-source-partition-num",
+        "mysql-source-partition-column",
+        "mysql-source-partition-lower-bound",
+        "mysql-source-partition-upper-bound",
         "elasticsearch-hosts",
         "elasticsearch-index",
         "elasticsearch-source-fields",
@@ -6630,6 +6672,9 @@ function bindInspectorInputs() {
     });
 
     byId("jdbc-read-mode")?.addEventListener("change", () => {
+        updateJdbcReadModeUI(byId("jdbc-read-mode")?.value || "FULL");
+    });
+    byId("mysql-source-partition-num")?.addEventListener("input", () => {
         updateJdbcReadModeUI(byId("jdbc-read-mode")?.value || "FULL");
     });
 

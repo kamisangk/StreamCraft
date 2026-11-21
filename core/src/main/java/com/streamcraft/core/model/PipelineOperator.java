@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonEnumDefaultValue;
 public enum PipelineOperator {
     KAFKA_SOURCE,
     JDBC_SOURCE,
+    MYSQL_SOURCE,
     ELASTICSEARCH_SOURCE,
     INFLUXDB_SOURCE,
     HDFS_FILE_SOURCE,
