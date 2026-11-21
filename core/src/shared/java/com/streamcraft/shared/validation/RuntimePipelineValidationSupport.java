@@ -23,6 +23,7 @@ public final class RuntimePipelineValidationSupport {
     public static final String HDFS_FILE_SOURCE_OPERATOR = "HDFS_FILE_SOURCE";
     public static final String KAFKA_SINK_OPERATOR = "KAFKA_SINK";
     public static final String JDBC_SINK_OPERATOR = "JDBC_SINK";
+    public static final String MYSQL_SINK_OPERATOR = "MYSQL_SINK";
     public static final String ELASTICSEARCH_SINK_OPERATOR = "ELASTICSEARCH_SINK";
     public static final String INFLUXDB_SINK_OPERATOR = "INFLUXDB_SINK";
     public static final String HDFS_FILE_SINK_OPERATOR = "HDFS_FILE_SINK";
@@ -81,7 +82,7 @@ public final class RuntimePipelineValidationSupport {
                             INFLUXDB_SOURCE_OPERATOR, HDFS_FILE_SOURCE_OPERATOR));
             case SINK_TYPE -> requireCompatibleOperator(
                     node,
-                    Set.of(KAFKA_SINK_OPERATOR, JDBC_SINK_OPERATOR, ELASTICSEARCH_SINK_OPERATOR,
+                    Set.of(KAFKA_SINK_OPERATOR, JDBC_SINK_OPERATOR, MYSQL_SINK_OPERATOR, ELASTICSEARCH_SINK_OPERATOR,
                             INFLUXDB_SINK_OPERATOR, HDFS_FILE_SINK_OPERATOR));
             case TRANSFORM_TYPE -> requireCompatibleOperator(node, supportedTransformOperators);
             default -> throw new IllegalArgumentException(
@@ -231,6 +232,7 @@ public final class RuntimePipelineValidationSupport {
         operators.add(HDFS_FILE_SOURCE_OPERATOR);
         operators.add(KAFKA_SINK_OPERATOR);
         operators.add(JDBC_SINK_OPERATOR);
+        operators.add(MYSQL_SINK_OPERATOR);
         operators.add(ELASTICSEARCH_SINK_OPERATOR);
         operators.add(INFLUXDB_SINK_OPERATOR);
         operators.add(HDFS_FILE_SINK_OPERATOR);

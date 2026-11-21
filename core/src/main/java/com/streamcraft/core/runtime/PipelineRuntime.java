@@ -101,7 +101,7 @@ public class PipelineRuntime {
 
         switch (sinkNode.operator()) {
             case KAFKA_SINK -> kafkaSinkFactory.attach(input, sinkNode, pipelineId, deploymentNamespace, checkpointingEnabled());
-            case JDBC_SINK -> jdbcSinkFactory.attach(input, sinkNode);
+            case JDBC_SINK, MYSQL_SINK -> jdbcSinkFactory.attach(input, sinkNode);
             case ELASTICSEARCH_SINK -> elasticsearchSinkFactory.attach(input, sinkNode);
             case INFLUXDB_SINK -> influxDbSinkFactory.attach(input, sinkNode);
             case HDFS_FILE_SINK -> hdfsFileSinkFactory.attach(input, sinkNode);

@@ -1087,6 +1087,9 @@
                             class="operator-palette-item studio-operator-item w-full text-left"
                             draggable="true"
                             data-operator-key="jdbcSink" th:text="#{studio.operator.jdbcSink}">JDBC Sink</button>
+                    <button type="button" class="operator-palette-item studio-operator-item w-full text-left"
+                            draggable="true" data-operator-key="mysqlSink"
+                            th:text="#{studio.operator.mysqlSink}">MySQL Sink</button>
                     <button type="button"
                             class="operator-palette-item studio-operator-item w-full text-left"
                             draggable="true"
@@ -3041,7 +3044,7 @@
                                     <label for="jdbc-sink-url" class="sc-form-label" th:text="#{studio.field.jdbcUrl}">JDBC URL</label>
                                     <input id="jdbc-sink-url" type="text" class="sc-input" placeholder="jdbc:postgresql://127.0.0.1:5432/dw">
                                 </div>
-                                <div>
+                                <div id="jdbc-sink-driver-field">
                                     <label for="jdbc-sink-driver" class="sc-form-label" th:text="#{studio.field.jdbcDriver}">Driver class</label>
                                     <input id="jdbc-sink-driver" type="text" class="sc-input" placeholder="org.postgresql.Driver">
                                 </div>
@@ -3053,9 +3056,19 @@
                                     <label for="jdbc-sink-password" class="sc-form-label" th:text="#{studio.field.password}">Password</label>
                                     <input id="jdbc-sink-password" type="password" class="sc-input" th:placeholder="#{studio.field.jdbcPassword.placeholder}" placeholder="Enter JDBC password">
                                 </div>
-                                <div>
+                                <div id="jdbc-sink-table-path-field">
                                     <label for="jdbc-sink-table-path" class="sc-form-label" th:text="#{studio.field.jdbcTablePath}">Table path</label>
                                     <input id="jdbc-sink-table-path" type="text" class="sc-input" placeholder="public.dwd_orders">
+                                </div>
+                                <div id="mysql-sink-table-fields" class="space-y-4 hidden">
+                                    <div>
+                                        <label for="mysql-sink-database" class="sc-form-label" th:text="#{studio.field.mysqlDatabase}">Database</label>
+                                        <input id="mysql-sink-database" type="text" class="sc-input" placeholder="shop">
+                                    </div>
+                                    <div>
+                                        <label for="mysql-sink-table" class="sc-form-label" th:text="#{studio.field.mysqlTable}">Table</label>
+                                        <input id="mysql-sink-table" type="text" class="sc-input" placeholder="orders">
+                                    </div>
                                 </div>
                                 <div>
                                     <label id="jdbc-sink-write-mode-label" for="jdbc-sink-write-mode" class="sc-form-label" th:text="#{studio.field.writeMode}">Write mode</label>

@@ -3,9 +3,11 @@ package com.streamcraft.core.runtime;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streamcraft.core.model.DataEntity;
 import com.streamcraft.core.model.PipelineNode;
+import com.streamcraft.core.model.PipelineOperator;
 import com.streamcraft.shared.jdbc.JdbcSinkConfig;
 import com.streamcraft.shared.jdbc.JdbcSinkConfig.WriteMode;
 import com.streamcraft.shared.jdbc.JdbcSinkConfigParser;
+import com.streamcraft.shared.jdbc.MysqlConnectorConfig;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -13,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.stream.Collectors;
 import org.apache.flink.api.common.functions.OpenContext;
 import org.apache.flink.api.common.state.CheckpointListener;
 import org.apache.flink.metrics.Counter;
@@ -25,10 +28,11 @@ import org.apache.flink.streaming.api.functions.sink.legacy.RichSinkFunction;
 public class JdbcSinkFactory {
 
     public void attach(DataStream<DataEntity> stream, PipelineNode sinkNode) {
-        JdbcSinkConfig config = JdbcSinkConfigParser.parse(
-                sinkNode.config(),
-                IllegalArgumentException::new);
-        stream.addSink(new JdbcSinkFunction(config))
+        boolean mysql = sinkNode.operator() == PipelineOperator.MYSQL_SINK;
+        JdbcSinkConfig config = mysql
+                ? MysqlConnectorConfig.parseSink(sinkNode.config(), IllegalArgumentException::new)
+                : JdbcSinkConfigParser.parse(sinkNode.config(), IllegalArgumentException::new);
+        stream.addSink(new JdbcSinkFunction(config, null, mysql))
                 .name(sinkNode.name());
     }
 
@@ -46,6 +50,7 @@ public class JdbcSinkFactory {
         private static final long serialVersionUID = 1L;
 
         private final JdbcSinkConfig config;
+        private final boolean mysql;
         private transient List<DataEntity> buffer;
         private transient Connection connection;
         private transient ObjectMapper objectMapper;
@@ -54,13 +59,14 @@ public class JdbcSinkFactory {
         private transient Counter checkpointFlushes;
         private transient Counter writeFailures;
 
-        private JdbcSinkFunction(JdbcSinkConfig config) {
-            this(config, null);
+        JdbcSinkFunction(JdbcSinkConfig config, Connection connection) {
+            this(config, connection, false);
         }
 
-        JdbcSinkFunction(JdbcSinkConfig config, Connection connection) {
+        JdbcSinkFunction(JdbcSinkConfig config, Connection connection, boolean mysql) {
             this.config = config;
             this.connection = connection;
+            this.mysql = mysql;
         }
 
         @Override
@@ -146,7 +152,7 @@ public class JdbcSinkFactory {
 
         private void flushRecords(List<DataEntity> records) throws Exception {
             try {
-                if (config.writeMode() == WriteMode.UPSERT) {
+                if (config.writeMode() == WriteMode.UPSERT && !mysql) {
                     flushUpserts(records);
                 } else {
                     flushInserts(records);
@@ -163,7 +169,8 @@ public class JdbcSinkFactory {
         }
 
         private void flushInserts(List<DataEntity> records) throws Exception {
-            try (PreparedStatement statement = connection.prepareStatement(insertSql(config))) {
+            String sql = mysql ? mysqlInsertSql(config) : insertSql(config);
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 for (DataEntity record : records) {
                     bindFields(statement, config.fields(), record.fields(), 1);
                     statement.addBatch();
@@ -251,6 +258,23 @@ public class JdbcSinkFactory {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "JDBC Sink UPSERT mode requires at least one key field."));
         return "update " + config.tablePath() + " set " + assignments + " where " + predicates;
+    }
+
+    private static String mysqlInsertSql(JdbcSinkConfig config) {
+        String columns = config.fields().stream().map(JdbcSinkFactory::mysqlColumn).collect(Collectors.joining(", "));
+        String insert = "insert into " + config.tablePath() + " (" + columns + ") values ("
+                + placeholders(config.fields().size()) + ")";
+        if (config.writeMode() != WriteMode.UPSERT) {
+            return insert;
+        }
+        String updates = config.nonKeyFields().stream().map(JdbcSinkFactory::mysqlColumn)
+                .map(column -> column + " = values(" + column + ")")
+                .collect(Collectors.joining(", "));
+        return insert + " on duplicate key update " + updates;
+    }
+
+    private static String mysqlColumn(String field) {
+        return "`" + field + "`";
     }
 
     private static String placeholders(int count) {

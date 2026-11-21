@@ -37,6 +37,7 @@ public final class RuntimePortContract {
     private static final Set<String> SINK_OPERATORS = Set.of(
             "KAFKA_SINK",
             "JDBC_SINK",
+            "MYSQL_SINK",
             "ELASTICSEARCH_SINK",
             "INFLUXDB_SINK",
             "HDFS_FILE_SINK");

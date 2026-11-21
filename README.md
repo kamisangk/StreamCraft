@@ -155,9 +155,18 @@ be an integer column in the query result. With `readMode: INCREMENTAL`, use
 |---|---|
 | `KAFKA_SINK` | Write records to Kafka |
 | `JDBC_SINK` | Write records to relational databases |
+| `MYSQL_SINK` | Batch insert or upsert rows in an existing MySQL table |
 | `ELASTICSEARCH_SINK` | Write documents to Elasticsearch |
 | `INFLUXDB_SINK` | Write points to InfluxDB |
 | `HDFS_FILE_SINK` | Write files to HDFS |
+
+For `MYSQL_SINK`, set `url`, `table` and `fields`. You can set `database` to
+override the default database in the JDBC URL, and supply `username` and
+`password`. `batchSize` defaults to 1000 and `batchIntervalMs` defaults to 5000.
+The interval is checked on incoming records. Checkpoints also flush buffered
+rows. Set `enableUpsert` to `true` and list `primaryKeys` to update non-key
+columns on a MySQL primary or unique key conflict. Use a transactional table
+such as InnoDB for rollback on batch failure. Delivery is at-least-once.
 
 > Pipeline edges use semantic ports: ordinary operators use `records`; Filter uses `matched` / `rejected`; Data Quality uses `clean` / `dirty`; Stream Join uses `left` / `right`; Route output ports are defined by its route configuration.
 

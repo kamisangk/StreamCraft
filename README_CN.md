@@ -147,9 +147,16 @@ Connector/J，`fetchSize` 默认 1000。全量分片使用 `partitionNum`、
 |---|---|
 | `KAFKA_SINK` | 写入 Kafka |
 | `JDBC_SINK` | 写入关系型数据库 |
+| `MYSQL_SINK` | 批量插入或更新已有 MySQL 表 |
 | `ELASTICSEARCH_SINK` | 写入 Elasticsearch 文档 |
 | `INFLUXDB_SINK` | 写入 InfluxDB 点数据 |
 | `HDFS_FILE_SINK` | 写入 HDFS 文件 |
+
+`MYSQL_SINK` 需要配置 `url`、`table` 和 `fields`。可以用 `database` 覆盖
+JDBC URL 中的默认数据库，并填写 `username` 和 `password`。`batchSize` 默认为
+1000，`batchIntervalMs` 默认为 5000。写入端收到记录时检查批次间隔，checkpoint
+也会触发刷写。启用 `enableUpsert` 并填写 `primaryKeys` 后，MySQL 主键或唯一键
+冲突会更新非键列。使用 InnoDB 等事务表可在批次失败时回滚。投递语义为至少一次。
 
 > 流水线边使用语义端口：普通算子为 `records`；Filter 为 `matched` / `rejected`；Data Quality 为 `clean` / `dirty`；Stream Join 为 `left` / `right`；Route 输出端口由路由配置决定。
 

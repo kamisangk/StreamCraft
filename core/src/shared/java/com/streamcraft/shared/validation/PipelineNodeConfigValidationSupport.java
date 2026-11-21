@@ -134,6 +134,9 @@ public final class PipelineNodeConfigValidationSupport {
             ValidationErrorFactory error) {
         switch (operator) {
             case "KAFKA_SINK" -> validateKafkaSink(config, error);
+            case "MYSQL_SINK" -> MysqlConnectorConfig.parseSinkValidated(
+                    config, issue -> error.apply(new ValidationError(
+                            issue.messageKey(), issue.defaultMessage(), issue.args())));
             case "JDBC_SINK" -> JdbcSinkConfigParser.parseValidated(
                     config, validationError -> error.apply(new ValidationError(
                             validationError.messageKey(),

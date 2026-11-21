@@ -433,6 +433,16 @@ const OPERATOR_CATALOG = {
             flushIntervalMillis: 5000
         }
     },
+    mysqlSink: {
+        type: "SINK",
+        operator: "MYSQL_SINK",
+        defaultName: t("studio.operator.mysqlSink", "MySQL Sink"),
+        runnableInRuntime: true,
+        defaultConfig: {
+            url: "", username: "", password: "", database: "", table: "", fields: [],
+            primaryKeys: [], enableUpsert: false, batchSize: 1000, batchIntervalMs: 5000
+        }
+    },
     elasticsearchSink: {
         type: "SINK",
         operator: "ELASTICSEARCH_SINK",
@@ -2249,8 +2259,16 @@ function updateKafkaDeliveryGuaranteeUI(deliveryGuarantee) {
 }
 
 function updateSinkConfigSections(operator) {
+    const mysql = operator === "MYSQL_SINK";
     byId("kafka-sink-config-section")?.classList.toggle("hidden", operator !== "KAFKA_SINK");
-    byId("jdbc-sink-config-section")?.classList.toggle("hidden", operator !== "JDBC_SINK");
+    byId("jdbc-sink-config-section")?.classList.toggle("hidden", operator !== "JDBC_SINK" && !mysql);
+    byId("jdbc-sink-driver-field")?.classList.toggle("hidden", mysql);
+    byId("jdbc-sink-table-path-field")?.classList.toggle("hidden", mysql);
+    byId("mysql-sink-table-fields")?.classList.toggle("hidden", !mysql);
+    const urlInput = byId("jdbc-sink-url");
+    if (urlInput) {
+        urlInput.placeholder = mysql ? "jdbc:mysql://localhost:3306/shop" : "jdbc:postgresql://127.0.0.1:5432/dw";
+    }
     byId("elasticsearch-sink-config-section")?.classList.toggle("hidden", operator !== "ELASTICSEARCH_SINK");
     byId("influxdb-sink-config-section")?.classList.toggle("hidden", operator !== "INFLUXDB_SINK");
     byId("hdfs-file-sink-config-section")?.classList.toggle("hidden", operator !== "HDFS_FILE_SINK");
@@ -2684,7 +2702,18 @@ function syncSelectedNodeConfigFromInspector() {
         }
         selectedNode.config.note = byId("transform-note")?.value?.trim?.() || "";
     } else if (selectedNode.type === "SINK") {
-        if (selectedNode.operator === "JDBC_SINK") {
+        if (selectedNode.operator === "MYSQL_SINK") {
+            selectedNode.config.url = byId("jdbc-sink-url")?.value.trim() || "";
+            selectedNode.config.username = byId("jdbc-sink-username")?.value.trim() || "";
+            selectedNode.config.password = byId("jdbc-sink-password")?.value || "";
+            selectedNode.config.database = byId("mysql-sink-database")?.value.trim() || "";
+            selectedNode.config.table = byId("mysql-sink-table")?.value.trim() || "";
+            selectedNode.config.enableUpsert = byId("jdbc-sink-write-mode")?.value === "UPSERT";
+            selectedNode.config.fields = splitTopics(byId("jdbc-sink-fields")?.value || "");
+            selectedNode.config.primaryKeys = splitTopics(byId("jdbc-sink-key-fields")?.value || "");
+            selectedNode.config.batchSize = Number(byId("jdbc-sink-batch-size")?.value || 1000);
+            selectedNode.config.batchIntervalMs = Number(byId("jdbc-sink-flush-interval-millis")?.value || 5000);
+        } else if (selectedNode.operator === "JDBC_SINK") {
             selectedNode.config.url = byId("jdbc-sink-url")?.value?.trim?.() || "";
             selectedNode.config.driver = byId("jdbc-sink-driver")?.value?.trim?.() || "";
             selectedNode.config.username = byId("jdbc-sink-username")?.value?.trim?.() || "";
@@ -3490,6 +3519,7 @@ function fillInspectorFromSelectedNode() {
         }
     } else if (selectedNode.type === "SINK") {
         updateSinkConfigSections(selectedNode.operator);
+        const mysqlSink = selectedNode.operator === "MYSQL_SINK";
         if (byId("sink-bootstrap-servers")) {
             byId("sink-bootstrap-servers").value = selectedNode.config.bootstrapServers || "";
         }
@@ -3537,20 +3567,25 @@ function fillInspectorFromSelectedNode() {
             byId("jdbc-sink-table-path").value = selectedNode.config.tablePath || "";
         }
         if (byId("jdbc-sink-write-mode")) {
-            byId("jdbc-sink-write-mode").value = selectedNode.config.writeMode || "INSERT";
+            byId("jdbc-sink-write-mode").value = mysqlSink
+                ? (selectedNode.config.enableUpsert ? "UPSERT" : "INSERT") : (selectedNode.config.writeMode || "INSERT");
             refreshStudioSelectValue("jdbc-sink-write-mode");
         }
         if (byId("jdbc-sink-fields")) {
             byId("jdbc-sink-fields").value = (selectedNode.config.fields || []).join(",");
         }
         if (byId("jdbc-sink-key-fields")) {
-            byId("jdbc-sink-key-fields").value = (selectedNode.config.keyFields || []).join(",");
+            byId("jdbc-sink-key-fields").value = ((mysqlSink ? selectedNode.config.primaryKeys : selectedNode.config.keyFields) || []).join(",");
         }
         if (byId("jdbc-sink-batch-size")) {
-            byId("jdbc-sink-batch-size").value = selectedNode.config.batchSize || 500;
+            byId("jdbc-sink-batch-size").value = selectedNode.config.batchSize || (mysqlSink ? 1000 : 500);
         }
         if (byId("jdbc-sink-flush-interval-millis")) {
-            byId("jdbc-sink-flush-interval-millis").value = selectedNode.config.flushIntervalMillis || 5000;
+            byId("jdbc-sink-flush-interval-millis").value = (mysqlSink ? selectedNode.config.batchIntervalMs : selectedNode.config.flushIntervalMillis) ?? 5000;
+        }
+        if (mysqlSink) {
+            byId("mysql-sink-database").value = selectedNode.config.database || "";
+            byId("mysql-sink-table").value = selectedNode.config.table || "";
         }
         if (byId("elasticsearch-sink-hosts")) {
             byId("elasticsearch-sink-hosts").value = (selectedNode.config.hosts || []).join(",");
@@ -3711,7 +3746,7 @@ function fillInspectorFromSelectedNode() {
         updateSinkAuthUI(selectedNode.config.authType || "NONE");
         updateSinkFormatUI(selectedNode.config.format || "JSON");
         updateKafkaDeliveryGuaranteeUI(selectedNode.config.deliveryGuarantee || "AT_LEAST_ONCE");
-        updateJdbcSinkWriteModeUI(selectedNode.config.writeMode || "INSERT");
+        updateJdbcSinkWriteModeUI(byId("jdbc-sink-write-mode")?.value || "INSERT");
         updateElasticsearchSinkAuthUI(selectedNode.config.authType || "NONE");
         updateHdfsFileSinkFilenameUI(Boolean(selectedNode.config.custom_filename));
     }
@@ -5973,6 +6008,8 @@ function bindInspectorInputs() {
         "jdbc-sink-username",
         "jdbc-sink-password",
         "jdbc-sink-table-path",
+        "mysql-sink-database",
+        "mysql-sink-table",
         "jdbc-sink-write-mode",
         "jdbc-sink-fields",
         "jdbc-sink-key-fields",

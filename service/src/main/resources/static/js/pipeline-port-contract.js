@@ -18,6 +18,7 @@ window.StreamCraftPipelinePortContract = (() => {
     const sinkOperators = new Set([
         "KAFKA_SINK",
         "JDBC_SINK",
+        "MYSQL_SINK",
         "ELASTICSEARCH_SINK",
         "INFLUXDB_SINK",
         "HDFS_FILE_SINK"
