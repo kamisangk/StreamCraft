@@ -1,5 +1,6 @@
 package com.streamcraft.shared.validation;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.streamcraft.shared.port.RuntimePortContract;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -101,9 +102,8 @@ public final class RuntimePipelineValidationSupport {
     public static void validateRuntimePorts(
             RuntimeEdgeDescriptor edge, RuntimeNodeDescriptor sourceNode, RuntimeNodeDescriptor targetNode) {
         edge.requireExplicitPorts();
-        RuntimePortContract.OperatorPortContract sourceContract =
-                RuntimePortContract.forOperator(sourceNode.operator());
-        if (!RuntimePortContract.isOutputPortDeclared(sourceNode.operator(), edge.sourcePortId())) {
+        Set<String> sourcePorts = RuntimePortContract.outputPortsForNode(sourceNode.operator(), sourceNode.config());
+        if (!sourcePorts.contains(edge.sourcePortId())) {
             throw new IllegalArgumentException(
                     "Pipeline edge "
                             + edge.edgeIdOrDefault()
@@ -112,7 +112,7 @@ public final class RuntimePipelineValidationSupport {
                             + " for source operator "
                             + sourceNode.operator()
                             + ". Allowed source ports: "
-                            + describeOutputPorts(sourceContract)
+                            + sourcePorts
                             + ".");
         }
 
@@ -280,13 +280,6 @@ public final class RuntimePipelineValidationSupport {
         }
     }
 
-    private static String describeOutputPorts(RuntimePortContract.OperatorPortContract contract) {
-        if (contract.outputPortsDynamic()) {
-            return "any non-blank configured port";
-        }
-        return contract.outputPorts().toString();
-    }
-
     private static Set<String> traverse(Set<String> startNodeIds, Map<String, List<String>> adjacency) {
         ArrayDeque<String> queue = new ArrayDeque<>(startNodeIds);
         Set<String> visited = new HashSet<>();
@@ -304,7 +297,10 @@ public final class RuntimePipelineValidationSupport {
         return visited;
     }
 
-    public record RuntimeNodeDescriptor(String id, String type, String operator) {
+    public record RuntimeNodeDescriptor(String id, String type, String operator, JsonNode config) {
+        public RuntimeNodeDescriptor(String id, String type, String operator) {
+            this(id, type, operator, null);
+        }
     }
 
     public record RuntimeEdgeDescriptor(

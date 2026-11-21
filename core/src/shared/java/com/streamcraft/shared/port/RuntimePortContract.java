@@ -1,5 +1,7 @@
 package com.streamcraft.shared.port;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.streamcraft.shared.route.RouteConfigParser;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -70,10 +72,11 @@ public final class RuntimePortContract {
         return forOperator(operator).inputPorts().contains(portId);
     }
 
-    public static boolean isOutputPortDeclared(String operator, String portId) {
+    public static Set<String> outputPortsForNode(String operator, JsonNode config) {
         OperatorPortContract contract = forOperator(operator);
-        return contract.outputPorts().contains(portId)
-                || contract.outputPortsDynamic() && hasText(portId);
+        return contract.outputPortsDynamic()
+                ? RouteConfigParser.outputPorts(config, IllegalArgumentException::new)
+                : contract.outputPorts();
     }
 
     public static String migrateInputPort(String operator, String portId) {
@@ -145,10 +148,6 @@ public final class RuntimePortContract {
         ports.add(first);
         ports.add(second);
         return ports;
-    }
-
-    private static boolean hasText(String value) {
-        return value != null && !value.isBlank();
     }
 
     public record OperatorPortContract(

@@ -185,7 +185,8 @@ public class PipelineDefinitionValidator {
                     new RuntimePipelineValidationSupport.RuntimeNodeDescriptor(
                             nodeId,
                             requiredText(node, "type"),
-                            requiredText(node, "operator")));
+                            requiredText(node, "operator"),
+                            node.path("config")));
         }
         return runtimeNodeById;
     }

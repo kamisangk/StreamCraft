@@ -49,7 +49,8 @@ public class PipelineRuntimeValidator {
                     new RuntimePipelineValidationSupport.RuntimeNodeDescriptor(
                             node.id(),
                             node.type().name(),
-                            node.operator().name()));
+                            node.operator().name(),
+                            node.config()));
 
             if (node.type() == PipelineNodeType.SOURCE) {
                 sourceIds.add(node.id());
