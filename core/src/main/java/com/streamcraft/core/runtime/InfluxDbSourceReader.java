@@ -1,5 +1,5 @@
 package com.streamcraft.core.runtime;
-import com.fasterxml.jackson.databind.*; import com.streamcraft.core.model.DataEntity; import com.streamcraft.shared.influxdb.InfluxDbSourceConfig; import com.streamcraft.shared.influxdb.InfluxDbSourceConfig.CursorType; import com.streamcraft.shared.influxdb.InfluxDbSourceConfig.ReadMode; import java.net.*; import java.net.http.*; import java.nio.charset.StandardCharsets; import java.sql.Timestamp; import java.time.*; import java.util.*; import java.util.concurrent.*; import org.apache.flink.api.connector.source.*; import org.apache.flink.core.io.InputStatus; import org.slf4j.*;
+import com.fasterxml.jackson.databind.*; import com.streamcraft.core.model.DataEntity; import com.streamcraft.shared.influxdb.InfluxDbSourceConfig; import com.streamcraft.shared.influxdb.InfluxDbSourceConfig.CursorType; import com.streamcraft.shared.influxdb.InfluxDbSourceConfig.ReadMode; import java.net.*; import java.net.http.*; import java.nio.charset.StandardCharsets; import java.sql.Timestamp; import java.time.*; import java.time.temporal.ChronoUnit; import java.util.*; import java.util.concurrent.*; import org.apache.flink.api.connector.source.*; import org.apache.flink.core.io.InputStatus; import org.slf4j.*;
 final class InfluxDbSourceReader implements SourceReader<DataEntity,InfluxDbSourceSplit>{
  private static final Logger LOG=LoggerFactory.getLogger(InfluxDbSourceReader.class); private final SourceReaderContext context; private final InfluxDbSourceConfig config; private final Object lock=new Object(); private final ArrayDeque<Record> records=new ArrayDeque<>(); private final ArrayDeque<InfluxDbSourceSplit> pendingSplits=new ArrayDeque<>(); private final HttpClient client; private final ObjectMapper mapper=new ObjectMapper(); private InfluxDbSourceSplit split; private boolean started,exhausted,noMore; private int polls; private long nextPoll;
  InfluxDbSourceReader(SourceReaderContext c,InfluxDbSourceConfig cfg){context=c;config=cfg;client=HttpClient.newBuilder().connectTimeout(Duration.ofMillis(cfg.connectTimeoutMillis())).build();}
@@ -34,7 +34,49 @@ final class InfluxDbSourceReader implements SourceReader<DataEntity,InfluxDbSour
  private String resolveId(Map<String,Object> f){Object id=config.idField().isBlank()?null:f.get(config.idField());if(id!=null)return String.valueOf(id);return String.valueOf(f.getOrDefault("_measurement",""))+":"+String.valueOf(f.getOrDefault(timestampField(),""));}
  private long resolveTimestamp(Map<String,Object> f){Object v=f.get(timestampField());if(v instanceof Number n)return epoch(n.longValue());if(v instanceof String s)try{return Instant.parse(s).toEpochMilli();}catch(Exception e){try{return Timestamp.valueOf(s).getTime();}catch(Exception x){}}return System.currentTimeMillis();}
  private String timestampField(){return config.timestampField().isBlank()?"time":config.timestampField();} private Map<String,String> headers(Map<String,Object> f){Map<String,String> h=new HashMap<>();h.put("source","influxdb");h.put("readMode",config.readMode().name());h.put("database",config.database());Object m=f.get("_measurement");if(m!=null)h.put("measurement",String.valueOf(m));if(!config.cursorField().isBlank())h.put("cursorField",config.cursorField());return h;}
- private Object coerce(String v){return switch(config.cursorType()){case LONG->Long.parseLong(v);case DOUBLE->Double.parseDouble(v);case TIMESTAMP->{try{yield Timestamp.from(Instant.parse(v));}catch(Exception e){yield Timestamp.from(Instant.ofEpochMilli(epoch(Long.parseLong(v))));}}case STRING->v;};} private String literal(Object v,CursorType t){return switch(t){case LONG,DOUBLE->String.valueOf(v);case TIMESTAMP,STRING->"'"+String.valueOf(v).replace("'","\\'")+"'";};} private String cursorString(Object v){if(config.cursorType()==CursorType.TIMESTAMP){if(v instanceof Number n)return Instant.ofEpochMilli(epoch(n.longValue())).toString();try{return Instant.parse(String.valueOf(v)).toString();}catch(Exception ignored){}}return v instanceof Timestamp t?t.toInstant().toString():String.valueOf(v);} private long epoch(long v){return switch(config.epoch()){case"n"->v/1_000_000L;case"u"->v/1_000L;case"s"->v*1000L;case"m"->v*60000L;case"h"->v*3600000L;default->v;};}
+ private Object coerce(String value) {
+    return switch (config.cursorType()) {
+        case LONG -> Long.parseLong(value);
+        case DOUBLE -> Double.parseDouble(value);
+        case TIMESTAMP -> {
+            try {
+                yield Instant.parse(value);
+            } catch (DateTimeException exception) {
+                yield toCursorInstant(Long.parseLong(value));
+            }
+        }
+        case STRING -> value;
+    };
+ }
+
+ private String literal(Object value, CursorType type) {
+    return switch (type) {
+        case LONG, DOUBLE -> value.toString();
+        case TIMESTAMP, STRING -> "'" + value.toString().replace("'", "\\'") + "'";
+    };
+ }
+
+ private String cursorString(Object value) {
+    if (config.cursorType() == CursorType.TIMESTAMP) {
+        if (value instanceof Number number) {
+            return toCursorInstant(number.longValue()).toString();
+        }
+    }
+    return value instanceof Timestamp timestamp ? timestamp.toInstant().toString() : value.toString();
+ }
+
+ private Instant toCursorInstant(long value) {
+    return switch (config.epoch()) {
+        case "n" -> Instant.EPOCH.plusNanos(value);
+        case "u", "us" -> Instant.EPOCH.plus(value, ChronoUnit.MICROS);
+        case "s" -> Instant.ofEpochSecond(value);
+        case "m" -> Instant.EPOCH.plus(value, ChronoUnit.MINUTES);
+        case "h" -> Instant.EPOCH.plus(value, ChronoUnit.HOURS);
+        default -> Instant.ofEpochMilli(value);
+    };
+ }
+
+ private long epoch(long v){return switch(config.epoch()){case"n"->v/1_000_000L;case"u"->v/1_000L;case"s"->v*1000L;case"m"->v*60000L;case"h"->v*3600000L;default->v;};}
  private static String append(String sql,String p){String l=sql.toLowerCase(Locale.ROOT);int at=sql.length();for(String t:List.of(" group by "," order by "," limit "," slimit "," tz(")){int i=l.indexOf(t);if(i>=0&&i<at)at=i;}String head=sql.substring(0,at).trim(),tail=sql.substring(at);return head+(l.substring(0,at).contains(" where ")?" and ":" where ")+p+tail;}private static String params(Map<String,String>p){return p.entrySet().stream().map(e->URLEncoder.encode(e.getKey(),StandardCharsets.UTF_8)+"="+URLEncoder.encode(e.getValue(),StandardCharsets.UTF_8)).reduce((a,b)->a+"&"+b).orElse("");}
  private record Record(DataEntity entity,String cursor,String id){}
 }
